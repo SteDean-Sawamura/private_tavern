@@ -21,4 +21,4 @@ from .agents import (
 )
 from .script_builder import ScriptBuilder
 from .session import TavernRPGSession
-from .routes import main, load_ai_profiles, SCRIPTS_DIR
+from .routes import create_app, main, load_ai_profiles, SCRIPTS_DIR
