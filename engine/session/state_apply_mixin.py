@@ -674,6 +674,17 @@ class StateApplyMixin:
         all_changes: list[dict] = []
         dirty_npc_ids: set[str] = set()
 
+        # Harness 级校验：关键字段类型异常时重置
+        if not isinstance(parsed.get("state_changes"), (list, type(None))):
+            parsed["state_changes"] = []
+            logger.warning('[校验] state_changes 格式异常，已重置为空列表')
+        if not isinstance(parsed.get("npc_attitude_changes"), (list, type(None))):
+            parsed["npc_attitude_changes"] = []
+            logger.warning('[校验] npc_attitude_changes 格式异常，已重置为空列表')
+        if not isinstance(parsed.get("inventory_changes"), (list, type(None))):
+            parsed["inventory_changes"] = []
+            logger.warning('[校验] inventory_changes 格式异常，已重置为空列表')
+
         if parsed.get("state_changes"):
             # Handle variable ops before passing to state_manager
             var_ops = [sc for sc in parsed["state_changes"] if sc.get("type") == "variable"]

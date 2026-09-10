@@ -274,7 +274,10 @@ class PipelineMixin:
         state_baseline: if provided (regenerate), use this instead of self.current_state
                         for prompt building. None means use self.current_state.
         """
-        from engine.game_session import GAME_TOOLS, GAME_TOOLS_SCHEMA, NARRATIVE_TOOLS_SCHEMA
+        from engine.game_session import (
+            GAME_TOOLS, GAME_TOOLS_SCHEMA, NARRATIVE_TOOLS_SCHEMA,
+            NPC_REACTION_TOOLS, CHOICES_TOOLS,
+        )
 
         _state = state_baseline if state_baseline is not None else self.current_state
         _warnings: list[str] = []
@@ -405,13 +408,21 @@ class PipelineMixin:
             prev_plot_decision=_prev_plot,
             recent_narratives=_recent_narratives or None,
             event_sections=ctx.get("event_sections"),
+            recall_hints=route.get("recall_hints") or None,
         )
 
         if _use_native_tools:
-            plot_decision, tool_results = await self._stage1_with_native_tools(
-                plot_msgs, plot_sys, GAME_TOOLS_SCHEMA,
-                max_tokens=8192, **self._stage_kwargs("narrative")
+            _stage1_result = await _retry_on_failure(
+                lambda: self._stage1_with_native_tools(
+                    plot_msgs, plot_sys, GAME_TOOLS_SCHEMA,
+                    max_tokens=8192, **self._stage_kwargs("narrative")
+                ),
+                max_retries=1, label="Stage1工具调用",
             )
+            if _stage1_result is not None:
+                plot_decision, tool_results = _stage1_result
+            else:
+                plot_decision, tool_results = "", []
             plot_reasoning = ""
         else:
             raw_plot = await self.ai_provider.generate(
@@ -798,14 +809,15 @@ class PipelineMixin:
             parsed = self.response_parser._empty_result()
             parsed["narrative"] = narrative.strip()
         elif _use_state_tools:
-            # 工具调用路径：单次调用替代 5 路并行
-            try:
-                parsed = await self._execute_state_settlement(
+            # 工具调用路径：单次调用替代 5 路并行（带重试）
+            parsed = await _retry_on_failure(
+                lambda: self._execute_state_settlement(
                     ctx, narrative, plot_decision, action_text, _state,
                     old_time=_old_time,
-                )
-            except Exception as e:
-                logger.warning("状态推演工具调用失败，回退到空结果: %s", e)
+                ),
+                max_retries=1, label="状态推演",
+            )
+            if parsed is None:
                 parsed = self.response_parser._empty_result()
                 parsed["narrative"] = narrative.strip()
                 _warnings.append("状态推演工具调用失败，本回合属性/物品变化可能未正确记录")
@@ -889,8 +901,80 @@ class PipelineMixin:
 
         raw_npc = ""
         raw_choices = ""
+        _use_npc_choices_tools = bool(_tools and _use_native_tools)
 
-        if _run_npc or _run_choices:
+        if (_run_npc or _run_choices) and _use_npc_choices_tools:
+            # --- 工具调用路径：NPC反应/选项生成走结构化工具调用，无自由文本解析 ---
+            async def _run_stage45_tools(msgs, label, tools_schema, max_tokens, stage_key):
+                async def _call():
+                    resp = await self.ai_provider.generate_with_tools(
+                        msgs, system=(msgs_sys or None), tools=tools_schema,
+                        max_tokens=max_tokens, **self._stage_kwargs(stage_key),
+                    )
+                    return resp.get("tool_calls") or []
+                calls = await _retry_on_failure(_call, max_retries=1, label=label)
+                return calls or []
+
+            _45_coros = []
+            _45_labels = []
+            _45_specs = []  # (kind, tools_schema, max_tokens, stage_key)
+            _45_msgs_sys = []
+
+            if _run_npc:
+                npc_msgs, npc_sys = self.prompt_builder.build_npc_reaction_prompt(
+                    narrative, action_text, _state,
+                    check_result=ctx.get("check_result"),
+                    present_npc_ids=ctx.get("present_npc_ids"),
+                    npc_history=npc_rag_context,
+                    npc_lore=npc_filtered_lore,
+                )
+                _45_coros.append(None)  # placeholder, replaced below
+                _45_labels.append(("NPC关系推演", True))
+                _45_specs.append(("npc", NPC_REACTION_TOOLS, 4096, "state"))
+
+            _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
+            if _run_choices:
+                choices_msgs, choices_sys = self.prompt_builder.build_choices_prompt(
+                    narrative, action_text, _state,
+                    turn_number=self.turn_number, activated_lore=ctx["activated_lore"],
+                    story_hints=_story_hints, world_change_hints=_world_change_hints,
+                    event_sections=ctx.get("event_sections"),
+                    pc_discovered_lore=_state.get("pc_discovered_lore", []))
+                _45_labels.append(("选项生成", False))
+                _45_specs.append(("choices", CHOICES_TOOLS, 8192, "choices"))
+            _state.pop("_nearby_npc_ids", None)
+
+            # 单轮工具调用（executor 只做验证与缓冲，无需多轮反馈）
+            self._reset_stage45_tool_buffers()
+            _45_pending = []
+            if _run_npc:
+                _45_pending.append(("npc", npc_msgs, npc_sys))
+            if _run_choices:
+                _45_pending.append(("choices", choices_msgs, choices_sys))
+
+            _45_tool_results = await asyncio.gather(*[
+                self._generate_stage45_tools(msgs, sys_prompt, tools_schema,
+                                             max_tokens=max_tokens, stage_key=stage_key,
+                                             label=label)
+                for (kind, msgs, sys_prompt), (_, tools_schema, max_tokens, stage_key), (label, _crit) in zip(
+                    _45_pending, _45_specs, _45_labels,
+                )
+            ], return_exceptions=True)
+
+            for (kind, _m, _s), calls, (label, critical) in zip(_45_pending, _45_tool_results, _45_labels):
+                if isinstance(calls, BaseException):
+                    _warnings.append(f"{label}工具调用失败: {calls}" if critical else None)
+                    logger.warning("%s工具调用失败: %s", label, calls)
+                    continue
+                for tc in calls:
+                    if kind == "npc":
+                        self._run_npc_reaction_tool(tc.get("name", ""), tc.get("arguments") or {})
+                    else:
+                        self._run_choices_tool(tc.get("name", ""), tc.get("arguments") or {})
+
+            self._merge_npc_reaction_tool_results(parsed)
+            self._merge_choices_tool_results(parsed)
+        elif _run_npc or _run_choices:
             _4a5_coros = []
             _4a5_labels = []
 
@@ -902,7 +986,10 @@ class PipelineMixin:
                     npc_history=npc_rag_context,
                     npc_lore=npc_filtered_lore,
                 )
-                _4a5_coros.append(self.ai_provider.generate(npc_msgs, system=npc_sys, max_tokens=4096, **self._stage_kwargs("state")))
+                _4a5_coros.append(_retry_on_failure(
+                    lambda: self.ai_provider.generate(npc_msgs, system=npc_sys, max_tokens=4096, **self._stage_kwargs("state")),
+                    max_retries=1, label="NPC反应",
+                ))
                 _4a5_labels.append(("NPC关系推演", True))
 
             _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
@@ -913,7 +1000,10 @@ class PipelineMixin:
                     story_hints=_story_hints, world_change_hints=_world_change_hints,
                     event_sections=ctx.get("event_sections"),
                     pc_discovered_lore=_state.get("pc_discovered_lore", []))
-                _4a5_coros.append(self.ai_provider.generate(choices_msgs, system=choices_sys, max_tokens=8192, **self._stage_kwargs("choices")))
+                _4a5_coros.append(_retry_on_failure(
+                    lambda: self.ai_provider.generate(choices_msgs, system=choices_sys, max_tokens=8192, **self._stage_kwargs("choices")),
+                    max_retries=1, label="选项生成",
+                ))
                 _4a5_labels.append(("选项生成", False))
             _state.pop("_nearby_npc_ids", None)
 
