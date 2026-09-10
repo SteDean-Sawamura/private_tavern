@@ -3,9 +3,12 @@ const { spawn } = require('child_process');
 const path = require('path');
 const net = require('net');
 
-const SERVER_PORT = 8080;
+const TAVERN_PORT = 8000;
+const RPG_PORT = 8080;
 const PROJECT_DIR = path.resolve(__dirname, '..');
-let serverProcess = null;
+
+let tavernProcess = null;
+let rpgProcess = null;
 let mainWindow = null;
 
 function findPython() {
@@ -18,27 +21,24 @@ function findPython() {
   }
 }
 
-function startServer() {
+function startProcess(script, label) {
   const python = findPython();
-  serverProcess = spawn(python, ['tavern_rpg_engine.py'], {
+  const proc = spawn(python, [script], {
     cwd: PROJECT_DIR,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
-
-  serverProcess.stdout.on('data', d => process.stdout.write(`[server] ${d}`));
-  serverProcess.stderr.on('data', d => process.stderr.write(`[server] ${d}`));
-  serverProcess.on('close', code => {
-    console.log(`[server] exited with code ${code}`);
-    serverProcess = null;
-  });
+  proc.stdout.on('data', d => process.stdout.write(`[${label}] ${d}`));
+  proc.stderr.on('data', d => process.stderr.write(`[${label}] ${d}`));
+  proc.on('close', code => console.log(`[${label}] exited (${code})`));
+  return proc;
 }
 
 function waitForServer(port, timeout = 30000) {
   const start = Date.now();
   return new Promise((resolve, reject) => {
     function attempt() {
-      if (Date.now() - start > timeout) return reject(new Error('Server start timeout'));
+      if (Date.now() - start > timeout) return reject(new Error(`Port ${port} timeout`));
       const sock = new net.Socket();
       sock.setTimeout(500);
       sock.once('connect', () => { sock.destroy(); resolve(); });
@@ -50,11 +50,18 @@ function waitForServer(port, timeout = 30000) {
   });
 }
 
+function navigateTo(port) {
+  if (mainWindow) mainWindow.loadURL(`http://127.0.0.1:${port}`);
+}
+
 function createWindow() {
   const menu = Menu.buildFromTemplate([
     {
-      label: '文件',
+      label: '应用',
       submenu: [
+        { label: '酒馆（对话模式）', accelerator: 'CmdOrCtrl+1', click: () => navigateTo(TAVERN_PORT) },
+        { label: 'RPG 推演系统', accelerator: 'CmdOrCtrl+2', click: () => navigateTo(RPG_PORT) },
+        { type: 'separator' },
         { label: '重新加载', accelerator: 'CmdOrCtrl+R', click: () => mainWindow?.reload() },
         { label: '开发者工具', accelerator: 'F12', click: () => mainWindow?.webContents.toggleDevTools() },
         { type: 'separator' },
@@ -79,7 +86,7 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 700,
-    title: '酒馆 RPG — 多Agent推演系统',
+    title: '酒馆',
     backgroundColor: '#1b1b1f',
     webPreferences: {
       nodeIntegration: false,
@@ -87,7 +94,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadURL(`http://127.0.0.1:${SERVER_PORT}`);
+  mainWindow.loadURL(`http://127.0.0.1:${TAVERN_PORT}`);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -97,28 +104,27 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+function killAll() {
+  if (tavernProcess) { tavernProcess.kill(); tavernProcess = null; }
+  if (rpgProcess) { rpgProcess.kill(); rpgProcess = null; }
+}
+
 app.whenReady().then(async () => {
-  startServer();
+  tavernProcess = startProcess('app.py', 'tavern');
+  rpgProcess = startProcess('tavern_rpg_engine.py', 'rpg');
+
   try {
-    await waitForServer(SERVER_PORT);
-    console.log('[OK] Server is ready');
+    await Promise.all([
+      waitForServer(TAVERN_PORT),
+      waitForServer(RPG_PORT),
+    ]);
+    console.log('[OK] Both servers ready');
   } catch (e) {
-    console.error('[FAIL]', e.message);
+    console.error('[WARN]', e.message, '- opening anyway');
   }
+
   createWindow();
 });
 
-app.on('window-all-closed', () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
-  app.quit();
-});
-
-app.on('before-quit', () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
-});
+app.on('window-all-closed', () => { killAll(); app.quit(); });
+app.on('before-quit', killAll);
