@@ -1,0 +1,1588 @@
+"""PromptBuilder Mixin: 叙事与选项生成相关提示词"""
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING
+
+from engine.lorebook import Lorebook
+
+if TYPE_CHECKING:
+    pass
+
+# Sentinel inserted between cache-stable and per-turn-varying sections.
+# ClaudeProvider splits on this to add cache_control; other providers strip it.
+CACHE_SENTINEL = "\n\n<|cache_break|>\n\n"
+
+
+def _xml(tag: str, content: str) -> str:
+    if not content or not content.strip():
+        return ""
+    return f"<{tag}>\n{content}\n</{tag}>"
+
+
+class PromptNarrativeMixin:
+    """叙事、选项、环境渲染、角色行动等提示词构建"""
+
+    def _collect_state_context(self, state: dict) -> dict:
+        """收集共享的状态上下文信息，供 build_choices_prompt / build_world_state_prompt 使用。"""
+        player = state.get("player", {})
+        attrs = player.get("attributes", {})
+        dn = state.get("display_names", {})
+        pc_rules = self.script.get("player_character", {}).get("attributes", {})
+        inventory = state.get("inventory", [])
+        active_ids = set(state.get("active_persistent_states", []))
+
+        # 紧凑属性
+        attrs_compact = ", ".join(
+            f"{dn.get(k, k)}={v}/{(pc_rules.get(k, {}).get('max', 100) if isinstance(pc_rules.get(k), dict) else 100)}"
+            for k, v in attrs.items()
+        )
+        # 详细属性（含范围）
+        attrs_lines = []
+        for k, v in attrs.items():
+            rule = pc_rules.get(k, {})
+            mx = rule.get("max", 100) if isinstance(rule, dict) else 100
+            mn = rule.get("min", 0) if isinstance(rule, dict) else 0
+            attrs_lines.append(f"- {dn.get(k, k)}({k}): {v} [{mn}-{mx}]")
+
+        # 背包
+        inv_compact = ", ".join(
+            f"{it['item']}x{it.get('quantity', 1)}{' [可用]' if it.get('use_effect') else ''}" for it in inventory
+        ) if inventory else "无"
+
+        # 持续状态（紧凑）
+        active_names = []
+        for ps in self.script.get("persistent_states", []):
+            if ps["id"] in active_ids:
+                active_names.append(ps.get("name", ps["id"]))
+
+        # 位置
+        loc_id = player.get("location", "")
+        location = self._resolve_location_name(loc_id)
+        loc_descs = state.get("location_descriptions", {})
+        location_desc = loc_descs.get(loc_id, "")[:80] if loc_id else ""
+
+        return {
+            "player": player, "attrs": attrs, "dn": dn, "pc_rules": pc_rules,
+            "active_ids": active_ids,
+            "attrs_compact": attrs_compact,
+            "attrs_lines": attrs_lines,
+            "inv_compact": inv_compact,
+            "active_names": active_names,
+            "location": location,
+            "location_id": loc_id,
+            "location_desc": location_desc,
+        }
+
+    def build_choices_prompt(
+        self, narrative: str, action_text: str, state: dict, *,
+        turn_number: int = 0, activated_lore: list | None = None,
+        story_hints: str = "",
+        world_change_hints: str = "",
+        event_sections: dict[str, str] | None = None,
+        pc_discovered_lore: list[str] | None = None,
+    ) -> tuple[list[dict], str]:
+        """Build prompt for choices-only generation. Returns (messages, system).
+
+        system 只含纯静态 rules（跨回合 100% 缓存命中），
+        动态背景注入 user message。
+        """
+        system = """你是游戏选项设计师。根据叙事内容和角色状态，设计2-4个策略性选项。
+
+规则：
+- id格式: c1, c2, c3, ...
+- text: 选项描述
+- hint: **必填**。描述该选项的预期后果和代价（时间、金钱、风险、关系变化等）。例如"预计耗时30分钟，消耗30金币，可能惹怒守卫"。不要省略此字段
+- time_hint: ISO 8601格式时间（PT30M、PT1H、P1D）
+- risk: **必填**。评估该选项的风险等级，取值为 "safe"、"moderate"、"risky" 之一。safe=几乎不会失败或没有负面后果；moderate=有一定风险但可控；risky=高风险高回报或可能产生严重后果
+- 当选项有前置条件（属性/物品/位置等）且玩家不满足时，设置 locked:true 和 lock_reason（如"需要魅力>50（当前30）"）
+- 选项应体现不同风险/收益，有策略深度
+- **人设贴合**：选项措辞和方向应贴合主角的身份、性格与长期目标，避免 OOC
+- **信息边界**：选项只能基于叙事中已提及或玩家已知的信息。不要引入叙事中完全没有出现过的人物、线索、地点或情报线（如玩家不知情的线人、未提及的秘密通道等）。选项的关注点应聚焦于当前场景中自然延伸的行动
+- **选项是行动，不是叙事**：每个选项的text必须描述玩家主动采取的行动（说、做、去、查、等），不能在选项中编写新的场景描述（如"突然有人敲门""远处传来爆炸声"等）。叙事已经结束，选项只负责提供下一步行动方向
+- **基于叙事结尾设计**：选项必须从叙事结束时的场景状态出发。仔细阅读叙事的最后几段，确定主角当前所处的位置、姿态、手中物品、在场人物，以此为起点设计选项。不要基于叙事中间或开头的状态（如叙事中主角已经移动到新地点，选项不能假设主角还在旧地点）
+
+只返回JSON，不要任何解释:
+{"choices":[{"id":"c1","text":"...","hint":"预期后果和代价","time_hint":"PT30M","risk":"moderate"},{"id":"c2","text":"...","hint":"预期后果和代价","time_hint":"PT1H","risk":"safe"}]}"""
+        system += CACHE_SENTINEL
+
+        # 动态背景注入 user message（而非 system），保持 system 纯静态
+        bg_parts = []
+        world_brief = self._build_world_brief_section(state)
+        if world_brief:
+            bg_parts.append(world_brief)
+        character = self._build_character_section(state)
+        if character:
+            bg_parts.append(character)
+        npc = self._build_npc_section(state)
+        if npc:
+            bg_parts.append(npc)
+
+        if activated_lore and self.lorebook:
+            lore_entries = self.lorebook.get_entries_by_position(activated_lore, "after_world")
+            lore_entries = Lorebook.filter_by_visibility(lore_entries, "pc_strict", pc_discovered_lore)
+            lore_text = self.lorebook.format_for_prompt(lore_entries)
+            if lore_text:
+                bg_parts.append(lore_text)
+
+        # 持续状态（紧凑版）
+        active_ids = set(state.get("active_persistent_states", []))
+        if active_ids:
+            predefined_ids = set()
+            ps_names = []
+            for ps in self.script.get("persistent_states", []):
+                predefined_ids.add(ps["id"])
+                if ps["id"] in active_ids:
+                    ps_names.append(ps.get("name", ps["id"]))
+            dn = state.get("display_names", {})
+            for sid in active_ids - predefined_ids:
+                ps_names.append(dn.get(sid, sid))
+            if ps_names:
+                bg_parts.append(f"当前持续状态: {', '.join(ps_names)}")
+
+        bg_text = "\n\n---\n\n".join(bg_parts) + "\n\n---\n\n" if bg_parts else ""
+
+        # scene_details 摘要
+        scene_text = ""
+        scene = state.get("scene_details")
+        if scene and isinstance(scene, dict):
+            s_parts = []
+            if scene.get("atmosphere"):
+                s_parts.append(f"氛围:{scene['atmosphere']}")
+            if scene.get("pending_tension"):
+                s_parts.append(f"悬念:{scene['pending_tension']}")
+            if s_parts:
+                scene_text = f"\n\n场景状态: {' | '.join(s_parts)}"
+
+        # 玩家人设摘要（帮助选项贴合角色，有 lorebook 词条时跳过已覆盖字段）
+        player = state.get("player", {})
+        has_pc_lore = self.lorebook and any(
+            e.id == "_pc_identity" and e.enabled for e in self.lorebook.entries
+        )
+        pc_tag = ""
+        pc_bits = []
+        if player.get("name"):
+            pc_bits.append(player["name"])
+        if not has_pc_lore:
+            if player.get("personality"):
+                pc_bits.append(f"性格:{player['personality'][:15]}")
+            if player.get("long_term_goal"):
+                pc_bits.append(f"目标:{player['long_term_goal'][:25]}")
+        if pc_bits:
+            pc_tag = f"\n\n主角: {' | '.join(pc_bits)}"
+
+        # 资源余量摘要：让AI能写出有参考价值的cost/benefit hint
+        resource_tag = ""
+        resource_bits = []
+        attrs = player.get("attributes", {})
+        for attr_name, attr_val in attrs.items():
+            v = attr_val if isinstance(attr_val, (int, float)) else (attr_val.get("value") if isinstance(attr_val, dict) else None)
+            if v is not None:
+                resource_bits.append(f"{attr_name}={v}")
+        inventory = state.get("inventory", [])
+        if inventory:
+            inv_summary = []
+            for item in inventory[:8]:
+                name = item.get("item", "") if isinstance(item, dict) else str(item)
+                qty = item.get("quantity", 1) if isinstance(item, dict) else 1
+                if name:
+                    tag = " [可用]" if isinstance(item, dict) and item.get("use_effect") else ""
+                    inv_summary.append(f"{name}×{qty}{tag}" if qty > 1 else f"{name}{tag}")
+            if inv_summary:
+                resource_bits.append(f"背包:[{','.join(inv_summary)}]")
+        if resource_bits:
+            resource_tag = f"\n\n当前资源: {' | '.join(resource_bits[:10])}"
+
+        # 玩家风格回馈：让选项贴合玩家偏好
+        style_hint = ""
+        play_style = state.get("play_style_summary")
+        if play_style and isinstance(play_style, dict) and play_style.get("tag"):
+            style_hint = f"\n\n玩家风格: {play_style['tag']}" + (f"（{play_style['description']}）" if play_style.get('description') else "") + "。选项设计应适当倾向此风格偏好，但不排除其他方向。"
+
+        # 环境互动元素
+        interactable_hint = ""
+        interactables = [ia for ia in state.get("location_interactables", []) if not ia.get("used")]
+        if interactables:
+            items = ["可互动元素（可作为选项来源）:"]
+            for ia in interactables[:4]:
+                items.append(f"- {ia.get('name', '')}: {ia.get('description', '')}（{ia.get('action_hint', '')}）")
+            interactable_hint = "\n\n" + "\n".join(items)
+
+        # 同伴意见提示
+        companion_hint = ""
+        companion_ids = state.get("companions", [])
+        if companion_ids:
+            npcs_state = state.get("npcs", {})
+            dn = state.get("display_names", {})
+            c_parts = ["同伴（可在选项hint中自然融入同伴的态度或建议）:"]
+            for cid in companion_ids[:3]:
+                ns = npcs_state.get(cid, {})
+                cname = dn.get(cid) or (ns.get("name", cid) if isinstance(ns, dict) else cid)
+                personality = ns.get("personality", "") if isinstance(ns, dict) else ""
+                c_parts.append(f"- {cname}" + (f"（{personality[:20]}）" if personality else ""))
+            companion_hint = "\n\n" + "\n".join(c_parts)
+
+        # 声望提示
+        rep_tag = ""
+        faction_rep = state.get("faction_reputation", {})
+        if faction_rep:
+            org_name_map = {o.get("id", ""): o.get("name", o.get("id", "")) for o in self.script.get("organizations", [])}
+            rep_items = []
+            for fid, fdata in faction_rep.items():
+                fname = org_name_map.get(fid, state.get("display_names", {}).get(fid, fid))
+                val = fdata.get("value", 50) if isinstance(fdata, dict) else 50
+                rep_items.append(f"{fname}={val}")
+            if rep_items:
+                rep_tag = f"\n\n阵营声望: {' | '.join(rep_items)}。声望极低时某些选项可被locked"
+
+        # 线索板摘要（辅助设计调查/推理类选项）
+        clue_hint = ""
+        if event_sections and event_sections.get("clues"):
+            clue_hint = f"\n\n已发现线索（可设计调查/验证/追踪类选项）:\n{event_sections['clues']}"
+
+        # 意外选项机制：当有特殊条件时允许AI添加一个"剧情打断"选项
+        surprise_hint = ""
+        has_pending = bool(event_sections and event_sections.get("consequences"))
+        extreme_npc = any(
+            isinstance(d, dict) and (d.get("attitude_toward_player", 50) >= 90 or d.get("attitude_toward_player", 50) <= 10)
+            for d in state.get("npcs", {}).values()
+        )
+        extreme_weather = any(w in (state.get("current_weather") or "") for w in ("暴雨", "大雪", "极端"))
+        if has_pending or extreme_npc or extreme_weather:
+            surprise_hint = "\n\n[特殊情境] 当前存在未触发后果/极端NPC关系/恶劣天气。你可以额外添加一个「突发」选项（id用c_event），但该选项仍然必须是玩家可以主动采取的行动，不能在选项文本中编写新的叙事场景（如突然有人敲门、突然传来声音等）。正确做法：基于当前叙事中已有的线索设计一个紧迫性更高的行动选项。如无合适场景可不添加。"
+
+        # 房间位置提示
+        room_hint = ""
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            room_hint = f"\n\n当前房间: {player_room}（选项中涉及移动时应以此为起点）"
+            nearby_ids = state.get("_nearby_npc_ids", [])
+            if nearby_ids:
+                nearby_lines = []
+                dn = state.get("display_names", {})
+                npcs_st = state.get("npcs", {})
+                for nid in nearby_ids:
+                    ns = npcs_st.get(nid, {})
+                    nname = dn.get(nid) or (ns.get("name", nid) if isinstance(ns, dict) else nid)
+                    nr = ns.get("current_room", "?") if isinstance(ns, dict) else "?"
+                    nearby_lines.append(f"- {nname} → {nr}")
+                room_hint += "\n同建筑其他房间可前往的NPC:\n" + "\n".join(nearby_lines)
+
+        # 排列：角色/资源框架(primacy) → 场景状态 → 行动 → 叙事(recency=设计依据)
+        # 选项只关注叙事结尾状态，截断前部减少 token
+        narrative_tail = narrative[-800:] if len(narrative) > 800 else narrative
+        content = f"""{bg_text}{pc_tag}{resource_tag}{rep_tag}{style_hint}{scene_text}{interactable_hint}{companion_hint}{clue_hint}{surprise_hint}{room_hint}
+
+玩家行动: {action_text}
+
+叙事内容（选项必须基于叙事结尾时的场景状态设计）:
+{narrative_tail}"""
+
+        if world_change_hints:
+            content += world_change_hints
+
+        if story_hints:
+            content += story_hints
+
+        messages = [{"role": "user", "content": content}]
+        return messages, system
+
+    def build_plot_decision_prompt(
+        self,
+        player_action: str,
+        state: dict,
+        check_result: dict | None = None,
+        dice_results: list[dict] | None = None,
+        triggered_events: list[dict] | None = None,
+        triggered_consequences: list[dict] | None = None,
+        achieved_milestones: list[dict] | None = None,
+        present_npc_ids: list[str] | None = None,
+        history_context: str = "",
+        recent_reasoning: list[dict] | None = None,
+        game_tools: dict | None = None,
+        prev_narrative_tail: str = "",
+        prev_plot_decision: str = "",
+        recent_narratives: list[dict] | None = None,
+        event_sections: dict[str, str] | None = None,
+    ) -> tuple[list[dict], str]:
+        """Stage 1: 剧情决策器 - 只决定发生了什么，不写文学描写。"""
+        system = (
+            "你是游戏剧情决策器。根据玩家行动和当前局势，决定本回合的剧情走向。\n\n"
+            "严格按以下格式输出，不要文学描写，不要修辞，不要比喻：\n\n"
+            "[行动结果] 一句话：成功/失败/进行中，程度如何（思考、观察等无成败的行动写行为本身）\n"
+            "[关键事件] 用短句列举发生了什么（每条≤20字）\n"
+            "[NPC决策] 每个在场NPC的关键决定和原因（每人一行，≤30字，只列参与互动的NPC）\n"
+            "[世界脉搏] 0-2条：世界中其他NPC/势力的同期动向，优先关联已有线索。无合理推断则写'无'\n"
+            "[剧情推进] 一句话：当前局面走向哪里？悬念是什么？\n"
+            "[情绪基调] 一个词（如焦灼/冷静/恐惧/荒诞/温情），不可与上一轮重复\n"
+            "[场景约束] 结构化引用格式，只能引用已知来源的物件。格式:\n"
+            "  位置=当前地点名; 物件=来自背包或场景描述的具体物品（逗号分隔）; "
+            "光线=描述; 声音=描述\n"
+            "  规则：'物件'字段只能列出①玩家携带物品中的物品 ②当前位置描述中提到的物品 "
+            "③本回合行动结果中出现的物品。不可凭空发明新物件。无显著变化时写'无'\n\n"
+            "约束：\n"
+            "- 篇幅: 电报式短句，只陈述事实\n"
+            "- 数量: [关键事件]≤3条，每条只含一件事（不可用分号/顿号串联多件事）; [NPC决策]≤3人(只列直接互动者); [世界脉搏]≤2条\n"
+            "- 机制: 检定成功→行动达成，失败→受阻; 骰子高→正面，低→负面; NPC好感高→帮助，低→刁难\n"
+            "- 行动: 玩家声明的行动是不可更改的前提（可失败但不可被替换为另一行动），不增加未声明的附带效果。"
+            "行动分解：若玩家行动包含多个子步骤（用逗号/顿号/分号连接），逐一处理每个步骤的直接结果，不可合并、跳过或重新诠释。"
+            "行动边界：主角只做玩家明确描述的事。'加上名字'≠'划掉别人再加名字'；'查看文件'≠'拿走文件'；'询问情况'≠'质问对方'。"
+            "不可为行动添加玩家未声明的前置步骤、附带操作或升级解读\n"
+            "- 信息: ①只使用主角当前已知的信息，引用的情报须可追溯到已知线索; "
+            "②事件只有在场者和通讯可达者本回合得知; "
+            "③玩家对某人用探查行为(观察/询问身份)→该人对玩家未知，不可自动识别\n"
+            "- 角色: 优先使用已定义NPC（路人用泛称）。若必须引入有名有姓的新角色，在[NPC决策]中标注「新角色」并给出全名+职位。"
+            "同一NPC在后续回合中必须使用完全一致的全名，不可混用全名和职称简称（如不可一轮叫'安秉哲'下轮叫'安科长'）; "
+            "NPC对主角的称呼须匹配其头衔/职位\n"
+            "- 场景: 单回合只允许一个核心场景，不可塞入多次地点转换或多轮独立对话。"
+            "若玩家行动暗示跨越时间（'明天上班''第二天'），只写到达新时间点后的第一个场景，中间过渡一句带过。"
+            "若玩家行动以睡觉/休息收尾，本回合叙事止于入睡那一刻，不要跳到醒来——醒来是下一回合的开场\n"
+            "- 台词: NPC可以有对白，对话遵循日常逻辑而非谍战审讯；主角可有最小必要回应（报姓名、简短应答），但不可替主角做实质性表态、承诺或决定\n"
+            "- 物理: ①时间推进须与行动规模匹配(移动A→B须合理路程时间); "
+            "②刚离场NPC不可立刻返回; ③不同房间的NPC须描写移动过程才能出现\n"
+            "- 时代: 科技/通讯/交通须与世界背景时代吻合\n"
+            "- 时间线: 剧情决策必须对齐当前game_time。尚未发生的事件（trigger_time > 当前game_time）不可出现或被暗示已发生\n"
+            "- 事件发明: [世界脉搏]可引入新信息，优先关联已有NPC/势力/事件线。"
+            "以可观察的事实呈现（'第二辆车后座空了'），不直接揭示结论。"
+            "写'无'是正常默认\n\n"
+            "## 思考类行动示例\n"
+            "✓ 玩家行动: 仔细回想今天的事情，理清头绪\n"
+            "[行动结果] 主角开始梳理已知信息\n"
+            "[关键事件] 注意到一号线索与三号线索的矛盾\n"
+            "[NPC决策] 无\n"
+            "[剧情推进] 信息仍有缺口，需要更多证据\n"
+            "[情绪基调] 凝重\n\n"
+            "✗ [关键事件] 推断出是X偷了钢笔并伪造了笔迹 ← 引入了线索列表中不存在的信息\n\n"
+            "## 行动篡改示例（禁止）\n"
+            "玩家行动: 在值班表上加上自己的名字\n"
+            "✗ [行动结果] 主角划掉了两个人的名字，写上自己的 ← '划掉别人'是玩家未声明的操作\n"
+            "✓ [行动结果] 主角在值班表空栏写上自己的名字\n\n"
+            "玩家行动: 查看桌上的文件\n"
+            "✗ [行动结果] 主角拿走了文件藏进口袋 ← '拿走'是玩家未声明的操作\n"
+            "✓ [行动结果] 主角翻阅了文件内容"
+        )
+        system += CACHE_SENTINEL
+
+        has_events = bool(triggered_events or triggered_consequences or achieved_milestones)
+        has_dice = bool(dice_results or check_result)
+        has_npcs = bool(present_npc_ids)
+        if not has_events and not has_dice and not has_npcs:
+            system += (
+                "\n\n## 本轮回合类型：日常/独处\n"
+                "无触发事件、无检定、无在场NPC。\n"
+                "- [关键事件] 只写行动的直接结果（0-1条），没有外部事件发生就写'无'\n"
+                "- [NPC决策] 写'无'\n"
+                "- [世界脉搏] 写'无'\n"
+                "- [场景约束] 仅描述当前物理环境，不引入任何新元素"
+            )
+        elif not has_npcs and not has_events:
+            system += (
+                "\n\n## 本轮回合类型：独处行动\n"
+                "无在场NPC、无触发事件。\n"
+                "- [NPC决策] 写'无'\n"
+                "- [世界脉搏] 最多1条，无合理推断则写'无'"
+            )
+
+        if game_tools:
+            tool_lines = ["\n\n可用工具（在输出中使用 [TOOL_CALL: name(args)] 格式调用）:"]
+            for name, info in game_tools.items():
+                tool_lines.append(f"- {name}: {info['desc']}  示例: [TOOL_CALL: {info['example']}]")
+            system += "\n".join(tool_lines)
+
+        # 构建用户消息 — XML 标签分区
+        # 排列策略：稳定框架(primacy) → 中间上下文 → 动态行动(recency)
+
+        # ─── <world> 区块：世界框架 ───
+        player = state.get("player", {})
+        pc = self.script.get("player_character", {})
+        world_parts = []
+        world_bg = self.script.get("world_background", "")
+        if world_bg:
+            world_parts.append(f"背景: {world_bg[:200]}")
+        game_time = state.get("game_time", "")
+        if game_time:
+            world_parts.append(f"时间: {self.format_game_time(game_time) or game_time}")
+        location_id = player.get("location", "")
+        if location_id:
+            loc_def = self._location_by_id.get(location_id, {})
+            location_name = loc_def.get("name", location_id)
+            location_desc = loc_def.get("description", "")
+            world_parts.append(f"位置: {location_name}" + (f" - {location_desc[:80]}" if location_desc else ""))
+        active_ids = set(state.get("active_persistent_states", []))
+        if active_ids:
+            ps_defs = {ps["id"]: ps for ps in self.script.get("persistent_states", [])}
+            display_names = state.get("display_names", {})
+            ps_descs = state.get("persistent_state_descriptions", {})
+            ps_lines = []
+            for sid in active_ids:
+                ps_def = ps_defs.get(sid, {})
+                name = ps_def.get("name") or display_names.get(sid, sid)
+                desc = ps_def.get("description") or ps_descs.get(sid, "")
+                ps_lines.append(f"{name}({desc[:60]})" if desc else name)
+            if ps_lines:
+                world_parts.append(f"⚠ 持续状态（不可无视）: {'; '.join(ps_lines[:5])}")
+
+        # ─── <protagonist> 区块：主角信息 ───
+        player_name = player.get("name", "主角")
+        player_title = player.get("title", "") or pc.get("title", "")
+        has_pc_lore = self.lorebook and any(
+            e.id == "_pc_identity" and e.enabled for e in self.lorebook.entries
+        )
+        proto_parts = [f"主角: {player_name}"]
+        if player_title:
+            _surname = player_name[0] if player_name and player_name != "主角" else ""
+            _short_title = player_title.split("（")[0].split("/")[-1]
+            _call_hint = f"（NPC称呼: {_surname}{_short_title}）" if _surname else ""
+            proto_parts.append(f"头衔/职位: {player_title}{_call_hint}")
+        if not has_pc_lore:
+            player_bio = player.get("bio", "") or pc.get("bio", "")
+            if player_bio:
+                proto_parts.append(f"身份: {player_bio[:100]}")
+        inventory = state.get("inventory", [])
+        if inventory:
+            inv_items = [f"{it.get('item', '?')}x{it.get('quantity', 1)}" for it in inventory]
+            proto_parts.append(f"携带物品: {', '.join(inv_items)}")
+        else:
+            proto_parts.append("携带物品: 无")
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            proto_parts.append(f"当前房间: {player_room}")
+
+        # ─── <npcs_present> 区块：在场NPC ───
+        present = present_npc_ids or []
+        npc_states = state.get("npcs", {})
+        npc_defs = {n.get("id", n.get("name", "")): n for n in self.script.get("npcs", [])}
+        player_rels = state.get("player", {}).get("relationships", {})
+        npc_lines = []
+        if present:
+            header = (
+                "同一建筑内NPC（不在玩家同一房间的NPC不可直接出现，须描写移动过程）:"
+                if player_room else "在场NPC:"
+            )
+            npc_lines.append(header)
+            for npc_id in present:
+                ns = npc_states.get(npc_id, {})
+                if not isinstance(ns, dict):
+                    continue
+                npc_def = npc_defs.get(npc_id, {})
+                name = ns.get("name", npc_id)
+                title = (
+                    ns.get("title", "")
+                    or npc_def.get("title", "")
+                    or npc_def.get("role", "")
+                    or npc_def.get("occupation", "")
+                )
+                personality = ns.get("personality", "")
+                npc_room = ns.get("current_room", "")
+                if not npc_room:
+                    info = self.get_npc_current_info(npc_id, game_time, state=state)
+                    if info and info.get("activity"):
+                        npc_room = info["activity"][:20]
+                rel = player_rels.get(npc_id, {})
+                if isinstance(rel, dict) and any(k in rel for k in ("trust", "affection", "fear")):
+                    att_str = f"T{rel.get('trust', 50)}/A{rel.get('affection', 50)}/F{rel.get('fear', 0)}"
+                else:
+                    att_str = f"态度{ns.get('attitude_toward_player', 50)}"
+                rel_desc = rel.get("description", "") if isinstance(rel, dict) else ""
+                rel_str = f"，关系={rel_desc}" if rel_desc else ""
+                room_str = f" → {npc_room}" if npc_room else ""
+                personality_str = f"性格={personality}，" if personality else ""
+                npc_lines.append(f"- {name}{room_str}（{f'职位={title}，' if title else ''}{personality_str}{att_str}{rel_str}）")
+
+        # ─── <npcs_offscreen> 区块：离场NPC ───
+        offscreen_lines = []
+        present_set = set(present)
+        for npc_id in list(npc_defs.keys())[:20]:
+            if npc_id in present_set:
+                continue
+            loc = self._resolve_npc_location(npc_id, state, game_time)
+            if loc:
+                name = npc_states.get(npc_id, {}).get("name", npc_id) if isinstance(npc_states.get(npc_id), dict) else npc_id
+                loc_name = self._loc_name_map.get(loc, loc)
+                offscreen_lines.append(f"{name}→{loc_name}")
+
+        # ─── <knowledge> 区块：已知信息 ───
+        knowledge_parts = []
+        if event_sections and event_sections.get("clues"):
+            knowledge_parts.append(f"已知线索: {event_sections['clues']}")
+        if not self.lorebook:
+            key_events = state.get("key_events", [])
+            if key_events:
+                recent_events = key_events[-8:]
+                events_str = "；".join(f"第{e.get('turn', '?')}回合:{e.get('event', '')[:40]}" for e in recent_events)
+                knowledge_parts.append(f"此前关键事件: {events_str}")
+        persistent_facts = state.get("persistent_facts", [])
+        if persistent_facts:
+            facts_str = "；".join(
+                f"[{f.get('type', '?')}]{f.get('fact', '')}" for f in persistent_facts[-15:]
+            )
+            knowledge_parts.append(f"持久事实（不可遗忘）: {facts_str}")
+        bp = state.get("plot_blueprint", {})
+        bp_threads = bp.get("plot_threads", [])
+        if bp_threads:
+            bp_lines = []
+            for thread in bp_threads[:5]:
+                tid = thread.get("id", "")
+                stages = thread.get("stages", [])
+                current_stage = None
+                for stage in stages:
+                    status = stage.get("status", "pending")
+                    if status == "active":
+                        current_stage = f"进行中: {stage.get('description', '')}"
+                        break
+                    elif status == "pending":
+                        current_stage = f"待触发: {stage.get('description', '')}"
+                        break
+                if current_stage:
+                    bp_lines.append(f"- {thread.get('name', tid)}: {current_stage}")
+            if bp_lines:
+                knowledge_parts.append("全局剧情走向（必须在本回合有所体现，至少一条）:\n" + "\n".join(bp_lines))
+
+        # ─── <directives> 区块：动态提示/指令 ───
+        directive_parts = []
+        if history_context:
+            directive_parts.append(history_context)
+        if recent_reasoning:
+            reasoning_lines = ["AI前几轮的决策思路（保持连贯，但不被束缚）:"]
+            for r in recent_reasoning:
+                reasoning_lines.append(f"第{r['turn']}回合思路: {r['reasoning']}")
+            directive_parts.append("\n".join(reasoning_lines))
+        play_style = state.get("play_style_summary")
+        if play_style and isinstance(play_style, dict) and play_style.get("tag"):
+            ps_tag = play_style["tag"]
+            ps_desc = play_style.get("description", "")
+            ps_line = f"玩家风格: {ps_tag}"
+            if ps_desc:
+                ps_line += f"（{ps_desc}）"
+            ps_turn = play_style.get("turn", 0)
+            approx_turn = len(state.get("adventure_log", []))
+            if approx_turn - ps_turn >= 5 and approx_turn % 5 == 0:
+                ps_line += "\n⚠ 本回合请设计至少一个选项挑战玩家的舒适区（与其惯性风格相反的行动方向），制造成长机会"
+            else:
+                ps_line += "\n剧情走向应自然回应此风格，但不必刻意迎合"
+            directive_parts.append(ps_line)
+
+        # ─── <previous_turn> 区块：上一轮骨架/叙事 ───
+        prev_turn_text = ""
+        if prev_plot_decision:
+            prev_turn_text = prev_plot_decision
+        elif prev_narrative_tail and not recent_narratives:
+            prev_turn_text = f"上一轮叙事结尾:\n{prev_narrative_tail}"
+
+        # ─── <turn_input> 区块：本轮输入 ───
+        turn_parts = []
+        # 检定/骰子
+        dice_lines = []
+        if check_result:
+            outcome = check_result.get("outcome", "")
+            success = "成功" if outcome in ("success", "critical_success") else "失败"
+            if outcome == "critical_success":
+                success = "大成功"
+            elif outcome == "critical_failure":
+                success = "大失败"
+            rule = check_result.get("rule", "default")
+            rule_hint = {"brp": " [BRP:骰点≤技能值=成功]",
+                         "dnd": " [D&D:d20+修正≥DC=成功]"}.get(rule, "")
+            dice_lines.append(f"检定结果: {success}{rule_hint}（{check_result.get('narrative_hint', '')}）")
+        if dice_results:
+            for d in dice_results:
+                dice_lines.append(f"骰子: {d.get('source_label', '')} = {d.get('total', '')}（{d.get('range_label', '')}）")
+
+        # 触发事件
+        event_lines = []
+        if triggered_events:
+            event_lines.append("触发事件:")
+            for ev in triggered_events:
+                event_lines.append(f"- {ev.get('description', ev.get('event_id', ''))}")
+        if triggered_consequences:
+            event_lines.append("延迟后果触发:")
+            for c in triggered_consequences:
+                event_lines.append(f"- {c.get('description', '')}")
+        if achieved_milestones:
+            event_lines.append("达成里程碑:")
+            for m in achieved_milestones:
+                event_lines.append(f"- {m.get('description', m.get('id', ''))}")
+
+        # 动态事件
+        dyn_event_lines = []
+        dyn_events = state.get("_dynamic_events_this_turn", [])
+        if dyn_events:
+            for de in dyn_events:
+                cb_texts = [ef.get("text", "") for ef in de.get("effects", []) if ef.get("type") == "narrative_callback" and ef.get("text")]
+                if cb_texts:
+                    dyn_event_lines.append(f"- 事件 {de['id']}: {'; '.join(cb_texts)}")
+
+        # 时限
+        deadline_text = ""
+        if event_sections and event_sections.get("deadlines"):
+            deadline_text = f"NPC必须记得这些约定，不可做出矛盾安排:\n{event_sections['deadlines']}"
+
+        # NPC介入
+        intervention_lines = []
+        interventions = state.get("npc_interventions", [])
+        if interventions:
+            for itv in interventions[:2]:
+                urgency = "【必须立即发生】" if itv.get("urgency") == "high" else "【可自然织入】"
+                intervention_lines.append(f"- {itv['npc_name']}（{itv['type']}）{urgency}: {itv.get('suggested_action', '')}。原因: {itv.get('reason', '')}")
+
+        # 场景快照
+        snapshot_text = ""
+        if prev_narrative_tail and not recent_narratives:
+            tail_anchor = prev_narrative_tail[-300:] if len(prev_narrative_tail) > 300 else prev_narrative_tail
+            snapshot_text = tail_anchor
+
+        # 玩家行动
+        _manner_kws = {"暗中": "秘密行动", "秘密": "秘密行动", "偷偷": "秘密行动",
+                       "伪装": "伪装身份", "假扮": "伪装身份", "公开": "公开行动",
+                       "强行": "强硬行动", "小心": "谨慎行动", "谨慎": "谨慎行动"}
+        _manner_tags = []
+        for kw, label in _manner_kws.items():
+            if kw in player_action:
+                _manner_tags.append(label)
+        _manner_hint = ""
+        if _manner_tags:
+            _manner_hint = f"⚠ 行动方式: {'/'.join(set(_manner_tags))}（必须在骨架中体现，不可忽略）\n"
+        action_text = f"{_manner_hint}{player_action}"
+
+        # ─── 组装最终 XML 结构 ───
+        sections = []
+        sections.append(_xml("world", "\n".join(world_parts)))
+        sections.append(_xml("protagonist", "\n".join(proto_parts)))
+        sections.append(_xml("npcs_present", "\n".join(npc_lines)))
+        if offscreen_lines:
+            sections.append(_xml("npcs_offscreen",
+                f"不在玩家建筑内，玩家无法感知其活动——不可描写来自这些地点的声音/气味/视觉:\n{'; '.join(offscreen_lines[:8])}"))
+        sections.append(_xml("knowledge", "\n".join(knowledge_parts)))
+        sections.append(_xml("directives", "\n".join(directive_parts)))
+        sections.append(_xml("previous_turn", prev_turn_text))
+
+        # turn_input 子标签
+        ti_parts = []
+        if dice_lines:
+            ti_parts.append(_xml("dice", "\n".join(dice_lines)))
+        if event_lines:
+            ti_parts.append(_xml("events", "\n".join(event_lines)))
+        if dyn_event_lines:
+            ti_parts.append(_xml("dynamic_events", "必须在叙事中自然体现:\n" + "\n".join(dyn_event_lines)))
+        if deadline_text:
+            ti_parts.append(_xml("deadlines", deadline_text))
+        if intervention_lines:
+            ti_parts.append(_xml("interventions", "必须在本回合剧情中体现:\n" + "\n".join(intervention_lines)))
+        if snapshot_text:
+            ti_parts.append(_xml("scene_snapshot", snapshot_text))
+        ti_parts.append(_xml("player_action", action_text))
+        sections.append(_xml("turn_input", "\n".join(ti_parts)))
+
+        content = "\n\n".join(s for s in sections if s)
+
+        messages = []
+        if recent_narratives:
+            # P1: 只保留最近 2 轮历史，更早的历史由 Agent 通过 recall_history 工具按需拉取
+            recent_narratives = recent_narratives[-2:]
+            for rn in recent_narratives:
+                action = rn.get("action", "")
+                narrative = rn.get("narrative", "")
+                turn_label = rn.get("turn", "?")
+                if not action:
+                    action = "(场景描写)"
+                messages.append({"role": "user", "content": f"[第{turn_label}回合 玩家行动] {action}"})
+                if narrative:
+                    messages.append({"role": "assistant", "content": f"[第{turn_label}回合 叙事结果]\n{narrative}"})
+        messages.append({"role": "user", "content": content})
+        return messages, system
+
+    def build_env_render_prompt(
+        self, plot_decision: str, state: dict
+    ) -> tuple[list[dict], str]:
+        """Stage 2a: 环境渲染器 - 生成环境/氛围描写。"""
+        system = (
+            "你是文字游戏的环境描写师。根据剧情骨架，生成沉浸式的环境和氛围描写。\n\n"
+            "规则：\n"
+            "- 用第二人称「你」\n"
+            "- 覆盖2-3种感官（视觉、听觉、嗅觉、触觉、温度），每段不超过2种，"
+            "分散在不同段落中，不要在同一段内堆叠所有感官\n"
+            "- 与当前时段/天气/位置匹配\n"
+            "- 天气连续性（硬约束）：如果提供了「当前天气」字段，严格按该天气描写；"
+            "如果没有提供天气字段，必须与「上一轮氛围」中的天气/季节保持一致，"
+            "绝对不可自行发明天气变化（如晴天突变暴风雪）。"
+            "季节由游戏时间推断，10月=秋天，不可能有暴风雪\n"
+            "- 环境描写应为剧情服务，但不可为了营造氛围而违反物理常识和季节规律\n"
+            "- 200-350字，超过350字视为失败\n"
+            "- 严禁写人物对话、NPC动作、NPC表情、角色互动——这些属于角色行为阶段\n"
+            "- 你的输出中不应出现任何NPC的名字或对话引号\n"
+            "- 环境描写要与即将发生的剧情相呼应（如紧张的剧情配压抑的环境）\n"
+            "- 场景锚定：环境描写必须以当前位置的物理特征为核心（室内写室内，"
+            "档案室不等于街头，会议室不等于教堂）。窗外远景只能占1-2句，不可喧宾夺主\n"
+            "- 禁用词（出现即扣分）：仿佛、悄然、不禁、油然而生、不经意间、弥漫着、"
+            "笼罩着、宛如、似乎在诉说、静静地、默默地、缓缓地、轻轻地、"
+            "不可名状、莫名的、微妙的、在这一刻、命运的、岁月的\n"
+            "- 句式禁令：禁止「……仿佛在……」「空气中弥漫着……的气息」「时间仿佛……」"
+            "「一股……涌上心头」「在这……的……中」等模板句。"
+            "用摄影机原则：只写镜头能拍到的东西"
+        )
+        system += CACHE_SENTINEL
+
+        # 当前位置信息
+        location_id = state.get("player", {}).get("location", "")
+        loc_def = self._location_by_id.get(location_id, {})
+        location_name = loc_def.get("name", location_id) if loc_def else location_id
+        location_desc = loc_def.get("description", "") if loc_def else ""
+
+        # 时段和天气
+        game_time = state.get("game_time", "")
+        time_of_day = self.format_game_time(game_time) if game_time else ""
+        weather = state.get("current_weather", "")
+
+        # 上一轮 scene_details
+        scene_details = state.get("scene_details", {})
+        prev_atmosphere = scene_details.get("atmosphere", "")
+        prev_sensory = scene_details.get("sensory", "")
+
+        # <scene> 区块
+        scene_parts = [f"位置: {location_name}"]
+        if location_desc:
+            scene_parts.append(f"位置描述: {location_desc[:150]}")
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            scene_parts.append(f"具体房间: {player_room}（环境描写应聚焦此房间）")
+        world_bg = self.script.get("world_background", "")
+        if world_bg:
+            scene_parts.append(f"时代背景: {world_bg[:100]}")
+        if time_of_day:
+            scene_parts.append(f"时段: {time_of_day}")
+        if game_time:
+            try:
+                month = int(game_time[5:7]) if len(game_time) >= 7 else 0
+            except (ValueError, TypeError):
+                month = 0
+            season_map = {1: "冬季", 2: "冬季", 3: "初春", 4: "春季", 5: "春季",
+                          6: "初夏", 7: "夏季", 8: "夏季", 9: "初秋", 10: "秋季",
+                          11: "深秋", 12: "冬季"}
+            season = season_map.get(month, "")
+            year = game_time[:4] if len(game_time) >= 4 else ""
+            if season:
+                date_label = f"{year}年{month}月 {season}" if year else season
+                scene_parts.append(f"⚠ 当前年月与季节: {date_label}（硬约束：天气、植被、气温必须符合该月份，"
+                                   f"例如10月不可能有六月暴雨或盛夏酷暑）")
+        if weather:
+            scene_parts.append(f"天气: {weather}")
+        else:
+            scene_parts.append("天气: 未指定（沿用上一轮氛围中的天气，不可自行发明新天气）")
+
+        # <continuity> 区块
+        cont_parts = []
+        loc_mem = state.get("location_memory", {}).get(location_id, [])
+        if loc_mem:
+            mem_lines = [f"- 第{m['turn']}回合: {m['text']}" for m in loc_mem[-3:]]
+            cont_parts.append("此地的历史事件（环境中可微妙反映残留痕迹）:\n" + "\n".join(mem_lines))
+        if prev_atmosphere or prev_sensory:
+            cont_parts.append(f"上一轮氛围（仅供天气/光线连续参考）: {prev_atmosphere} {prev_sensory}")
+            cont_parts.append("⚠ 位置隔离：上一轮的特有声源和物件（如某地的管风琴、某处的机器声）"
+                              "不可搬到当前位置——不同地点的环境互相独立")
+            _prev_text = f"{prev_atmosphere} {prev_sensory}"
+            _imagery_kws = set()
+            for _pat in [r'军靴声?', r'钟声', r'枪声', r'脚步声', r'雨[声滴]?',
+                         r'霓虹[灯]?', r'烟[头蒂味]', r'月[光色]', r'阴云', r'探照灯',
+                         r'荧光灯', r'铁丝网', r'水磨石', r'警报声?', r'挂钟']:
+                _m = re.search(_pat, _prev_text)
+                if _m:
+                    _imagery_kws.add(_m.group())
+            if _imagery_kws:
+                cont_parts.append(f"⚠ 上轮已用意象（本轮换用其他）: {'、'.join(_imagery_kws)}")
+        _story_hint = self._build_stage2_story_hint(state)
+        if _story_hint:
+            cont_parts.append(_story_hint)
+
+        # 组装 XML
+        sections = [
+            _xml("scene", "\n".join(scene_parts)),
+            _xml("continuity", "\n".join(cont_parts)),
+            _xml("plot_decision", plot_decision),
+        ]
+        content = "\n\n".join(s for s in sections if s)
+        messages = [{"role": "user", "content": content}]
+        return messages, system
+
+    def build_character_action_prompt(
+        self, plot_decision: str, state: dict,
+        present_npc_ids: list[str] | None = None,
+        dice_results: list[dict] | None = None,
+        check_result: dict | None = None,
+        triggered_events: list[dict] | None = None,
+        triggered_consequences: list[dict] | None = None,
+    ) -> tuple[list[dict], str]:
+        """Stage 2b: 角色行为器 - 生成NPC对话和动作描写。"""
+        system = (
+            "你是文字游戏的角色行为编导。根据剧情骨架，为场景中的角色写出具体对话和动作。\n\n"
+            "规则：\n"
+            "- 用第二人称「你」描写主角，第三人称描写NPC\n"
+            "- 对话使用中文弯引号 “…” 包裹\n"
+            "- 对话差异化：每个NPC的说话方式必须与其性格标签严格匹配（见下方声纹速查表）。"
+            "不同NPC用不同的句长、语气词和肢体语言区分——"
+            "粗人用断句口头禅，学者用书面长句，商人讲利弊得失\n"
+            "- 主角的行为和心理反应要贴合其性格\n"
+            "- 如果有机制结果（骰子/检定/事件），角色行为必须与之一致\n"
+            "- NPC对主角的称呼必须与主角的身份/头衔一致，全程不得混淆\n"
+            "- NPC行为必须匹配其社会地位和权力层级：举止、语气、态度应符合其身份定位。"
+            "高位者对低位者的言行应体现其地位感（即使态度友善也不失身份），"
+            "除非有明确的剧情理由需要打破常规\n"
+            "- 只使用声纹速查表中列出的NPC，不得凭空捏造新角色。"
+            "如果剧情骨架中引入了标注「新角色」的NPC，用其全名，不可用职称简称替代\n"
+            "- 道具来源：角色行为中出现的关键道具（证件、武器、工具）必须有合理来源——"
+            "要么是玩家已知拥有的物品，要么在叙事中交代获取过程，不可凭空出现\n"
+            "- 泛称NPC一致性：若剧情骨架中的泛称NPC（如‘亲信军官A’）在前轮叙事中已被赋予具体名字和特征，"
+            "本轮必须沿用完全相同的名字、军衔、外貌特征，不可更改\n"
+            "- 时代约束：角色使用的物品、通讯方式、交通工具必须与世界背景时代吻合\n"
+            "- 时间线约束：只描写当前game_time已经发生或正在发生的事。未来事件的任何物理表现"
+            "（枪声、爆炸、军车异动）不可提前出现在叙事中\n"
+            "- 对话禁用模式：禁止所有NPC都用长句书面语；禁止每句对话后跟「他/她的眼中闪过一丝……」"
+            "式的微表情解读；禁止对话中使用‘你知道吗’‘说实话’‘坦白说’等AI偏好的填充词。"
+            "真实对话：短句为主，有打断、有省略、有答非所问\n"
+            "- 300-500字\n"
+            "- 不写大段环境描写（那是环境渲染器的工作）"
+        )
+        system += CACHE_SENTINEL
+
+        # 主角信息
+        player = state.get("player", {})
+        player_name = player.get("name", "主角")
+        pc = self.script.get("player_character", {})
+        has_pc_lore = self.lorebook and any(
+            e.id == "_pc_identity" and e.enabled for e in self.lorebook.entries
+        )
+        if not has_pc_lore:
+            player_personality = player.get("personality", "") or pc.get("personality", "")
+            player_identity = pc.get("identity", "") or pc.get("background", "") or pc.get("bio", "")
+        else:
+            player_personality = ""
+            player_identity = ""
+
+        # NPC声纹速查表
+        present = present_npc_ids or []
+        voice_table = self._build_npc_voice_table(state, present)
+
+        # NPC已交互次数（通过 met 状态和聊天历史判断）
+        npc_states = state.get("npcs", {})
+        interaction_info = []
+        chat_histories = state.get("npc_chat_history", {})
+        for npc_id in present:
+            ns = npc_states.get(npc_id, {})
+            if not isinstance(ns, dict):
+                continue
+            name = ns.get("name", npc_id)
+            met = ns.get("met", False)
+            chat_count = len(chat_histories.get(npc_id, []))
+            if met or chat_count > 0:
+                interaction_info.append(f"{name}已交互过（勿重复自我介绍）")
+
+        player_title = player.get("title", "") or pc.get("title", "")
+
+        # <protagonist> 区块
+        world_bg = self.script.get("world_background", "")
+        proto_parts = []
+        if world_bg:
+            proto_parts.append(f"世界背景: {world_bg[:150]}")
+        game_time = state.get("game_time", "")
+        if game_time:
+            proto_parts.append(f"当前时间: {self.format_game_time(game_time) or game_time}")
+        proto_parts.append(f"主角: {player_name}")
+        if player_title:
+            _surname = player_name[0] if player_name and player_name != "主角" else ""
+            _short_title = player_title.split("（")[0].split("/")[-1]
+            _call_example = f"「{_surname}{_short_title}」" if _surname else f"「{_short_title}」"
+            proto_parts.append(f"头衔/职位: {player_title}（NPC称呼主角为{_call_example}）")
+        elif player_name and player_name != "主角":
+            proto_parts.append(f"（NPC称呼主角时应使用姓氏「{player_name[0]}」加适当敬称）")
+        if player_personality:
+            proto_parts.append(f"性格: {player_personality}")
+        if player_identity:
+            proto_parts.append(f"身份: {player_identity}")
+        inv_items = state.get("inventory", [])
+        inv_str = ", ".join(it.get("item", "?") for it in inv_items) if inv_items else "无"
+        proto_parts.append(f"携带物品: {inv_str}")
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            proto_parts.append(f"当前房间: {player_room}")
+
+        # <npc_profiles> 区块
+        npc_profile_parts = []
+        if voice_table:
+            npc_profile_parts.append(voice_table)
+        if interaction_info:
+            npc_profile_parts.append(f"交互记录: {'; '.join(interaction_info)}")
+        npc_rooms = []
+        for npc_id in present:
+            ns = npc_states.get(npc_id, {})
+            if isinstance(ns, dict):
+                room = ns.get("current_room", "")
+                if room:
+                    npc_rooms.append(f"{ns.get('name', npc_id)} → {room}")
+        if npc_rooms:
+            npc_profile_parts.append(f"NPC房间位置: {'; '.join(npc_rooms)}")
+
+        # <mechanics> 区块
+        mechanics = self._format_mechanics_brief(
+            dice_results, check_result, triggered_events, triggered_consequences,
+        )
+
+        # <continuity> 区块
+        _story_hint = self._build_stage2_story_hint(state)
+
+        # 组装 XML
+        sections = [
+            _xml("protagonist", "\n".join(proto_parts)),
+            _xml("npc_profiles", "\n".join(npc_profile_parts)),
+            _xml("mechanics", f"角色行为必须与之一致:\n{mechanics}" if mechanics else ""),
+            _xml("continuity", _story_hint or ""),
+            _xml("plot_decision", plot_decision),
+        ]
+        content = "\n\n".join(s for s in sections if s)
+        messages = [{"role": "user", "content": content}]
+        return messages, system
+
+    def _build_standard_narrative_system(
+        self, scope: str, scene_type: str,
+        negative_prompt: str, logit_bias_hint: str,
+    ) -> str:
+        """Stage 3 system prompt — moderate/major scope."""
+        system = (
+            "你是文字游戏的叙事整合师。将素材组合为流畅、有节奏感的叙事段落，"
+            "自然承接你上一次的输出继续往下写。\n\n"
+            "规则：\n"
+            "- 自然编织环境描写和角色行为，不是简单拼接。去除重复和矛盾，加入过渡和节奏感\n"
+            "- 可以微调措辞但不要改变剧情事实\n"
+            "- 内容比例：环境/氛围描写不超过总篇幅的30%，剧情推进和角色互动占70%以上。"
+            "信息密度优先于文学修饰\n"
+            "- 素材一致性：不可引入与素材不一致的天气/季节变化；"
+            "若叙事中已描写某个物理动作（拉上窗帘、关灯、关门），"
+            "后续描写必须与该状态一致。听觉和嗅觉不受遮挡限制\n"
+            "- 场景约束优先：骨架中的[场景约束]是物理硬约束（光线、声音、物件位置），"
+            "环境素材和角色素材中与之矛盾的描写必须删除\n"
+            "- 信息边界：确保叙事没有泄露主角不应知道的信息\n"
+            "- 玩家自主权："
+            "①叙事只覆盖玩家行动的直接后果，不可替主角做出新决定、移动到新地点、或开启玩家未发起的交互; "
+            "②禁止替主角说出具体台词或表达具体观点——主角的话语权完全属于玩家; "
+            "③叙事结束时主角应仍在行动发生的场景中; "
+            "④单回合内地点不可变更超过一次（除非玩家行动明确描述了移动路线）; "
+            "⑤行动忠实度：若玩家说‘做A’，叙事中主角只做A及其必然伴随的物理前置步骤。"
+            "不可自行添加A之外的独立决定或操作（如‘加名字’变成‘划掉别人并加名字’），也不可将A缩小或替换\n"
+            "- 行动解读：尊重玩家行动中的隐含假设。若玩家对某人使用探查或试探行为，"
+            "说明该人物对玩家是未知的，叙事中不可自动将其揭示为熟人\n"
+            "- 身份约束：若剧情骨架中的人物以职位泛称出现（未使用具名NPC），"
+            "叙事中也必须保持泛称，不可自行将其替换为已知NPC的名字\n"
+            "- 时间一致：叙事中对时间流逝的描述必须与剧情骨架中的时间推进一致，不可夸大\n"
+            "- 必须写到自然收束的句子结尾，不要在半句话中断\n"
+            "- 叙事开头50字内必须回应玩家的行动和其直接后果，不要用环境描写开头\n"
+            "- 对话要口语化，每个NPC说话风格不同。角色对话用中文弯引号 “……” 包裹\n"
+            "- 意象和结尾多样性：不可重复前几轮的标志性意象和结尾方式\n"
+            "- 直接输出最终叙事文本，不要任何JSON/标记/解释"
+            "\n\n## 风格示例\n"
+            "好的叙事段落（行动动词开头、零比喻、对话推进剧情）：\n"
+            "\"你拨通加密专线，听筒里电流杂音嗡了两秒才接通。"
+            "‘有什么事？’对方的声音不耐烦，背景里隐约有人在说话。"
+            "你报出代号，三秒沉默。他压低嗓子：‘文件已经转移，别再打这个号码了。’线路断了。"
+            "你盯着话筒上残留的指纹，烟灰缸里的烟头还没灭尽。隔壁房间传来打字机连续敲击的声音。\"\n\n"
+            "坏的叙事段落（禁止模仿）：\n"
+            "\"你缓缓推开那扇沉重的门，仿佛推开了命运的闸口。空气中弥漫着一股说不清的紧张气息，"
+            "心中油然而生一种莫名的沉重。在这一刻，时间仿佛凝固了，"
+            "窗外的月光如同一层薄纱，悄然笼罩着整个房间。\"\n\n"
+            "好的叙事段落（探索场景）：\n"
+            "\"档案柜第三层，标签写着‘人事调动’。你抽出一份，纸页发黄，钢笔字迹是蓝黑色的。"
+            "调令日期是上个月15号，签发人一栏盖着陆军本部的红章。你翻到第二页——"
+            "那个名字在调出人员名单的第三行。\"\n\n"
+            "好的叙事段落（社交场景）：\n"
+            "\"'那批货的事。'金部长把茶杯转了半圈，拇指压着杯沿。"
+            "'什么货？'你没接他的眼神。"
+            "他等了三秒。'行，你装。'椅子往后一推，站起来时顺手把桌上的信封拍到你面前。"
+            "信封没封口，露出半截照片的边角。\"\n\n"
+            "## 禁用词与句式（出现即视为失败）\n"
+            "词汇：仿佛、悄然、不禁、油然而生、不经意间、弥漫着、笼罩着、宛如、"
+            "似乎在诉说、静静地、默默地、缓缓地、轻轻地、不可名状、莫名的、"
+            "微妙的、在这一刻、时间仿佛凝固、命运的、岁月的\n"
+            "句式：「……仿佛在……」「空气中弥漫着……」「时间仿佛……」"
+            "「一股……涌上心头」「……为这个……平添了几分……」\n"
+            "替代原则：摄影机原则——只写镜头能拍到的东西。"
+            "「沉重的气氛」→「没人说话，烟灰缸满了」\n\n"
+            "## 叙事克制原则\n"
+            "- 大部分回合是‘事情正常发生’——玩家做了什么，世界合理回应，仅此而已\n"
+            "- 骨架中的[世界脉搏]异常信息用观察事实呈现（看到、听到），不要渲染放大\n"
+            "- NPC动作和对话遵循日常逻辑，不是谍战审讯\n"
+            "- 感官细节服务于场景真实感，不服务于制造悬疑\n"
+            "- 回合结尾不需要cliffhanger。安静的收束比强行制造悬念更好"
+        )
+        system += CACHE_SENTINEL
+        _rhythm_hints = {
+            "combat": "\n\n## 节奏指引（战斗）\n用短句和断句制造紧迫感，动作描写干脆利落，不要在战斗中间插入大段环境或心理描写。",
+            "exploration": "\n\n## 节奏指引（探索）\n发现关键事物时用短句突出，制造'发现感'。环境描写服务于线索呈现，不要喧宾夺主。",
+            "social": "\n\n## 节奏指引（社交）\n以对话和人物反应驱动节奏，环境描写只在转场时出现。对话间留白，不要每句话后都跟心理旁白。",
+        }
+        if scene_type in _rhythm_hints:
+            system += _rhythm_hints[scene_type]
+        if negative_prompt:
+            system += f"\n\n## 绝对禁止事项\n{negative_prompt}"
+        if logit_bias_hint:
+            system += f"\n\n{logit_bias_hint}"
+        return system
+
+    def _build_minor_narrative_system(
+        self, negative_prompt: str, logit_bias_hint: str,
+    ) -> str:
+        """Stage 3 system prompt — minor scope (轻量行动)."""
+        system = (
+            "你是文字游戏的叙事整合师。本轮是轻量行动，直接描写行动结果即可。\n\n"
+            "规则：\n"
+            "- 简洁有力，写到自然收束的句子结尾\n"
+            "- 叙事开头直接回应玩家行动及其后果\n"
+            "- 信息边界：叙事不可泄露主角不应知道的信息\n"
+            "- 禁止替主角做出新决定、说出具体台词——主角的话语权属于玩家\n"
+            "- 行动忠实度：若玩家说‘做A’，叙事中主角只做A及其必然伴随的物理前置步骤。"
+            "不可自行添加A之外的独立决定或操作\n"
+            "- 对话用中文弯引号 “……” 包裹\n"
+            "- 直接输出叙事文本，不要任何JSON/标记/解释\n\n"
+            "## 禁用词（出现即视为失败）\n"
+            "仿佛、悄然、不禁、油然而生、不经意间、弥漫着、笼罩着、宛如、"
+            "似乎在诉说、静静地、默默地、缓缓地、轻轻地、不可名状、莫名的、"
+            "微妙的、在这一刻、时间仿佛凝固、命运的、岁月的"
+        )
+        system += CACHE_SENTINEL
+        if negative_prompt:
+            system += f"\n\n## 绝对禁止事项\n{negative_prompt}"
+        if logit_bias_hint:
+            system += f"\n\n{logit_bias_hint}"
+        return system
+
+    def build_narrative_compose_prompt(
+        self,
+        plot_decision: str,
+        env_text: str,
+        char_text: str,
+        state: dict,
+        recent_openings: list[str] | None = None,
+        missing_env: bool = False,
+        missing_char: bool = False,
+        history_context: str = "",
+        prev_narrative_tail: str = "",
+        scene_type: str = "",
+        prev_ending_type: str = "",
+        authors_note: str = "",
+        action_text: str = "",
+        negative_prompt: str = "",
+        logit_bias_hint: str = "",
+        scope: str = "",
+        estimated_minutes: int = 30,
+        event_sections: dict[str, str] | None = None,
+    ) -> tuple[list[dict], str]:
+        """Stage 3: 叙事润色器 - 将素材整合为流畅完整叙事。"""
+        if scope == "minor":
+            system = self._build_minor_narrative_system(negative_prompt, logit_bias_hint)
+        else:
+            system = self._build_standard_narrative_system(
+                scope, scene_type, negative_prompt, logit_bias_hint
+            )
+        # <scene_context> 区块
+        ctx_parts = []
+        game_time = state.get("game_time", "")
+        if game_time:
+            try:
+                from datetime import datetime as _dt
+                _gt = _dt.fromisoformat(game_time.replace("Z", "+00:00"))
+                _month = _gt.month
+                _year = str(_gt.year)
+                season_map = {1: "严冬", 2: "冬末", 3: "初春", 4: "春季",
+                              5: "暮春", 6: "初夏", 7: "盛夏", 8: "夏末",
+                              9: "初秋", 10: "深秋", 11: "深秋", 12: "冬季"}
+                _season = season_map.get(_month, "")
+                ctx_parts.append(
+                    f"回合起始时间: {_year}年{_month}月（{_season}），"
+                    f"若剧情骨架推进了时间则以骨架为准"
+                )
+            except Exception:
+                pass
+        if scope:
+            time_hints = {
+                "minor": "本回合是短暂行动，叙事时间跨度不超过30分钟",
+                "moderate": "本回合是常规行动，叙事可覆盖30分钟到2小时",
+                "major": "本回合是重大行动，叙事可覆盖数小时甚至一整天，需要自然的时间过渡",
+            }
+            if scope in time_hints:
+                ctx_parts.append(f"时间节奏: {time_hints[scope]}")
+        if estimated_minutes and estimated_minutes > 0:
+            if estimated_minutes >= 60:
+                h = estimated_minutes // 60
+                m = estimated_minutes % 60
+                dur_str = f"{h}小时" + (f"{m}分钟" if m else "")
+            else:
+                dur_str = f"{estimated_minutes}分钟"
+            ctx_parts.append(
+                f"玩家行动预期时长: 约{dur_str}。叙事中的时间流逝应与此一致，"
+                "若玩家明确要求等待特定时长，叙事必须覆盖该完整时段"
+            )
+        world_bg = self.script.get("world_background", "")
+        if world_bg:
+            ctx_parts.append(f"时代背景（地名/称谓须符合该时代）: {world_bg[:150]}")
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            ctx_parts.append(f"玩家当前房间: {player_room}（叙事场景应以此房间为起点）")
+        inventory = state.get("inventory", [])
+        if inventory:
+            inv_str = ", ".join(it.get("item", "?") for it in inventory[:8])
+            ctx_parts.append(f"玩家携带物品: {inv_str}")
+
+        # <naming_reference> 区块
+        pc_info = state.get("player", {})
+        pc_name = pc_info.get("name", "")
+        pc_title = pc_info.get("title", "") or pc_info.get("role", "") or pc_info.get("occupation", "")
+        title_pairs = []
+        if pc_name:
+            pc_label = f"★主角(第二人称\"你\"): {pc_name}"
+            if pc_title:
+                pc_label += f"（{pc_title}）"
+            title_pairs.append(pc_label)
+        npc_states = state.get("npcs", {})
+        npc_defs = {n["id"]: n for n in self.script.get("npcs", []) if "id" in n}
+        for npc_id, ns in npc_states.items():
+            if not isinstance(ns, dict):
+                continue
+            name = ns.get("name", npc_id)
+            npc_def = npc_defs.get(npc_id, {})
+            title = (
+                ns.get("title", "")
+                or npc_def.get("title", "")
+                or npc_def.get("role", "")
+                or npc_def.get("occupation", "")
+            )
+            if title:
+                title_pairs.append(f"{name}（{title}）")
+            elif name != npc_id:
+                title_pairs.append(name)
+        naming_text = ""
+        if title_pairs:
+            naming_text = (
+                f"叙事中必须使用正确称谓，NPC称呼主角时必须用主角的姓氏，不可混用其他NPC的姓氏:\n"
+                f"{'; '.join(title_pairs)}"
+            )
+
+        # <continuity> 区块
+        cont_parts = []
+        if history_context:
+            cont_parts.append(f"前情提要:\n{history_context}")
+        if scope != "minor" and recent_openings:
+            cont_parts.append(f"近几轮叙事开头（请避免雷同）: {' / '.join(recent_openings[-3:])}")
+        if scope != "minor" and prev_ending_type:
+            cont_parts.append(f"上一轮结尾类型: {prev_ending_type}（本轮必须使用不同类型）")
+        pending = state.get("scene_details", {}).get("pending_tension", "")
+        if pending:
+            cont_parts.append(f"待定伏线（适度铺垫）: {pending}")
+
+        # <materials> 区块
+        mat_parts = []
+        if env_text:
+            mat_parts.append(_xml("environment", env_text))
+        elif missing_env:
+            mat_parts.append(_xml("environment", "（环境渲染失败，请根据剧情骨架中的位置/时段自行补充2-3种感官描写）"))
+        if char_text:
+            mat_parts.append(_xml("characters", char_text))
+        elif missing_char:
+            mat_parts.append(_xml("characters", "（角色行为生成失败，请根据剧情骨架中的NPC决策自行补充对话和动作描写）"))
+
+        # 组装 XML
+        sections = [
+            _xml("scene_context", "\n".join(ctx_parts)),
+            _xml("naming_reference", naming_text),
+            _xml("continuity", "\n".join(cont_parts)),
+            _xml("materials", "\n".join(mat_parts)),
+            _xml("plot_decision", plot_decision),
+            _xml("player_action", action_text if action_text else ""),
+            _xml("authors_note", authors_note if authors_note else ""),
+        ]
+        content = "\n\n".join(s for s in sections if s)
+
+        messages = []
+        if prev_narrative_tail:
+            messages.append({"role": "assistant", "content": prev_narrative_tail})
+        messages.append({"role": "user", "content": content})
+        return messages, system
+
+    def build_narrative_prompt(
+        self,
+        ctx: dict,
+        plot_decision: str,
+        route: dict,
+        state: dict,
+        *,
+        recent_openings: list[str] | None = None,
+        history_context: str = "",
+        prev_narrative_tail: str = "",
+        prev_ending_type: str = "",
+        authors_note: str = "",
+        action_text: str = "",
+        negative_prompt: str = "",
+        logit_bias_hint: str = "",
+        estimated_minutes: int = 30,
+        event_sections: dict[str, str] | None = None,
+    ) -> tuple[list[dict], str]:
+        """P2 合并叙事：将环境渲染 + 角色行为 + 叙事整合合为单次调用。
+
+        返回 (messages, system)，供 generate_with_tools 使用。
+        LLM 在生成叙事文本的同时可通过工具调用 set_atmosphere / set_scene_image。
+        """
+        scope = route.get("scope", "moderate")
+        scene_type = route.get("scene_type", "")
+        skip_env = scene_type in ("social", "rest") or scope == "minor"
+
+        # --- system prompt: 叙事整合师 + 环境/角色要求 ---
+        if scope == "minor":
+            system = self._build_minor_narrative_system(negative_prompt, logit_bias_hint)
+        else:
+            system = self._build_standard_narrative_system(
+                scope, scene_type, negative_prompt, logit_bias_hint
+            )
+            # 追加环境描写要求（原 build_env_render_prompt 的核心规则）
+            if not skip_env:
+                system += (
+                    "\n\n## 环境描写要求\n"
+                    "在叙事中自然融入环境/氛围描写，遵守以下规则：\n"
+                    "- 覆盖2-3种感官（视觉、听觉、嗅觉、触觉、温度），"
+                    "分散在不同段落中，不要在同一段内堆叠所有感官\n"
+                    "- 与当前时段/天气/位置匹配\n"
+                    "- 天气连续性（硬约束）：严格按提供的天气描写；"
+                    "无天气字段时沿用上一轮氛围中的天气，不可自行发明天气变化\n"
+                    "- 环境描写为剧情服务，不可违反物理常识和季节规律\n"
+                    "- 场景锚定：以当前位置的物理特征为核心，窗外远景只能占1-2句\n"
+                    "- 环境描写不超过总篇幅的30%"
+                )
+            # 追加角色行为要求（原 build_character_action_prompt 的核心规则）
+            system += (
+                "\n\n## 角色行为要求\n"
+                "在叙事中自然融入角色对话和动作，遵守以下规则：\n"
+                "- 用第二人称「你」描写主角，第三人称描写NPC\n"
+                "- 对话使用中文弯引号 “…” 包裹\n"
+                "- 对话差异化：每个NPC的说话方式必须与其性格标签严格匹配。"
+                "不同NPC用不同的句长、语气词和肢体语言区分\n"
+                "- 如果有机制结果（骰子/检定/事件），角色行为必须与之一致\n"
+                "- NPC对主角的称呼必须与主角的身份/头衔一致\n"
+                "- NPC行为必须匹配其社会地位和权力层级\n"
+                "- 只使用声纹速查表中列出的NPC，不得凭空捏造新角色\n"
+                "- 道具来源：关键道具必须有合理来源\n"
+                "- 时代约束：物品、通讯方式、交通工具必须与世界背景时代吻合\n"
+                "- 对话禁用模式：禁止所有NPC都用长句书面语；"
+                "禁止每句对话后跟微表情解读；真实对话短句为主"
+            )
+
+        system += CACHE_SENTINEL
+
+        # --- user prompt 组装 ---
+
+        # <scene_context> 区块（来自 narrative_compose + env_render）
+        ctx_parts = []
+        game_time = state.get("game_time", "")
+        if game_time:
+            try:
+                from datetime import datetime as _dt
+                _gt = _dt.fromisoformat(game_time.replace("Z", "+00:00"))
+                _month = _gt.month
+                _year = str(_gt.year)
+                season_map = {1: "严冬", 2: "冬末", 3: "初春", 4: "春季",
+                              5: "暮春", 6: "初夏", 7: "盛夏", 8: "夏末",
+                              9: "初秋", 10: "深秋", 11: "深秋", 12: "冬季"}
+                _season = season_map.get(_month, "")
+                ctx_parts.append(
+                    f"回合起始时间: {_year}年{_month}月（{_season}），"
+                    f"若剧情骨架推进了时间则以骨架为准"
+                )
+            except Exception:
+                pass
+        time_of_day = self.format_game_time(game_time) if game_time else ""
+        if time_of_day:
+            ctx_parts.append(f"时段: {time_of_day}")
+        if scope:
+            time_hints = {
+                "minor": "本回合是短暂行动，叙事时间跨度不超过30分钟",
+                "moderate": "本回合是常规行动，叙事可覆盖30分钟到2小时",
+                "major": "本回合是重大行动，叙事可覆盖数小时甚至一整天，需要自然的时间过渡",
+            }
+            if scope in time_hints:
+                ctx_parts.append(f"时间节奏: {time_hints[scope]}")
+        if estimated_minutes and estimated_minutes > 0:
+            if estimated_minutes >= 60:
+                h = estimated_minutes // 60
+                m = estimated_minutes % 60
+                dur_str = f"{h}小时" + (f"{m}分钟" if m else "")
+            else:
+                dur_str = f"{estimated_minutes}分钟"
+            ctx_parts.append(
+                f"玩家行动预期时长: 约{dur_str}。叙事中的时间流逝应与此一致，"
+                "若玩家明确要求等待特定时长，叙事必须覆盖该完整时段"
+            )
+
+        # 位置信息（来自 env_render）
+        location_id = state.get("player", {}).get("location", "")
+        loc_def = self._location_by_id.get(location_id, {})
+        location_name = loc_def.get("name", location_id) if loc_def else location_id
+        location_desc = loc_def.get("description", "") if loc_def else ""
+        ctx_parts.append(f"位置: {location_name}")
+        if location_desc:
+            ctx_parts.append(f"位置描述: {location_desc[:150]}")
+        player_room = state.get("player", {}).get("current_room", "")
+        if player_room:
+            ctx_parts.append(f"玩家当前房间: {player_room}（叙事场景应以此房间为起点）")
+
+        world_bg = self.script.get("world_background", "")
+        if world_bg:
+            ctx_parts.append(f"时代背景（地名/称谓须符合该时代）: {world_bg[:150]}")
+
+        # 天气/季节（来自 env_render）
+        weather = state.get("current_weather", "")
+        if weather:
+            ctx_parts.append(f"天气: {weather}")
+        elif not skip_env:
+            ctx_parts.append("天气: 未指定（沿用上一轮氛围中的天气，不可自行发明新天气）")
+        if game_time:
+            try:
+                month = int(game_time[5:7]) if len(game_time) >= 7 else 0
+            except (ValueError, TypeError):
+                month = 0
+            season_map2 = {1: "冬季", 2: "冬季", 3: "初春", 4: "春季", 5: "春季",
+                           6: "初夏", 7: "夏季", 8: "夏季", 9: "初秋", 10: "秋季",
+                           11: "深秋", 12: "冬季"}
+            season2 = season_map2.get(month, "")
+            year = game_time[:4] if len(game_time) >= 4 else ""
+            if season2:
+                date_label = f"{year}年{month}月 {season2}" if year else season2
+                ctx_parts.append(
+                    f"当前年月与季节: {date_label}（硬约束：天气、植被、气温必须符合该月份）"
+                )
+        inventory = state.get("inventory", [])
+        if inventory:
+            inv_str = ", ".join(it.get("item", "?") for it in inventory[:8])
+            ctx_parts.append(f"玩家携带物品: {inv_str}")
+
+        # <naming_reference> 区块（来自 narrative_compose）
+        pc_info = state.get("player", {})
+        pc_name = pc_info.get("name", "")
+        pc_title = pc_info.get("title", "") or pc_info.get("role", "") or pc_info.get("occupation", "")
+        title_pairs = []
+        if pc_name:
+            pc_label = f"★主角(第二人称\"你\"): {pc_name}"
+            if pc_title:
+                pc_label += f"（{pc_title}）"
+            title_pairs.append(pc_label)
+        npc_states = state.get("npcs", {})
+        npc_defs = {n["id"]: n for n in self.script.get("npcs", []) if "id" in n}
+        for npc_id, ns in npc_states.items():
+            if not isinstance(ns, dict):
+                continue
+            name = ns.get("name", npc_id)
+            npc_def = npc_defs.get(npc_id, {})
+            title = (
+                ns.get("title", "")
+                or npc_def.get("title", "")
+                or npc_def.get("role", "")
+                or npc_def.get("occupation", "")
+            )
+            if title:
+                title_pairs.append(f"{name}（{title}）")
+            elif name != npc_id:
+                title_pairs.append(name)
+        naming_text = ""
+        if title_pairs:
+            naming_text = (
+                f"叙事中必须使用正确称谓，NPC称呼主角时必须用主角的姓氏，不可混用其他NPC的姓氏:\n"
+                f"{'; '.join(title_pairs)}"
+            )
+
+        # <protagonist> 区块（来自 character_action）
+        player = state.get("player", {})
+        player_name = player.get("name", "主角")
+        pc = self.script.get("player_character", {})
+        has_pc_lore = self.lorebook and any(
+            e.id == "_pc_identity" and e.enabled for e in self.lorebook.entries
+        )
+        if not has_pc_lore:
+            player_personality = player.get("personality", "") or pc.get("personality", "")
+            player_identity = pc.get("identity", "") or pc.get("background", "") or pc.get("bio", "")
+        else:
+            player_personality = ""
+            player_identity = ""
+
+        proto_parts = []
+        proto_parts.append(f"主角: {player_name}")
+        player_title = player.get("title", "") or pc.get("title", "")
+        if player_title:
+            _surname = player_name[0] if player_name and player_name != "主角" else ""
+            _short_title = player_title.split("（")[0].split("/")[-1]
+            _call_example = f"「{_surname}{_short_title}」" if _surname else f"「{_short_title}」"
+            proto_parts.append(f"头衔/职位: {player_title}（NPC称呼主角为{_call_example}）")
+        elif player_name and player_name != "主角":
+            proto_parts.append(f"（NPC称呼主角时应使用姓氏「{player_name[0]}」加适当敬称）")
+        if player_personality:
+            proto_parts.append(f"性格: {player_personality}")
+        if player_identity:
+            proto_parts.append(f"身份: {player_identity}")
+
+        # <npc_profiles> 区块（来自 character_action）
+        present_npc_ids = ctx.get("present_npc_ids") or []
+        voice_table = self._build_npc_voice_table(state, present_npc_ids)
+        npc_profile_parts = []
+        if voice_table:
+            npc_profile_parts.append(voice_table)
+        # NPC交互记录
+        chat_histories = state.get("npc_chat_history", {})
+        interaction_info = []
+        for npc_id in present_npc_ids:
+            ns = npc_states.get(npc_id, {})
+            if not isinstance(ns, dict):
+                continue
+            name = ns.get("name", npc_id)
+            met = ns.get("met", False)
+            chat_count = len(chat_histories.get(npc_id, []))
+            if met or chat_count > 0:
+                interaction_info.append(f"{name}已交互过（勿重复自我介绍）")
+        if interaction_info:
+            npc_profile_parts.append(f"交互记录: {'; '.join(interaction_info)}")
+        npc_rooms = []
+        for npc_id in present_npc_ids:
+            ns = npc_states.get(npc_id, {})
+            if isinstance(ns, dict):
+                room = ns.get("current_room", "")
+                if room:
+                    npc_rooms.append(f"{ns.get('name', npc_id)} → {room}")
+        if npc_rooms:
+            npc_profile_parts.append(f"NPC房间位置: {'; '.join(npc_rooms)}")
+
+        # <mechanics> 区块（来自 character_action）
+        mechanics = self._format_mechanics_brief(
+            ctx.get("dice_dicts"),
+            ctx.get("check_result"),
+            ctx.get("triggered_events"),
+            ctx.get("triggered_consequences"),
+        )
+
+        # <continuity> 区块（来自 env_render + narrative_compose）
+        cont_parts = []
+        if history_context:
+            cont_parts.append(f"前情提要:\n{history_context}")
+        if scope != "minor" and recent_openings:
+            cont_parts.append(f"近几轮叙事开头（请避免雷同）: {' / '.join(recent_openings[-3:])}")
+        if scope != "minor" and prev_ending_type:
+            cont_parts.append(f"上一轮结尾类型: {prev_ending_type}（本轮必须使用不同类型）")
+        pending = state.get("scene_details", {}).get("pending_tension", "")
+        if pending:
+            cont_parts.append(f"待定伏线（适度铺垫）: {pending}")
+        # 上一轮氛围（来自 env_render）
+        if not skip_env:
+            scene_details = state.get("scene_details", {})
+            prev_atmosphere = scene_details.get("atmosphere", "")
+            prev_sensory = scene_details.get("sensory", "")
+            if prev_atmosphere or prev_sensory:
+                cont_parts.append(f"上一轮氛围（仅供天气/光线连续参考）: {prev_atmosphere} {prev_sensory}")
+            loc_mem = state.get("location_memory", {}).get(location_id, [])
+            if loc_mem:
+                mem_lines = [f"- 第{m['turn']}回合: {m['text']}" for m in loc_mem[-3:]]
+                cont_parts.append("此地的历史事件:\n" + "\n".join(mem_lines))
+        _story_hint = self._build_stage2_story_hint(state)
+        if _story_hint:
+            cont_parts.append(_story_hint)
+
+        # 组装 XML
+        sections = [
+            _xml("scene_context", "\n".join(ctx_parts)),
+            _xml("naming_reference", naming_text),
+            _xml("protagonist", "\n".join(proto_parts)),
+            _xml("npc_profiles", "\n".join(npc_profile_parts)),
+            _xml("mechanics", f"角色行为必须与之一致:\n{mechanics}" if mechanics else ""),
+            _xml("continuity", "\n".join(cont_parts)),
+            _xml("plot_decision", plot_decision),
+            _xml("player_action", action_text if action_text else ""),
+            _xml("authors_note", authors_note if authors_note else ""),
+        ]
+        content = "\n\n".join(s for s in sections if s)
+
+        messages = []
+        if prev_narrative_tail:
+            messages.append({"role": "assistant", "content": prev_narrative_tail})
+        messages.append({"role": "user", "content": content})
+        return messages, system
+
+    def build_continue_prompt(
+        self, current_narrative: str, state: dict,
+    ) -> tuple[list[dict], str]:
+        """Build prompt to continue/extend the current narrative without a new turn."""
+        system = (
+            "你是文字游戏的叙事续写师。玩家觉得上一段叙事太短或意犹未尽，请你自然地接续。\n\n"
+            "规则：\n"
+            "- 从上一段叙事末尾处无缝衔接，不要重复已有内容\n"
+            "- 保持人称、时态、风格一致\n"
+            "- 可以展开细节、补充感官描写、深化角色互动\n"
+            "- 不要引入新的重大剧情转折或新角色\n"
+            "- 输出300-600字的续写文本\n"
+            "- 直接输出续写文本，不要任何JSON/标记/解释"
+        )
+        loc = state.get("player", {}).get("location", "未知")
+        content = (
+            f"当前场景: {loc}\n\n"
+            f"== 需要续写的叙事 ==\n{current_narrative}\n\n"
+            "请从上文末尾处自然续写，展开更多细节。"
+        )
+        messages = [{"role": "user", "content": content}]
+        return messages, system
+
+    def build_narrative_review_prompt(
+        self, narrative: str, action_text: str,
+        present_npcs: list[dict],
+        pc_name: str = "",
+    ) -> tuple[list[dict], str]:
+        """Stage 3.5: 叙事质量评审 prompt。"""
+        system = (
+            '你是叙事质量审核员。检查叙事是否违反以下规则，只返回紧凑JSON。\n\n'
+            '检测项：\n'
+            '1. protagonist_dialogue: 叙事中是否替主角说出了具体台词？'
+            '主角可以有动作/表情/内心感受描写，但引号内的具体对白只有玩家行动中明确写出的才允许。'
+            '用动作暗示（"点了点头"）或省略号不算违规。\n'
+            '2. scene_packing: 叙事中是否包含多个不同物理空间的场景？'
+            '单回合应只有一个核心场景，不可出现"然后去了X""接着来到Y"等地点切换。\n'
+            '3. npc_behavior_break: NPC的行为是否与其角色定位严重不符？'
+            '例如普通配角突然承担关键剧情功能、文职人员突然变成情报人员等。\n'
+            '4. decision_overreach: 叙事是否替主角做了玩家行动中未声明的决定？'
+            "例如玩家说'在名单上加名字'，叙事却描写主角划掉了别人的名字；"
+            "玩家说'查看文件'，叙事却描写主角拿走了文件。"
+            "判断标准：将叙事中主角的每个具体动作与玩家原文逐一比对，"
+            "任何无法从玩家原文直接推导的物理操作都算违规。\n\n"
+            '5. ai_cliche: 叙事中是否有典型的AI生成腔？'
+            '检查：(a)是否使用了「仿佛」「悄然」「不禁」「油然而生」「弥漫着」「笼罩着」'
+            '「不经意间」「宛如」「莫名的」等AI高频词汇（超过2处算违规）；'
+            '(b)是否有模板句式如「空气中弥漫着……的气息」「时间仿佛……」「一股……涌上心头」；'
+            '(c)环境描写是否占总篇幅40%以上（信息密度过低）。\n\n'
+        )
+        if pc_name:
+            pc_surname = pc_name[0] if pc_name else ""
+            system += (
+                f'6. wrong_name: NPC在对话或称呼中是否叫错了主角的姓名？'
+                f'主角姓名是「{pc_name}」（姓{pc_surname}），'
+                f'NPC称呼主角时必须使用正确姓氏「{pc_surname}」。'
+                f'若叙事中NPC用其他姓氏+职务来称呼主角（如用在场其他NPC的姓氏），算违规。\n\n'
+            )
+        system += (
+            '输出格式：\n'
+            '{"pass":true/false,"violations":[{"type":"检测项名","detail":"简述违规内容(≤30字)"}]}\n'
+            '无违规时violations为空数组。只返回JSON。'
+        )
+        npc_info = ""
+        if present_npcs:
+            npc_lines = []
+            for npc in present_npcs[:6]:
+                role = npc.get("title") or npc.get("role") or npc.get("occupation") or ""
+                line = f"- {npc.get('name', npc.get('id', '?'))}"
+                if role:
+                    line += f"（{role}）"
+                npc_lines.append(line)
+            npc_info = "\n".join(npc_lines)
+
+        sections = [
+            _xml("player_action", action_text),
+            _xml("narrative", narrative),
+            _xml("npcs_present", npc_info),
+            _xml("protagonist_name", pc_name if pc_name else ""),
+        ]
+        content = "\n\n".join(s for s in sections if s)
+        return [{"role": "user", "content": content}], system
