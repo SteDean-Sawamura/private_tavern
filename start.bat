@@ -23,21 +23,14 @@ if not exist "bar\Scripts\python.exe" (
 
 echo   [OK] Starting server...
 echo.
-
-netstat -ano 2>nul | findstr ":8000.*LISTEN" >nul 2>&1
-if not errorlevel 1 (
-    echo   [..] Clearing port 8000...
-    for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8000.*LISTEN"') do taskkill /f /pid %%p >nul 2>&1
-    timeout /t 1 /nobreak >nul
-)
-
-echo   Shell:  http://127.0.0.1:8000/shell
-echo   Chat:   http://127.0.0.1:8000
-echo   RPG:    http://127.0.0.1:8000/rpg
+echo   Shell:  http://127.0.0.1:8500/shell
+echo   Chat:   http://127.0.0.1:8500
+echo   RPG:    http://127.0.0.1:8500/rpg
 echo   ================================
 echo.
 
-start /b cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:8000/shell"
+set TAVERN_PORT=8500
+start /b cmd /c "timeout /t 4 /nobreak >nul && start http://127.0.0.1:8500/shell"
 
 bar\Scripts\python.exe app.py
 pause
