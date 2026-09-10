@@ -132,7 +132,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'shell.html'));
-  log('窗口已创建，加载 shell.html');
+  log('窗口已创建，等待服务就绪后切换到 web shell');
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -198,6 +198,10 @@ app.whenReady().then(async () => {
     });
     sendStatus('error', `${fail} 个服务启动失败`);
   } else {
+    // 服务就绪，切换到 web shell
+    const shellUrl = `http://127.0.0.1:${TAVERN_PORT}/shell`;
+    log(`加载 web shell: ${shellUrl}`);
+    mainWindow.loadURL(shellUrl);
     sendStatus('ready');
   }
 

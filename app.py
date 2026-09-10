@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from config import HOST, PORT, STATIC_DIR, API_TOKEN
 from db.database import init_db, close_pool
@@ -69,6 +69,14 @@ if API_TOKEN:
 
 # Serve static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/shell")
+async def shell_page():
+    shell_path = STATIC_DIR / "shell.html"
+    if shell_path.exists():
+        return FileResponse(str(shell_path), media_type="text/html")
+    return HTMLResponse("<h1>Shell not found</h1>", status_code=404)
 
 
 @app.get("/")
