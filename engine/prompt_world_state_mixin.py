@@ -1,11 +1,13 @@
-"""PromptBuilder Mixin: World State Prompts"""
+"""PromptBuilder Mixin: 世界状态推演 prompt 构建"""
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
 
-# Duplicated from prompt_builder to avoid circular import
+# Sentinel inserted between cache-stable and per-turn-varying sections.
+# ClaudeProvider splits on this to add cache_control; other providers strip it.
 CACHE_SENTINEL = "\n\n<|cache_break|>\n\n"
 
 
@@ -16,7 +18,7 @@ def _xml(tag: str, content: str) -> str:
 
 
 class PromptWorldStateMixin:
-    """世界状态推演相关的 prompt 构建方法（Stage 4b 系列）"""
+    """Stage 4b 世界状态推演: 资源/空间/时间/世界属性/扩展状态, 事件阶段, Stage 2 合并"""
 
     # Stage 4b 字段→系统映射，用于动态裁剪
     # group: "resource" = 属性/物品/状态, "spatial" = 位置/场景, "temporal" = 时间/世界属性, "ext" = 低频扩展
@@ -72,6 +74,9 @@ class PromptWorldStateMixin:
         '省略无变化时输出 {"event_changes":[]}\n'
     ) + CACHE_SENTINEL
 
+    # ------------------------------------------------------------------
+    # _build_world_state_user_message
+    # ------------------------------------------------------------------
     def _build_world_state_user_message(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -180,7 +185,7 @@ class PromptWorldStateMixin:
                 for fid, fdata in faction_rep.items():
                     fname = org_name_map.get(fid, state.get("display_names", {}).get(fid, fid))
                     rep_lines.append(f"- {fname}({fid}): {fdata.get('title', '中立')}({fdata.get('value', 50)})")
-                ext_parts.append(f"阵营声望:\n" + "\n".join(rep_lines))
+                ext_parts.append("阵营声望:\n" + "\n".join(rep_lines))
             bp = state.get("plot_blueprint", {})
             bp_threads = bp.get("plot_threads", [])
             if bp_threads:
@@ -232,6 +237,9 @@ class PromptWorldStateMixin:
 
         return "\n\n".join(s for s in sections if s)
 
+    # ------------------------------------------------------------------
+    # build_world_state_prompt
+    # ------------------------------------------------------------------
     def build_world_state_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -256,6 +264,9 @@ class PromptWorldStateMixin:
         messages = [{"role": "user", "content": content}]
         return messages, system
 
+    # ------------------------------------------------------------------
+    # _format_events_for_prompt
+    # ------------------------------------------------------------------
     @staticmethod
     def _format_events_for_prompt(event_data: dict) -> dict[str, str]:
         """将 event_engine.get_events_for_prompt() 输出格式化为 prompt 文本段。"""
@@ -294,6 +305,9 @@ class PromptWorldStateMixin:
             sections["story_nodes"] = "当前剧情走向:\n" + "\n".join(lines)
         return sections
 
+    # ------------------------------------------------------------------
+    # build_event_stage_prompt
+    # ------------------------------------------------------------------
     def build_event_stage_prompt(
         self, narrative: str, action_text: str,
         event_data: dict, parsed_summary: str = "",
@@ -315,6 +329,9 @@ class PromptWorldStateMixin:
         content = "\n\n".join(s for s in xml_parts if s)
         return [{"role": "user", "content": content}], self._EVENT_STAGE_SYSTEM
 
+    # ------------------------------------------------------------------
+    # build_pruned_world_state_prompt
+    # ------------------------------------------------------------------
     def build_pruned_world_state_prompt(
         self, narrative: str, action_text: str, state: dict,
         active_systems: list[str],
@@ -339,6 +356,9 @@ class PromptWorldStateMixin:
         messages = [{"role": "user", "content": content}]
         return messages, system
 
+    # ------------------------------------------------------------------
+    # _build_world_state_system
+    # ------------------------------------------------------------------
     def _build_world_state_system(self, group: str, active_systems: list[str] | None = None) -> str:
         """构建指定 group 的 Stage 4b system prompt，可选 route pruning。"""
         active_set = set(active_systems) if active_systems else None
@@ -378,6 +398,9 @@ class PromptWorldStateMixin:
         system += CACHE_SENTINEL
         return system
 
+    # ------------------------------------------------------------------
+    # build_world_state_core_prompt
+    # ------------------------------------------------------------------
     def build_world_state_core_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -389,6 +412,9 @@ class PromptWorldStateMixin:
             narrative, action_text, state, check_result, active_systems, plot_decision,
         )
 
+    # ------------------------------------------------------------------
+    # build_world_state_resource_prompt
+    # ------------------------------------------------------------------
     def build_world_state_resource_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -402,6 +428,9 @@ class PromptWorldStateMixin:
         content = self._build_world_state_user_message(source, action_text, state, check_result, group="resource", use_plot_decision=use_pd)
         return [{"role": "user", "content": content}], system
 
+    # ------------------------------------------------------------------
+    # build_world_state_spatial_prompt
+    # ------------------------------------------------------------------
     def build_world_state_spatial_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -415,6 +444,9 @@ class PromptWorldStateMixin:
         content = self._build_world_state_user_message(source, action_text, state, check_result, group="spatial", use_plot_decision=use_pd)
         return [{"role": "user", "content": content}], system
 
+    # ------------------------------------------------------------------
+    # build_world_state_temporal_prompt
+    # ------------------------------------------------------------------
     def build_world_state_temporal_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -429,6 +461,9 @@ class PromptWorldStateMixin:
         content = self._build_world_state_user_message(source, action_text, state, check_result, group="temporal", use_plot_decision=use_pd)
         return [{"role": "user", "content": content}], system
 
+    # ------------------------------------------------------------------
+    # build_world_state_world_prompt
+    # ------------------------------------------------------------------
     def build_world_state_world_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -442,6 +477,9 @@ class PromptWorldStateMixin:
         content = self._build_world_state_user_message(source, action_text, state, check_result, group="world", use_plot_decision=use_pd)
         return [{"role": "user", "content": content}], system
 
+    # ------------------------------------------------------------------
+    # build_world_state_ext_prompt
+    # ------------------------------------------------------------------
     def build_world_state_ext_prompt(
         self, narrative: str, action_text: str, state: dict,
         check_result: dict | None = None,
@@ -449,13 +487,16 @@ class PromptWorldStateMixin:
         plot_decision: str = "",
         event_sections: dict[str, str] | None = None,
     ) -> tuple[list[dict], str]:
-        """Stage 4b-ext: 扩展状态 — NPC/阵营/同伴。"""
+        """Stage 4b-ext: 扩展状态 -- NPC/阵营/同伴。"""
         system = self._build_world_state_system("ext", active_systems)
         source = plot_decision if plot_decision else narrative
         use_pd = bool(plot_decision)
         content = self._build_world_state_user_message(source, action_text, state, check_result, group="ext", use_plot_decision=use_pd, event_sections=event_sections)
         return [{"role": "user", "content": content}], system
 
+    # ------------------------------------------------------------------
+    # build_merged_stage2_prompt
+    # ------------------------------------------------------------------
     def build_merged_stage2_prompt(
         self, plot_decision: str, state: dict,
         present_npc_ids: list[str] | None = None,
