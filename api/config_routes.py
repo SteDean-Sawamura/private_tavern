@@ -180,6 +180,30 @@ async def test_profile(profile_id: int):
         return {"success": False, "error": str(e)}
 
 
+# --- Pipeline mode (workflow / agentic) ---
+
+@router.get("/pipeline-mode")
+async def get_pipeline_mode():
+    """Current pipeline mode."""
+    import config
+    return {"mode": getattr(config, "PIPELINE_MODE", "workflow")}
+
+
+@router.post("/pipeline-mode")
+async def set_pipeline_mode(req: dict):
+    """Switch pipeline mode at runtime.
+
+    Body: {"mode": "workflow" | "agentic"}
+    """
+    import config
+    mode = req.get("mode", "workflow")
+    if mode not in ("workflow", "agentic"):
+        raise HTTPException(status_code=400, detail="mode must be 'workflow' or 'agentic'")
+    config.PIPELINE_MODE = mode
+    logger.info("切换管线模式 — mode=%s", mode)
+    return {"ok": True, "mode": mode}
+
+
 # --- Legacy config endpoints (kept for backward compat) ---
 
 @router.get("")

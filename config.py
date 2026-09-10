@@ -19,5 +19,8 @@ SAVES_DIR.mkdir(parents=True, exist_ok=True)
 HOST = os.getenv("TAVERN_HOST", "127.0.0.1")
 PORT = int(os.getenv("TAVERN_PORT", "8000"))
 
+# Pipeline mode: "workflow" (fixed multi-stage pipeline) or "agentic" (dual agent loop)
+PIPELINE_MODE = os.getenv("PIPELINE_MODE", "workflow")
+
 # API authentication — set TAVERN_API_TOKEN to enable; leave empty to disable
 API_TOKEN = os.getenv("TAVERN_API_TOKEN", "")

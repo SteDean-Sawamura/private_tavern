@@ -34,6 +34,7 @@ from engine.session.prepare_mixin import PrepareMixin
 from engine.session.shop_mixin import ShopMixin
 from engine.session.skill_check_mixin import SkillCheckMixin
 from engine.session.pipeline_mixin import PipelineMixin
+from engine.session.agentic_mixin import AgenticMixin
 from engine.session.state_apply_mixin import StateApplyMixin
 from engine.session.regenerate_mixin import RegenerateMixin
 from engine.session.npc_mixin import NpcMixin
@@ -407,6 +408,7 @@ class GameSession(
     ShopMixin,
     SkillCheckMixin,
     PipelineMixin,
+    AgenticMixin,
     StateApplyMixin,
     RegenerateMixin,
     NpcMixin,
@@ -1508,6 +1510,15 @@ class GameSession(
         ctx["check_result"] = self._resolve_skill_check_from_route(route, action_text)
         return route
 
+    def _agentic_enabled(self) -> bool:
+        """True when PIPELINE_MODE == 'agentic' and the provider supports native tools."""
+        import config
+        if getattr(config, "PIPELINE_MODE", "workflow") != "agentic":
+            return False
+        if not hasattr(self.ai_provider, "generate_with_tools"):
+            return False
+        return bool(self.script.get("settings", {}).get("ai_tools_enabled", True))
+
     async def process_action(self, player_action: dict) -> dict:
         """Process a player action and return the result.
 
@@ -1530,7 +1541,11 @@ class GameSession(
             narrative = ""
             parsed = {}
             _narrative_reasoning = ""
-            async for item in self._execute_pipeline(ctx, route, player_action):
+            if self._agentic_enabled():
+                pipeline = self._execute_agentic_pipeline(ctx, route, player_action)
+            else:
+                pipeline = self._execute_pipeline(ctx, route, player_action)
+            async for item in pipeline:
                 if item["type"] == "pipeline_result":
                     narrative = item["narrative"]
                     parsed = item["parsed"]
@@ -1573,7 +1588,11 @@ class GameSession(
         narrative = ""
         parsed = {}
         _narrative_reasoning = ""
-        async for item in self._execute_pipeline(ctx, route, player_action, streaming=True):
+        if self._agentic_enabled():
+            pipeline = self._execute_agentic_pipeline(ctx, route, player_action, streaming=True)
+        else:
+            pipeline = self._execute_pipeline(ctx, route, player_action, streaming=True)
+        async for item in pipeline:
             if item["type"] == "pipeline_result":
                 narrative = item["narrative"]
                 parsed = item["parsed"]

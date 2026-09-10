@@ -87,6 +87,23 @@ async def shell_page():
     return HTMLResponse("<h1>Shell not found</h1>", status_code=404)
 
 
+@app.post("/api/config/pipeline-mode")
+async def set_pipeline_mode(req: dict):
+    import config
+    mode = req.get("mode", "workflow")
+    if mode not in ("workflow", "agentic"):
+        raise HTTPException(400, "mode must be 'workflow' or 'agentic'")
+    config.PIPELINE_MODE = mode
+    logger.info("Pipeline mode → %s", mode)
+    return {"ok": True, "mode": mode}
+
+
+@app.get("/api/config/pipeline-mode")
+async def get_pipeline_mode():
+    import config
+    return {"mode": getattr(config, "PIPELINE_MODE", "workflow")}
+
+
 @app.get("/")
 async def index():
     return FileResponse(str(STATIC_DIR / "index.html"))
