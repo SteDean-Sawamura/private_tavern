@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -89,21 +89,11 @@ function waitForServer(port, label, timeout = 30000) {
   });
 }
 
-function navigateTo(port) {
-  if (mainWindow) {
-    log(`导航到 http://127.0.0.1:${port}`);
-    mainWindow.loadURL(`http://127.0.0.1:${port}`);
-  }
-}
-
 function createWindow() {
   const menu = Menu.buildFromTemplate([
     {
       label: '应用',
       submenu: [
-        { label: '酒馆（对话模式）', accelerator: 'CmdOrCtrl+1', click: () => navigateTo(TAVERN_PORT) },
-        { label: 'RPG 推演系统', accelerator: 'CmdOrCtrl+2', click: () => navigateTo(RPG_PORT) },
-        { type: 'separator' },
         { label: '打开日志文件', click: () => shell.openPath(LOG_FILE) },
         { label: '打开日志目录', click: () => shell.openPath(LOG_DIR) },
         { type: 'separator' },
@@ -132,15 +122,17 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     title: '酒馆',
-    backgroundColor: '#1b1b1f',
+    frame: false,
+    backgroundColor: '#1a1a1e',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
-  mainWindow.loadURL(`http://127.0.0.1:${TAVERN_PORT}`);
-  log(`窗口已创建，加载 http://127.0.0.1:${TAVERN_PORT}`);
+  mainWindow.loadFile(path.join(__dirname, 'shell.html'));
+  log('窗口已创建，加载 shell.html');
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -148,6 +140,23 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => { mainWindow = null; });
+
+  // 窗口控制 IPC
+  ipcMain.on('window-minimize', () => mainWindow?.minimize());
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+  ipcMain.on('window-close', () => mainWindow?.close());
+}
+
+function sendStatus(status, message) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('server-status', { status, message });
+  }
 }
 
 function killAll() {
@@ -166,10 +175,13 @@ function killAll() {
 app.whenReady().then(async () => {
   initLog();
 
+  createWindow();
+
   tavernProcess = startProcess('app.py', 'tavern');
   rpgProcess = startProcess('tavern_rpg_engine.py', 'rpg');
 
   log('等待服务启动...');
+  sendStatus('loading', '正在启动服务...');
 
   const results = await Promise.allSettled([
     waitForServer(TAVERN_PORT, 'tavern'),
@@ -184,9 +196,11 @@ app.whenReady().then(async () => {
     results.forEach((r, i) => {
       if (r.status === 'rejected') log(`  失败: ${r.reason.message}`);
     });
+    sendStatus('error', `${fail} 个服务启动失败`);
+  } else {
+    sendStatus('ready');
   }
 
-  createWindow();
   log('应用就绪');
 });
 
