@@ -70,6 +70,14 @@ if API_TOKEN:
 # Serve static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# Mount RPG engine as sub-application at /rpg
+try:
+    from rpg.routes import app as rpg_app
+    app.mount("/rpg", rpg_app)
+    logger.info("RPG 推演引擎已挂载到 /rpg")
+except Exception as e:
+    logger.warning("RPG 引擎加载失败（可忽略）: %s", e)
+
 
 @app.get("/shell")
 async def shell_page():

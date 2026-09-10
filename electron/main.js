@@ -177,15 +177,14 @@ app.whenReady().then(async () => {
 
   createWindow();
 
+  // 单进程启动：app.py 已挂载 RPG 引擎到 /rpg
   tavernProcess = startProcess('app.py', 'tavern');
-  rpgProcess = startProcess('tavern_rpg_engine.py', 'rpg');
 
   log('等待服务启动...');
   sendStatus('loading', '正在启动服务...');
 
   const results = await Promise.allSettled([
     waitForServer(TAVERN_PORT, 'tavern'),
-    waitForServer(RPG_PORT, 'rpg'),
   ]);
 
   const ok = results.filter(r => r.status === 'fulfilled').length;

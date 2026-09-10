@@ -1,53 +1,53 @@
 @echo off
 chcp 65001 >nul 2>&1
-title Tavern - AI Text Adventure
+cd /d "%~dp0"
+title 酒馆 — AI 互动文字游戏
 
-echo ============================================
-echo     Tavern - AI Text Adventure Engine
-echo ============================================
+echo.
+echo   酒馆 - AI 互动文字游戏
+echo   ========================
 echo.
 
+:: 检查 Python
 where python >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found. Install Python 3.10+
+    echo   [!!] 未找到 Python，请安装 Python 3.10+
     pause
     exit /b 1
 )
+for /f "tokens=2 delims= " %%a in ('python --version 2^>^&1') do echo   [OK] Python %%a
 
-for /f "tokens=2 delims= " %%a in ('python --version 2^>^&1') do set PYVER=%%a
-echo [INFO] Python %PYVER%
-
+:: 检查/创建虚拟环境
 if not exist "bar\Scripts\python.exe" (
-    echo [INFO] Creating virtual environment...
+    echo   [..] 创建虚拟环境...
     python -m venv bar
     if errorlevel 1 (
-        echo [ERROR] Failed to create venv.
+        echo   [!!] 虚拟环境创建失败
         pause
         exit /b 1
     )
-    echo [OK] Venv created.
+    call bar\Scripts\activate.bat
+    echo   [..] 安装依赖...
+    pip install -r requirements.txt -q
+    if exist "requirements-vector.txt" pip install -r requirements-vector.txt -q 2>nul
+    echo   [OK] 依赖安装完成
+) else (
+    echo   [OK] 虚拟环境: bar
+    call bar\Scripts\activate.bat
 )
-
-call bar\Scripts\activate.bat
-
-echo [INFO] Checking dependencies...
-pip install -r requirements.txt -q
-if errorlevel 1 (
-    echo [WARN] Some deps failed...
-)
-if exist "requirements-vector.txt" (
-    pip install -r requirements-vector.txt -q 2>nul
-)
-echo [OK] Dependencies ready.
 
 echo.
-echo ============================================
-echo  Starting server... Close window to stop.
-echo ============================================
+echo   ========================
+echo   酒馆服务启动中...
+echo   统一入口: http://127.0.0.1:8000/shell
+echo   对话模式: http://127.0.0.1:8000
+echo   RPG推演:  http://127.0.0.1:8000/rpg
+echo   ========================
 echo.
 
-set TAVERN_PORT=8500
-start /b cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:%TAVERN_PORT%"
+:: 延迟打开浏览器
+start /b cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:8000/shell"
 
+:: 启动单一服务（包含对话+RPG）
 python app.py
 pause
