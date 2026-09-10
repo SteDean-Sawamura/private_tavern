@@ -22,6 +22,19 @@ CACHE_SENTINEL = "\n\n<|cache_break|>\n\n"
 class PromptNpcMixin:
     """NPC对话、反应、日程、声线等相关方法"""
 
+    _VOICE_RULES: dict[str, str] = {
+        "冷静": "短句，少语气词，陈述为主，偶尔反问",
+        "热情": "长句，感叹号多，语气词丰富(呀/呢/啊)，爱用比喻",
+        "傲慢": "居高临下，反问句多，'哼''切'，称呼对方用'你们'",
+        "怯懦": "短句带省略号…，自我否定，'那个…''不好意思'",
+        "豪爽": "大嗓门，粗犷用词，'哈哈''来来来'，不拐弯",
+        "阴沉": "低语调，暗示性措辞，'呵''有意思'，话说一半",
+        "天真": "简单句，好奇提问多，'哇''为什么呀'，口语化",
+        "老练": "缓慢节奏，引用典故，'依我看''当年…'，不急不躁",
+        "严肃": "命令式短句，军旅/官方用语，'报告''明白''执行'",
+        "温柔": "轻声细语，关心式提问，'没事吧''慢慢来'，少否定",
+    }
+
     def _append_event_countdowns(self, lines: list, state: dict):
         """Add countdown timers for upcoming one-time events."""
         game_time = state.get("game_time", "")
