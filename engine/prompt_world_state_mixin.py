@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from engine.prompt_loader import PromptLoader
+
 if TYPE_CHECKING:
     pass
 
@@ -361,6 +363,8 @@ class PromptWorldStateMixin:
     # ------------------------------------------------------------------
     def _build_world_state_system(self, group: str, active_systems: list[str] | None = None) -> str:
         """构建指定 group 的 Stage 4b system prompt，可选 route pruning。"""
+        loader = PromptLoader.get()
+
         active_set = set(active_systems) if active_systems else None
         field_lines = []
         for fdef in self._FIELD_DEFS.values():
@@ -371,30 +375,35 @@ class PromptWorldStateMixin:
             field_lines.append(fdef["desc"])
 
         role, focus = self._GROUP_META.get(group, ("状态引擎", "状态变更"))
-        system = (
-            f"你是游戏{role}。严格根据叙事中实际描写的事件推演本回合的{focus}变更。\n"
-            "不要推测或编造叙事中未提及的情节。只返回紧凑JSON。\n\n"
-            "字段：\n" + "\n".join(field_lines) + "\n\n"
-        )
+
+        # group 专属后缀
+        group_suffix = ""
         if group == "resource":
-            system += (
+            group_suffix = (
                 "物品变更原则：只有叙事中明确描写了角色获得（拾取/购买/赠予/搜获/制作）的物品才能add；"
                 "不得凭空发明叙事中未出现的物品。\n"
                 "仅当下方标注[检定结果: 大成功]时才可额外给予奖励；"
                 "仅当标注[检定结果: 大失败]时才应施加惩罚（属性下降/丢失物品/添加负面状态）。\n"
             )
-        if group == "temporal":
-            system += (
+        elif group == "temporal":
+            group_suffix = (
                 "关键：end_time 是叙事结束时的绝对时间戳，不是时长。"
                 "找到叙事最后场景的时间点，直接输出该时间。"
                 "当前游戏时间已在下方提供。\n"
             )
-        if group == "world":
-            system += (
+        elif group == "world":
+            group_suffix = (
                 "只修改叙事中有明确变化依据的世界属性。"
                 "下方提供了当前世界属性列表及其值。如无变化则返回空JSON {}。\n"
             )
-        system += "省略无变化的字段。紧凑JSON输出。"
+
+        system = loader.render_system(
+            "world_state/_shared_system",
+            role=role,
+            focus=focus,
+            field_lines="\n".join(field_lines),
+            group_suffix=group_suffix,
+        )
         system += CACHE_SENTINEL
         return system
 

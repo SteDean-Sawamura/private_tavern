@@ -6,7 +6,7 @@ notes: |
   再拼接 _GROUP_META 中的 role/focus 描述和 group 专属后缀。
   active_systems 用于 route pruning，跳过不在 active_set 中的字段。
 
-template: |
+system: |
   你是游戏{role}。严格根据叙事中实际描写的事件推演本回合的{focus}变更。
   不要推测或编造叙事中未提及的情节。只返回紧凑JSON。
 

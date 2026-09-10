@@ -61,6 +61,13 @@ class PromptLoader:
         _, user = self.render(name, **kwargs)
         return user
 
+    def try_render(self, name: str, **kwargs) -> Optional[Tuple[str, str]]:
+        """Try to load and render; return None if template not found."""
+        try:
+            return self.render(name, **kwargs)
+        except FileNotFoundError:
+            return None
+
     def get_meta(self, name: str) -> dict:
         """Get template metadata (stage, max_tokens, etc.)"""
         tpl = self._load(name)

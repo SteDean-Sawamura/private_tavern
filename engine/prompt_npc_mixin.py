@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from engine.event_scheduler import parse_time
 from engine.lorebook import Lorebook, LorebookEntry
+from engine.prompt_loader import PromptLoader
 
 if TYPE_CHECKING:
     pass
@@ -189,6 +190,8 @@ class PromptNpcMixin:
         The AI plays the role of the NPC and responds in-character.
         Conversation does not advance game time or trigger events.
         """
+        loader = PromptLoader.get()
+
         npc_script = None
         for npc in self.script.get("npcs", []):
             if npc["id"] == npc_id:
@@ -246,82 +249,81 @@ class PromptNpcMixin:
         # Location
         player_loc = player.get("location", "")
 
-        parts = [
-            f"你现在扮演「{npc_name}」与主角「{player_name}」进行对话。",
-            f"\n## 你的身份",
-            f"- 名字: {npc_name}",
-            f"- 简介: {npc_state.get('bio') or npc_script.get('bio', '')}",
-            f"- 性格: {npc_state.get('personality') or npc_script.get('personality', '')}",
-            f"- 能力: {npc_state.get('capabilities') or npc_script.get('capabilities', '未知')}",
-        ]
+        # 条件行: identity_extra (mood/title/orgs/superior)
+        identity_extra_parts = []
         current_mood = npc_state.get("current_mood", "")
         if current_mood:
-            parts.append(f"- 当前情绪: {current_mood}（对话中应自然体现此情绪，但不必明说）")
+            identity_extra_parts.append(f"- 当前情绪: {current_mood}（对话中应自然体现此情绪，但不必明说）")
         npc_title = npc_state.get("title") or npc_script.get("title", "")
         if npc_title:
-            parts.append(f"- 头衔: {npc_title}")
+            identity_extra_parts.append(f"- 头衔: {npc_title}")
         npc_orgs = npc_state.get("organizations") or npc_script.get("organizations", [])
         if npc_orgs:
-            parts.append(f"- 所属组织: {self._format_org_tags(npc_orgs)}")
+            identity_extra_parts.append(f"- 所属组织: {self._format_org_tags(npc_orgs)}")
         npc_sup = npc_state.get("superior") or npc_script.get("superior", "")
         if npc_sup:
             sup_name = self._get_npc_name(npc_sup)
-            parts.append(f"- 上级: {sup_name}")
+            identity_extra_parts.append(f"- 上级: {sup_name}")
+        identity_extra = "\n".join(identity_extra_parts)
 
-        parts.append(f"\n## 对主角的态度")
-        parts.append(f"- 态度值: {attitude}/100 → {att_desc}")
-        if rel_text:
-            parts.append(f"- 与主角的关系: {rel_text}")
+        # 条件行: relationship_line
+        relationship_line = f"- 与主角的关系: {rel_text}" if rel_text else ""
 
-        if schedule_text:
-            parts.append(f"\n## 当前状态")
-            parts.append(schedule_text)
+        # 条件块: schedule_section
+        schedule_section = f"## 当前状态\n{schedule_text}" if schedule_text else ""
 
-        parts.append(f"\n## 场景背景")
-        parts.append(f"- 当前时间: {self.format_game_time(state.get('game_time', '')) or '未知'}")
-        parts.append(f"- 主角位置: {self._resolve_location_name(player_loc)}")
-        parts.append(f"- 世界背景: {self.script.get('world_background', '')[:200]}")
-
-        # 声纹锚定：根据性格派生说话风格提示
+        # 条件块: voice_section
         personality = npc_state.get("personality") or npc_script.get("personality", "")
         voice_hint = self._derive_voice_hint(personality)
         if voice_hint:
-            parts.append(f"\n## 说话风格")
-            parts.append(f"你的说话风格: {voice_hint}")
-            parts.append("严格遵循此风格，不要使用与之矛盾的语气词、句式或措辞。")
+            voice_section = (
+                f"## 说话风格\n"
+                f"你的说话风格: {voice_hint}\n"
+                f"严格遵循此风格，不要使用与之矛盾的语气词、句式或措辞。"
+            )
+        else:
+            voice_section = ""
 
-        # NPC 秘密层级
+        # 条件块: secrets_section
         secrets = npc_script.get("secrets", [])
+        secrets_section = ""
         if secrets:
             unlocked_ids = set(state.get("npc_unlocked_secrets", {}).get(npc_id, []))
             revealed = [s for s in secrets if s.get("id") in unlocked_ids]
             hidden = [s for s in secrets if s.get("id") not in unlocked_ids]
             if revealed or hidden:
-                parts.append("\n## 秘密与隐情")
-            if revealed:
-                parts.append("你信任主角到可以透露以下信息（可以在对话中自然提及，但不要一次全说）：")
-                for s in revealed:
-                    parts.append(f"- {s.get('content', '')}")
-            if hidden:
-                parts.append("以下话题你会回避、否认或转移，绝不透露实质内容：")
-                for s in hidden:
-                    parts.append(f"- {s.get('hint', '有所隐瞒')}")
+                sec_parts = ["## 秘密与隐情"]
+                if revealed:
+                    sec_parts.append("你信任主角到可以透露以下信息（可以在对话中自然提及，但不要一次全说）：")
+                    for s in revealed:
+                        sec_parts.append(f"- {s.get('content', '')}")
+                if hidden:
+                    sec_parts.append("以下话题你会回避、否认或转移，绝不透露实质内容：")
+                    for s in hidden:
+                        sec_parts.append(f"- {s.get('hint', '有所隐瞒')}")
+                secrets_section = "\n".join(sec_parts)
 
-        parts.append(f"""
-## 对话规则
-- 用第一人称以「{npc_name}」的身份回复，保持角色性格一致
-- 根据态度值调整语气和内容：态度高=热情友好，态度低=冷淡/敌对
-- 回复长度适中（50-200字）
-- 对话不推进游戏时间，不触发事件
-- 在回复末尾用以下JSON格式标注态度变化（如有）：
+        system = loader.render_system(
+            "npc_talk",
+            npc_name=npc_name,
+            player_name=player_name,
+            npc_bio=npc_state.get("bio") or npc_script.get("bio", ""),
+            npc_personality=npc_state.get("personality") or npc_script.get("personality", ""),
+            npc_capabilities=npc_state.get("capabilities") or npc_script.get("capabilities", "未知"),
+            npc_id=npc_id,
+            attitude=attitude,
+            attitude_description=att_desc,
+            game_time_formatted=self.format_game_time(state.get("game_time", "")) or "未知",
+            player_location=self._resolve_location_name(player_loc),
+            world_background=self.script.get("world_background", "")[:200],
+            identity_extra=identity_extra,
+            relationship_line=relationship_line,
+            schedule_section=schedule_section,
+            voice_section=voice_section,
+            secrets_section=secrets_section,
+        )
 
-```npc_talk
-{{"npc_attitude_changes": [{{"npc_id": "{npc_id}", "dimension": "trust或affection或fear", "change": 数值, "reason": "原因"}}]}}
-```
-
-如果本轮对话没有态度变化，省略此JSON块。""")
-
-        return "\n".join(parts)
+        return system
 
     def build_npc_speak_prompt(self, npc_script: dict, state: dict,
                                 context: str, previous_speeches: list[dict]) -> dict:
@@ -536,30 +538,8 @@ class PromptNpcMixin:
         npc_lore: list | None = None,
     ) -> tuple[list[dict], str]:
         """Stage 4a: NPC关系推演 - 只处理NPC态度和关系变化。"""
-        system = (
-            "你是NPC情感分析师。严格根据叙事中实际描写的事件和行为判断NPC态度变化。\n"
-            "不要推测或编造叙事中未提及的情节。只返回紧凑JSON。\n\n"
-            "字段：\n"
-            "- npc_attitude_changes: [{\"npc_id\":\"\",\"dimension\":\"trust|affection|fear\","
-            "\"change\":±数值,\"reason\":\"10字\",\"opinion\":\"10字看法\","
-            "\"relationship_desc\":\"关系性质变化\"}]\n"
-            "- npc_met_changes: [{\"npc_id\":\"\",\"met\":true,\"reason\":\"首次互动方式\"}]\n"
-            "- npc_relationship_updates: [{\"a\":\"npc1\",\"b\":\"npc2\","
-            "\"type\":\"关系类型\",\"description\":\"\"}]\n"
-            "- npc_interjections: [{\"npc_id\":\"\",\"text\":\"一句旁白或动作\"}]"
-            " 在场但本回合未主要互动的NPC，根据其性格可能自发说一句话或做一个小动作"
-            "（概率性的，不是每回合都有，只在自然合理时才输出。"
-            "话痨度高的NPC更倾向于插话，沉默寡言的NPC极少主动发言）\n"
-            "- scene_details: {\"npc_expressions\":[{\"npc_id\":\"\","
-            "\"expression\":\"表情/情绪\"}],\"pending_tension\":\"悬念\"}\n\n"
-            "数值通常±1到±5。重大互动（救命/背叛/告白）可±8到±15。"
-            "大成功/大失败的行动对NPC印象冲击更大（可适当放大变化幅度）。无变化返回{}\n\n"
-            "关键约束：\n"
-            "- 态度变化必须基于【玩家行动】的实际意图，而非叙事中AI自行编写的戏剧化描写\n"
-            "- 如果玩家行动本身是中性或积极的（如正常对话、请求帮助、表达善意），"
-            "即使叙事描写了紧张氛围或NPC的负面反应，也不应降低NPC态度\n"
-            "- 只有当玩家行动本身具有冒犯、威胁、欺骗、忽视等负面性质时，才可降低态度"
-        )
+        loader = PromptLoader.get()
+        system = loader.render_system("npc_reaction")
         system += CACHE_SENTINEL
 
         # 在场NPC信息
