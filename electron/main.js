@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const net = require('net');
 
-const SERVER_PORT = 8000;
+const SERVER_PORT = 8080;
 const PROJECT_DIR = path.resolve(__dirname, '..');
 let serverProcess = null;
 let mainWindow = null;
@@ -20,7 +20,7 @@ function findPython() {
 
 function startServer() {
   const python = findPython();
-  serverProcess = spawn(python, ['-m', 'uvicorn', 'tavern_rpg_engine:app', '--host', '127.0.0.1', '--port', String(SERVER_PORT)], {
+  serverProcess = spawn(python, ['tavern_rpg_engine.py'], {
     cwd: PROJECT_DIR,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
