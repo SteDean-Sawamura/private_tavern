@@ -349,6 +349,49 @@ STATE_TOOLS_SCHEMA = [
     }},
 ]
 
+# Stage 4a: NPC 关系推演工具 schema（工具调用模式替代自由文本 JSON）
+NPC_REACTION_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "update_npc_attitude",
+            "description": "更新NPC对玩家的态度变化",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "npc_id": {"type": "string"},
+                    "dimension": {"type": "string", "enum": ["trust", "affection", "fear", "overall"]},
+                    "change": {"type": "integer", "description": "变化值，正为增加负为减少"},
+                    "reason": {"type": "string"}
+                },
+                "required": ["npc_id", "dimension", "change", "reason"]
+            }
+        }
+    }
+]
+
+# Stage 5: 选项生成工具 schema
+CHOICES_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "add_choice",
+            "description": "添加一个玩家可选行动",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "选项ID如c1,c2,c3"},
+                    "text": {"type": "string", "description": "选项文本"},
+                    "hint": {"type": "string", "description": "可能后果提示"},
+                    "time_hint": {"type": "string", "description": "预计耗时如PT30M"},
+                    "risk": {"type": "string", "enum": ["safe", "moderate", "risky"]}
+                },
+                "required": ["id", "text"]
+            }
+        }
+    }
+]
+
 
 def _extract_reasoning(raw: str) -> str:
     """Extract content inside <think>...</think> tags. Returns empty string if none."""
@@ -413,6 +456,9 @@ class GameSession(
         self._4b_semaphore = asyncio.Semaphore(_settings.get("max_parallel_4b", 5))
         self._summary_fail_count = 0  # 摘要连续失败计数
         self._last_activity_time: float = 0.0  # 上次活跃时间戳（用于 play_time 计算）
+        # Stage 4a/5 工具调用模式的每轮缓冲
+        self._npc_reaction_tool_calls: list[dict] = []
+        self._choices_tool_calls: list[dict] = []
         # P1: 预构建 ID → 名称/对象的字典查找，避免每次行动 O(n) 扫列表
         self._location_by_id: dict = {
             loc["id"]: loc for loc in script.get("locations", [])

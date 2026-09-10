@@ -290,6 +290,7 @@ class PromptNarrativeMixin:
         prev_plot_decision: str = "",
         recent_narratives: list[dict] | None = None,
         event_sections: dict[str, str] | None = None,
+        recall_hints: list[str] | None = None,
     ) -> tuple[list[dict], str]:
         """Stage 1: 剧情决策器 - 只决定发生了什么，不写文学描写。"""
         loader = PromptLoader.get()
@@ -576,6 +577,8 @@ class PromptNarrativeMixin:
         if _manner_tags:
             _manner_hint = f"⚠ 行动方式: {'/'.join(set(_manner_tags))}（必须在骨架中体现，不可忽略）\n"
         action_text = f"{_manner_hint}{player_action}"
+        if recall_hints:
+            action_text += f"\n提示：本轮可能需要检索以下关键词：{'、'.join(recall_hints)}"
 
         # ─── 组装最终 XML 结构 ───
         sections = []

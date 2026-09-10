@@ -164,6 +164,119 @@ class ToolsMixin:
             content = content + "\n" + tool_context
         return content, tool_results
 
+    # ── Stage 4a/5 工具执行器（工具调用模式）──
+
+    _MAX_ATTITUDE_DELTA = 20
+    _VALID_ATTITUDE_DIMENSIONS = ("trust", "affection", "fear", "overall")
+
+    def _run_npc_reaction_tool(self, tool_name: str, args: dict) -> str:
+        """Validate an NPC reaction tool call. Does not mutate state; merging is separate.
+
+        Returns a short result string fed back to the model.
+        """
+        if tool_name != "update_npc_attitude":
+            return f"未知NPC工具: {tool_name}"
+
+        npc_id = args.get("npc_id", "")
+        if not npc_id:
+            return "错误: npc_id 为空，已忽略"
+        known = set(self._npc_by_id.keys()) | set(self.current_state.get("npcs", {}).keys())
+        if npc_id not in known:
+            return f"错误: 未知NPC ID '{npc_id}'，已忽略"
+
+        dimension = args.get("dimension", "")
+        if dimension not in self._VALID_ATTITUDE_DIMENSIONS:
+            return f"错误: 无效维度 '{dimension}'，已忽略"
+
+        change = args.get("change", 0)
+        if not isinstance(change, int):
+            return f"错误: change 必须为整数，已忽略"
+        clamped = max(-self._MAX_ATTITUDE_DELTA, min(self._MAX_ATTITUDE_DELTA, change))
+        note = "" if clamped == change else f"（原值 {change} 已钳制到 {clamped}）"
+
+        self._npc_reaction_tool_calls.append({
+            "npc_id": npc_id, "dimension": dimension,
+            "change": clamped, "reason": str(args.get("reason", "")),
+        })
+        return f"已记录 {npc_id} 的 {dimension} 变化: {clamped:+d}{note}"
+
+    def _run_choices_tool(self, tool_name: str, args: dict) -> str:
+        """Validate an add_choice tool call. Does not mutate state; merging is separate."""
+        if tool_name != "add_choice":
+            return f"未知选项工具: {tool_name}"
+
+        text = str(args.get("text", "")).strip()
+        if not text:
+            return "错误: text 为空，已忽略"
+
+        risk = args.get("risk", "")
+        if risk and risk not in ("safe", "moderate", "risky"):
+            risk = "moderate"
+
+        choice = {"id": str(args.get("id", "")).strip() or f"c{len(self._choices_tool_calls) + 1}", "text": text}
+        if args.get("hint"):
+            choice["hint"] = str(args["hint"])
+        if args.get("time_hint"):
+            choice["time_hint"] = str(args["time_hint"])
+        if risk:
+            choice["risk"] = risk
+
+        self._choices_tool_calls.append(choice)
+        return f"已添加选项 {choice['id']}: {text[:40]}"
+
+    def _reset_stage45_tool_buffers(self):
+        """Clear per-turn buffers used by Stage 4a/5 tool mode."""
+        self._npc_reaction_tool_calls = []
+        self._choices_tool_calls = []
+
+    async def _run_stage45_tools(self, msgs: list[dict], sys_prompt: str,
+                                 tools_schema: list[dict], *, max_tokens: int,
+                                 stage_key: str, label: str) -> list[dict]:
+        """Single-round tool call for Stage 4a/5. Returns the tool_calls list (may be empty).
+
+        The model registers its results via tool calls; no free-text answer is expected,
+        so the loop does not feed results back.
+        """
+        async def _call():
+            resp = await self.ai_provider.generate_with_tools(
+                msgs, system=sys_prompt or None, tools=tools_schema,
+                max_tokens=max_tokens, **self._stage_kwargs(stage_key),
+            )
+            return resp.get("tool_calls") or []
+        from engine.session.pipeline_mixin import _retry_on_failure
+        calls = await _retry_on_failure(_call, max_retries=1, label=label)
+        return calls or []
+
+    def _merge_npc_reaction_tool_results(self, parsed: dict) -> None:
+        """Merge buffered update_npc_attitude calls into parsed in npc_attitude_changes format."""
+        if not self._npc_reaction_tool_calls:
+            return
+        changes = parsed.setdefault("npc_attitude_changes", [])
+        seen = {(c.get("npc_id"), c.get("dimension")) for c in changes}
+        for call in self._npc_reaction_tool_calls:
+            key = (call["npc_id"], call["dimension"])
+            if key in seen:
+                continue
+            seen.add(key)
+            entry = {
+                "npc_id": call["npc_id"],
+                "change": call["change"],
+                "reason": call.get("reason", ""),
+            }
+            # "overall" 不属于三维关系维度，交由下游按默认维度处理
+            if call["dimension"] != "overall":
+                entry["dimension"] = call["dimension"]
+            changes.append(entry)
+
+    def _merge_choices_tool_results(self, parsed: dict) -> None:
+        """Merge buffered add_choice calls into parsed["choices"]."""
+        if not self._choices_tool_calls:
+            return
+        by_id = {}
+        for c in self._choices_tool_calls:
+            by_id[c["id"]] = c
+        parsed["choices"] = list(by_id.values())
+
     def _execute_tool_calls(self, text: str) -> tuple[str, list[dict]]:
         """Parse and execute [TOOL_CALL: ...] patterns in AI output.
 

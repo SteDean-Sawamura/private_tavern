@@ -904,67 +904,45 @@ class PipelineMixin:
         _use_npc_choices_tools = bool(_tools and _use_native_tools)
 
         if (_run_npc or _run_choices) and _use_npc_choices_tools:
-            # --- 工具调用路径：NPC反应/选项生成走结构化工具调用，无自由文本解析 ---
-            async def _run_stage45_tools(msgs, label, tools_schema, max_tokens, stage_key):
-                async def _call():
-                    resp = await self.ai_provider.generate_with_tools(
-                        msgs, system=(msgs_sys or None), tools=tools_schema,
-                        max_tokens=max_tokens, **self._stage_kwargs(stage_key),
-                    )
-                    return resp.get("tool_calls") or []
-                calls = await _retry_on_failure(_call, max_retries=1, label=label)
-                return calls or []
-
-            _45_coros = []
-            _45_labels = []
-            _45_specs = []  # (kind, tools_schema, max_tokens, stage_key)
-            _45_msgs_sys = []
+            # --- 工具调用路径：NPC反应/选项生成改为结构化工具调用，不走自由文本解析 ---
+            # 每个 stage 收集 (kind, msgs, sys_prompt, tools_schema, max_tokens, stage_key, label, critical)
+            _45_specs = []
 
             if _run_npc:
-                npc_msgs, npc_sys = self.prompt_builder.build_npc_reaction_prompt(
+                _npc_msgs, _npc_sys = self.prompt_builder.build_npc_reaction_prompt(
                     narrative, action_text, _state,
                     check_result=ctx.get("check_result"),
                     present_npc_ids=ctx.get("present_npc_ids"),
                     npc_history=npc_rag_context,
                     npc_lore=npc_filtered_lore,
                 )
-                _45_coros.append(None)  # placeholder, replaced below
-                _45_labels.append(("NPC关系推演", True))
-                _45_specs.append(("npc", NPC_REACTION_TOOLS, 4096, "state"))
+                _45_specs.append(("npc", _npc_msgs, _npc_sys, NPC_REACTION_TOOLS,
+                                  4096, "state", "NPC关系推演", True))
 
             _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
             if _run_choices:
-                choices_msgs, choices_sys = self.prompt_builder.build_choices_prompt(
+                _choices_msgs, _choices_sys = self.prompt_builder.build_choices_prompt(
                     narrative, action_text, _state,
                     turn_number=self.turn_number, activated_lore=ctx["activated_lore"],
                     story_hints=_story_hints, world_change_hints=_world_change_hints,
                     event_sections=ctx.get("event_sections"),
                     pc_discovered_lore=_state.get("pc_discovered_lore", []))
-                _45_labels.append(("选项生成", False))
-                _45_specs.append(("choices", CHOICES_TOOLS, 8192, "choices"))
+                _45_specs.append(("choices", _choices_msgs, _choices_sys, CHOICES_TOOLS,
+                                  8192, "choices", "选项生成", False))
             _state.pop("_nearby_npc_ids", None)
 
-            # 单轮工具调用（executor 只做验证与缓冲，无需多轮反馈）
             self._reset_stage45_tool_buffers()
-            _45_pending = []
-            if _run_npc:
-                _45_pending.append(("npc", npc_msgs, npc_sys))
-            if _run_choices:
-                _45_pending.append(("choices", choices_msgs, choices_sys))
-
-            _45_tool_results = await asyncio.gather(*[
-                self._generate_stage45_tools(msgs, sys_prompt, tools_schema,
-                                             max_tokens=max_tokens, stage_key=stage_key,
-                                             label=label)
-                for (kind, msgs, sys_prompt), (_, tools_schema, max_tokens, stage_key), (label, _crit) in zip(
-                    _45_pending, _45_specs, _45_labels,
-                )
+            _45_raw = await asyncio.gather(*[
+                self._run_stage45_tools(msgs, sys_prompt, tools_schema,
+                                        max_tokens=max_tokens, stage_key=stage_key, label=label)
+                for (_kind, msgs, sys_prompt, tools_schema, max_tokens, stage_key, label, _crit) in _45_specs
             ], return_exceptions=True)
 
-            for (kind, _m, _s), calls, (label, critical) in zip(_45_pending, _45_tool_results, _45_labels):
+            for (kind, _m, _s, _t, _mt, _sk, label, critical), calls in zip(_45_specs, _45_raw):
                 if isinstance(calls, BaseException):
-                    _warnings.append(f"{label}工具调用失败: {calls}" if critical else None)
                     logger.warning("%s工具调用失败: %s", label, calls)
+                    if critical:
+                        _warnings.append(f"{label}工具调用失败，本回合该部分变化可能未记录")
                     continue
                 for tc in calls:
                     if kind == "npc":

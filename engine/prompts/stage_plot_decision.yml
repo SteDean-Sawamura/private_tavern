@@ -51,6 +51,19 @@ system: |
   ✗ [行动结果] 主角拿走了文件藏进口袋 ← '拿走'是玩家未声明的操作
   ✓ [行动结果] 主角翻阅了文件内容
 
+  ## 工具使用指导
+
+  你可以使用以下工具按需获取信息：
+  - recall_history: 当玩家行动涉及过去的事件、承诺或约定时使用
+  - query_lorebook: 当需要查阅世界设定、地点规则、NPC 背景时使用
+  - query_npc_history: 当需要了解与特定NPC的互动历史时使用
+
+  判断准则：
+  - 简单日常行动（走路、吃饭、休息）：不需要检索
+  - 涉及特定NPC/地点/事件的行动：使用对应工具
+  - 涉及过去承诺或伏笔的行动：使用 recall_history
+  - 进入新地点或遇到新NPC：使用 query_lorebook
+
   # 以下为动态追加段落（根据条件注入）:
   # - 若 has_events=False and has_dice=False and has_npcs=False:
   #   追加 "## 本轮回合类型：日常/独处" 段落
