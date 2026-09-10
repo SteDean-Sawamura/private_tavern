@@ -9,7 +9,7 @@ echo   ================================
 echo.
 
 if not exist "bar\Scripts\python.exe" (
-    echo   [!!] Virtual env not found. Creating...
+    echo   [..] Creating virtual environment...
     python -m venv bar
     if errorlevel 1 (
         echo   [!!] Failed to create venv
@@ -24,10 +24,9 @@ if not exist "bar\Scripts\python.exe" (
 echo   [OK] Starting server...
 echo.
 
-:: 检查端口是否被占用
-netstat -ano | findstr ":8000.*LISTEN" >nul 2>&1
-if %ERRORLEVEL% equ 0 (
-    echo   [!!] Port 8000 is in use. Killing old process...
+netstat -ano 2>nul | findstr ":8000.*LISTEN" >nul 2>&1
+if not errorlevel 1 (
+    echo   [..] Clearing port 8000...
     for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8000.*LISTEN"') do taskkill /f /pid %%p >nul 2>&1
     timeout /t 1 /nobreak >nul
 )
