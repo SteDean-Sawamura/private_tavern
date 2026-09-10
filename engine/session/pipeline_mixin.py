@@ -18,6 +18,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+async def _retry_on_failure(coro_factory, max_retries=1, label=""):
+    """重试异步调用。coro_factory 是返回协程的无参函数。"""
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            result = await coro_factory()
+            if attempt > 0:
+                logger.info('[重试] %s 第%d次重试成功', label, attempt)
+            return result
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                logger.warning('[重试] %s 失败 (%s)，重试中...', label, e)
+            else:
+                logger.warning('[失败] %s 重试%d次后仍失败: %s', label, max_retries, e)
+    return None
+
+
 def _extract_reasoning(raw: str) -> str:
     """Extract content inside <think>...</think> tags. Returns empty string if none."""
     if not raw:
@@ -432,6 +450,9 @@ class PipelineMixin:
 
         # Start compose context build in parallel with Stage 2
         _scope = route.get("scope", "moderate")
+        _skip_state = route.get("skip_state_settlement", False)
+        _skip_npc_reaction = route.get("skip_npc_reaction", False)
+        _skip_choices = route.get("skip_choices", False)
         _compose_ctx_task = asyncio.create_task(
             self._build_compose_context(plot_decision, ctx, scope=_scope, state=_state)
         )
@@ -612,7 +633,7 @@ class PipelineMixin:
 
             # 4b parallel prompts/tasks only needed in fallback (non-tool) path
             _4b_tasks = []
-            if not _use_state_tools:
+            if not _use_state_tools and not _skip_state:
                 res_msgs, res_sys = self.prompt_builder.build_world_state_resource_prompt(
                     "", action_text, _state,
                     check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
@@ -705,7 +726,7 @@ class PipelineMixin:
             yield {"type": "narrative_revised", "content": narrative}
 
         # Stage 4b-temporal: 延迟到叙事完成后（仅 fallback 路径）
-        if not _use_state_tools:
+        if not _use_state_tools and not _skip_state:
             tmp_msgs, tmp_sys = self.prompt_builder.build_world_state_temporal_prompt(
                 narrative, action_text, _state,
                 check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
@@ -771,7 +792,12 @@ class PipelineMixin:
                     logger.warning("叙事重试失败: %s", e)
 
         # 汇合 Stage 4b 结果
-        if _use_state_tools:
+        if _skip_state:
+            print("[Route skip] skip_state_settlement=True → 跳过 Stage 4 状态推演")
+            logger.info("[Route skip] skip_state_settlement=True → 跳过 Stage 4 状态推演")
+            parsed = self.response_parser._empty_result()
+            parsed["narrative"] = narrative.strip()
+        elif _use_state_tools:
             # 工具调用路径：单次调用替代 5 路并行
             try:
                 parsed = await self._execute_state_settlement(
@@ -832,7 +858,17 @@ class PipelineMixin:
             if _sh_parts:
                 _story_hints = "\n\n## 活跃剧情线（至少1个选项应与此相关）\n" + "\n".join(_sh_parts)
 
-        # --- Stage 4a ‖ Stage 5 并行 ---
+        # --- Stage 4a ‖ Stage 5 并行（可由路由跳过）---
+        _run_npc = not _skip_npc_reaction
+        _run_choices = not _skip_choices
+
+        if _skip_npc_reaction:
+            print("[Route skip] skip_npc_reaction=True → 跳过 Stage 4a NPC反应")
+            logger.info("[Route skip] skip_npc_reaction=True → 跳过 Stage 4a NPC反应")
+        if _skip_choices:
+            print("[Route skip] skip_choices=True → 跳过 Stage 5 选项生成")
+            logger.info("[Route skip] skip_choices=True → 跳过 Stage 5 选项生成")
+
         npc_lore_ids = set()
         _present_npc_ids = ctx.get("present_npc_ids", [])
         for nid in _present_npc_ids:
@@ -851,46 +887,66 @@ class PipelineMixin:
             _npc_dir = "## 当前剧情线NPC指令\n" + "\n".join(_sd_npc)
             npc_rag_context = (npc_rag_context + "\n" + _npc_dir).strip() if npc_rag_context else _npc_dir
 
-        npc_msgs, npc_sys = self.prompt_builder.build_npc_reaction_prompt(
-            narrative, action_text, _state,
-            check_result=ctx.get("check_result"),
-            present_npc_ids=ctx.get("present_npc_ids"),
-            npc_history=npc_rag_context,
-            npc_lore=npc_filtered_lore,
-        )
-        _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
-        choices_msgs, choices_sys = self.prompt_builder.build_choices_prompt(
-            narrative, action_text, _state,
-            turn_number=self.turn_number, activated_lore=ctx["activated_lore"],
-            story_hints=_story_hints, world_change_hints=_world_change_hints,
-            event_sections=ctx.get("event_sections"),
-            pc_discovered_lore=_state.get("pc_discovered_lore", []))
-        _state.pop("_nearby_npc_ids", None)
+        raw_npc = ""
+        raw_choices = ""
 
-        _4a5_raw = await asyncio.gather(
-            self.ai_provider.generate(npc_msgs, system=npc_sys, max_tokens=4096, **self._stage_kwargs("state")),
-            self.ai_provider.generate(choices_msgs, system=choices_sys, max_tokens=8192, **self._stage_kwargs("choices")),
-            return_exceptions=True,
-        )
-        [raw_npc, raw_choices], _4a5_warns = self._sanitize_gather_results(
-            _4a5_raw, [("NPC关系推演", True), ("选项生成", False)],
-        )
-        _warnings.extend(_4a5_warns)
+        if _run_npc or _run_choices:
+            _4a5_coros = []
+            _4a5_labels = []
+
+            if _run_npc:
+                npc_msgs, npc_sys = self.prompt_builder.build_npc_reaction_prompt(
+                    narrative, action_text, _state,
+                    check_result=ctx.get("check_result"),
+                    present_npc_ids=ctx.get("present_npc_ids"),
+                    npc_history=npc_rag_context,
+                    npc_lore=npc_filtered_lore,
+                )
+                _4a5_coros.append(self.ai_provider.generate(npc_msgs, system=npc_sys, max_tokens=4096, **self._stage_kwargs("state")))
+                _4a5_labels.append(("NPC关系推演", True))
+
+            _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
+            if _run_choices:
+                choices_msgs, choices_sys = self.prompt_builder.build_choices_prompt(
+                    narrative, action_text, _state,
+                    turn_number=self.turn_number, activated_lore=ctx["activated_lore"],
+                    story_hints=_story_hints, world_change_hints=_world_change_hints,
+                    event_sections=ctx.get("event_sections"),
+                    pc_discovered_lore=_state.get("pc_discovered_lore", []))
+                _4a5_coros.append(self.ai_provider.generate(choices_msgs, system=choices_sys, max_tokens=8192, **self._stage_kwargs("choices")))
+                _4a5_labels.append(("选项生成", False))
+            _state.pop("_nearby_npc_ids", None)
+
+            _4a5_raw = await asyncio.gather(*_4a5_coros, return_exceptions=True)
+            _4a5_results, _4a5_warns = self._sanitize_gather_results(_4a5_raw, _4a5_labels)
+            _warnings.extend(_4a5_warns)
+
+            idx = 0
+            if _run_npc:
+                raw_npc = _4a5_results[idx]
+                idx += 1
+            if _run_choices:
+                raw_choices = _4a5_results[idx]
+        else:
+            _state["_nearby_npc_ids"] = ctx.get("nearby_npc_ids", [])
+            _state.pop("_nearby_npc_ids", None)
 
         # merge NPC results into parsed
-        npc_parsed = self.response_parser.parse_npc_reaction(raw_npc)
-        for k, v in npc_parsed.items():
-            if k == "scene_details" and parsed.get("scene_details"):
-                sd = parsed["scene_details"]
-                if isinstance(v, dict):
-                    if v.get("npc_expressions"):
-                        sd.setdefault("npc_expressions", v["npc_expressions"])
-                    if v.get("pending_tension"):
-                        sd.setdefault("pending_tension", v["pending_tension"])
-            else:
-                parsed[k] = v
+        if raw_npc:
+            npc_parsed = self.response_parser.parse_npc_reaction(raw_npc)
+            for k, v in npc_parsed.items():
+                if k == "scene_details" and parsed.get("scene_details"):
+                    sd = parsed["scene_details"]
+                    if isinstance(v, dict):
+                        if v.get("npc_expressions"):
+                            sd.setdefault("npc_expressions", v["npc_expressions"])
+                        if v.get("pending_tension"):
+                            sd.setdefault("pending_tension", v["pending_tension"])
+                else:
+                    parsed[k] = v
 
-        parsed["choices"] = self.response_parser.parse_choices(raw_choices)
+        if raw_choices:
+            parsed["choices"] = self.response_parser.parse_choices(raw_choices)
 
         if not parsed.get("choices"):
             parsed["choices"] = self._generate_context_choices()

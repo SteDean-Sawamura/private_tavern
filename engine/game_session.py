@@ -672,7 +672,12 @@ class GameSession(
             '"focus_npcs":["填写npc_id（英文ID），不要填中文名"],'
             '"skill_check":{"needed":true/false,"attr":"从角色属性中选择最相关的","difficulty":"easy|medium|hard|extreme"},'
             '"expand_story":true/false,'
-            '"generate_image":true/false}'
+            '"generate_image":true/false,'
+            '"skip_state_settlement":true/false,'
+            '"skip_npc_reaction":true/false,'
+            '"skip_choices":true/false,'
+            '"context_depth":"minimal|normal|deep",'
+            '"recall_hints":["关键词1","关键词2"]}'
             "\n\nskill_check规则：\n"
             "- 日常对话、简单移动、等待、休息等不需要检定(needed:false)\n"
             "- 有风险或挑战性的行动需要检定(needed:true)，如潜行、说服、战斗、调查、偷窃等\n"
@@ -682,7 +687,24 @@ class GameSession(
             "- 日常行动、推进中的剧情尚未完结时 → false\n\n"
             "generate_image规则：\n"
             "- 场景发生明显视觉变化时生成图像(true)：进入新地点、战斗场面、重大事件、环境剧变、初次见面\n"
-            "- 纯对话、等待、思考、小幅移动、重复场景等无明显视觉变化时不生成(false)"
+            "- 纯对话、等待、思考、小幅移动、重复场景等无明显视觉变化时不生成(false)\n\n"
+            "skip_state_settlement规则：\n"
+            "- 纯对话、信息查询、观察环境等不改变任何游戏状态的行动 → true\n"
+            "- 涉及物品获取/消耗、属性变化、位置移动、时间推进等 → false\n\n"
+            "skip_npc_reaction规则：\n"
+            "- 在场NPC为空或行动完全不涉及NPC → true\n"
+            "- 有NPC在场且行动可能影响NPC态度/关系 → false\n\n"
+            "skip_choices规则：\n"
+            "- 玩家正在执行连续多步动作（如计划中的步骤）、或行动结果明确无需选择 → true\n"
+            "- 需要玩家做出决策、或场景自然产生多种可能性 → false\n\n"
+            "context_depth规则：\n"
+            "- minimal: 简单日常行动，不需要大量历史上下文\n"
+            "- normal: 一般互动，标准上下文量\n"
+            "- deep: 涉及复杂剧情线、历史伏笔、多NPC关系等需要丰富上下文\n\n"
+            "recall_hints规则：\n"
+            "- 列出1-3个关键词，用于Stage 1检索相关历史记录\n"
+            "- 应包含行动涉及的核心概念：地名、NPC名、物品名、事件名等\n"
+            "- 如无特别需要检索的内容，返回空数组[]"
         )
         # Feature #3: Plan awareness in route
         plan = self.current_state.get("pending_plan")
