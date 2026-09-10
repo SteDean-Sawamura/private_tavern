@@ -161,6 +161,7 @@ class RegenerateMixin:
                 if item["type"] == "pipeline_result":
                     raw_narrative = item["narrative"]
                     parsed = item["parsed"]
+                    parsed["narrative"] = raw_narrative
                     regen_plot_reasoning = item.get("plot_reasoning", "")
                     plot_decision = item.get("plot_decision", "")
                     break
