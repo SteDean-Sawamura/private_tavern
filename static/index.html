@@ -14,6 +14,7 @@
             <span id="header-subtitle" class="subtitle">AI互动文字游戏</span>
         </div>
         <div class="header-right">
+            <button id="pipeline-mode-btn" onclick="togglePipelineMode()" title="切换推演模式" style="background:none;border:1px solid var(--border-color,#333);color:var(--text-muted,#888);padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;">⚡ workflow</button>
             <a href="/shell" title="统一视图" style="color:var(--text-muted);text-decoration:none;font-size:12px;">⬡ 统一视图</a>
             <span id="game-time" class="game-time"></span>
             <span id="weather-badge" class="weather-badge"></span>
@@ -1077,5 +1078,36 @@
     <script src="/static/js/story_tree_view.js"></script>
     <script src="/static/js/story_tree_editor.js"></script>
     <script src="/static/js/script_builder.js"></script>
+    <script>
+    // Pipeline mode toggle
+    async function togglePipelineMode() {
+      const btn = document.getElementById('pipeline-mode-btn');
+      try {
+        const res = await fetch('/api/config/pipeline-mode');
+        const data = await res.json();
+        const newMode = data.mode === 'workflow' ? 'agentic' : 'workflow';
+        await fetch('/api/config/pipeline-mode', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({mode: newMode}),
+        });
+        updatePipelineModeBtn(newMode);
+      } catch(e) { console.error('mode toggle failed:', e); }
+    }
+    function updatePipelineModeBtn(mode) {
+      const btn = document.getElementById('pipeline-mode-btn');
+      if (!btn) return;
+      if (mode === 'agentic') {
+        btn.textContent = '🤖 agentic';
+        btn.style.borderColor = '#9a622f';
+        btn.style.color = '#a66b35';
+      } else {
+        btn.textContent = '⚡ workflow';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
+    }
+    fetch('/api/config/pipeline-mode').then(r=>r.json()).then(d=>updatePipelineModeBtn(d.mode)).catch(()=>{});
+    </script>
 </body>
 </html>
