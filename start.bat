@@ -23,6 +23,15 @@ if not exist "bar\Scripts\python.exe" (
 
 echo   [OK] Starting server...
 echo.
+
+:: 检查端口是否被占用
+netstat -ano | findstr ":8000.*LISTEN" >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    echo   [!!] Port 8000 is in use. Killing old process...
+    for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8000.*LISTEN"') do taskkill /f /pid %%p >nul 2>&1
+    timeout /t 1 /nobreak >nul
+)
+
 echo   Shell:  http://127.0.0.1:8000/shell
 echo   Chat:   http://127.0.0.1:8000
 echo   RPG:    http://127.0.0.1:8000/rpg
