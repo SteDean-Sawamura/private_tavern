@@ -136,6 +136,207 @@ GAME_TOOLS_SCHEMA = [
             "value": {"type": "string", "description": "\u53d8\u91cf\u503c"},
         }, "required": ["name", "value"]},
     }},
+    # --- P1 \u4e0a\u4e0b\u6587 Pull \u5de5\u5177 ---
+    {"type": "function", "function": {
+        "name": "recall_history",
+        "description": "\u641c\u7d22\u5386\u53f2\u5bf9\u8bdd\u8bb0\u5f55\uff0c\u8fd4\u56de\u76f8\u5173\u56de\u5408\u7684\u6458\u8981",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "\u641c\u7d22\u5173\u952e\u8bcd"},
+            "max_results": {"type": "integer", "description": "\u6700\u591a\u8fd4\u56de\u6761\u6570", "default": 5},
+        }, "required": ["query"]},
+    }},
+    {"type": "function", "function": {
+        "name": "query_lorebook",
+        "description": "\u6309\u5173\u952e\u8bcd\u67e5\u8be2\u4e16\u754c\u4e66\u77e5\u8bc6\u6761\u76ee",
+        "parameters": {"type": "object", "properties": {
+            "keyword": {"type": "string", "description": "\u641c\u7d22\u8bcd"},
+        }, "required": ["keyword"]},
+    }},
+    {"type": "function", "function": {
+        "name": "query_npc_history",
+        "description": "\u67e5\u8be2\u4e0e\u7279\u5b9aNPC\u7684\u4e92\u52a8\u5386\u53f2",
+        "parameters": {"type": "object", "properties": {
+            "npc_name": {"type": "string", "description": "NPC\u540d\u79f0"},
+            "max_turns": {"type": "integer", "description": "\u6700\u8fd1\u51e0\u8f6e", "default": 5},
+        }, "required": ["npc_name"]},
+    }},
+]
+
+# P2: 叙事生成工具 schema（Stage 2+3 合并后的辅助工具调用）
+NARRATIVE_TOOLS_SCHEMA = [
+    {"type": "function", "function": {
+        "name": "set_atmosphere",
+        "description": "设置场景氛围效果",
+        "parameters": {"type": "object", "properties": {
+            "weather": {"type": "string", "description": "天气"},
+            "lighting": {"type": "string", "description": "光照"},
+            "sounds": {"type": "string", "description": "环境音"},
+            "mood": {"type": "string", "description": "整体氛围基调"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "set_scene_image",
+        "description": "触发场景图片生成",
+        "parameters": {"type": "object", "properties": {
+            "prompt": {"type": "string", "description": "图片描述（英文）"},
+            "style": {"type": "string", "enum": ["realistic", "anime", "pixel"], "description": "风格"},
+        }, "required": ["prompt"]},
+    }},
+]
+
+# Stage 4: 状态推演工具 schema（单次工具调用替代 5 路并行 LLM）
+STATE_TOOLS_SCHEMA = [
+    {"type": "function", "function": {
+        "name": "update_resources",
+        "description": "更新角色属性、物品、持续状态、胜负判定",
+        "parameters": {"type": "object", "properties": {
+            "state_changes": {
+                "type": "array",
+                "description": '属性变更。每项: {"target":"player.属性名","op":"add|subtract|set","value":数值,"reason":"原因(add/subtract时必填)"}。也可修改NPC属性: target="npcs.{npc_id}.字段名" op="set"',
+                "items": {"type": "object", "properties": {
+                    "target": {"type": "string"}, "op": {"type": "string", "enum": ["add", "subtract", "set"]},
+                    "value": {}, "reason": {"type": "string"},
+                }, "required": ["target", "op", "value"]},
+            },
+            "inventory_changes": {
+                "type": "array",
+                "description": '物品变更。每项: {"item":"物品名","action":"add|remove","quantity":1,"description":"可选"}。add限制：只能添加叙事中明确描写获取的物品',
+                "items": {"type": "object", "properties": {
+                    "item": {"type": "string"}, "action": {"type": "string", "enum": ["add", "remove"]},
+                    "quantity": {"type": "integer", "default": 1}, "description": {"type": "string"},
+                }, "required": ["item", "action"]},
+            },
+            "activate_states": {
+                "type": "array",
+                "description": '激活持续状态。每项: {"id":"状态ID","name":"中文显示名称（必填）","description":"一句话描述"}',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"},
+                }, "required": ["id", "name"]},
+            },
+            "deactivate_states": {
+                "type": "array", "description": "要移除的状态ID列表",
+                "items": {"type": "string"},
+            },
+            "game_over": {
+                "type": "object", "description": '游戏结束时填写: {"reason":"","ending_type":""}',
+                "properties": {"reason": {"type": "string"}, "ending_type": {"type": "string"}},
+            },
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "update_spatial",
+        "description": "更新位置移动、地点发现、NPC位置、房间、场景描写",
+        "parameters": {"type": "object", "properties": {
+            "location_change": {
+                "type": "string",
+                "description": "玩家回合结束时所在位置ID（必须从已知地点列表复制，未移动则省略）",
+            },
+            "reveal_locations": {
+                "type": "array", "description": '新发现地点: [{"id":"位置ID","name":"显示名称"}]',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "name": {"type": "string"},
+                }, "required": ["id", "name"]},
+            },
+            "npc_location_changes": {
+                "type": "array",
+                "description": '本回合在场NPC位置变动: [{"npc_id":"","new_location":"位置ID","reason":"原因"}]',
+                "items": {"type": "object", "properties": {
+                    "npc_id": {"type": "string"}, "new_location": {"type": "string"}, "reason": {"type": "string"},
+                }, "required": ["npc_id", "new_location"]},
+            },
+            "room_changes": {
+                "type": "array",
+                "description": '同一建筑内房间级移动: [{"id":"npc_id或player","new_room":"房间名","reason":"原因"}]',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "new_room": {"type": "string"}, "reason": {"type": "string"},
+                }, "required": ["id", "new_room"]},
+            },
+            "scene_details": {
+                "type": "object",
+                "description": '场景描写: {"atmosphere":"","sensory":"","key_objects":[],"physical":{"lighting":"","floor":"","spatial_note":""}}',
+                "properties": {
+                    "atmosphere": {"type": "string"}, "sensory": {"type": "string"},
+                    "key_objects": {"type": "array", "items": {"type": "string"}},
+                    "physical": {"type": "object", "properties": {
+                        "lighting": {"type": "string"}, "floor": {"type": "string"}, "spatial_note": {"type": "string"},
+                    }},
+                },
+            },
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "update_time",
+        "description": "更新游戏时间（end_time）",
+        "parameters": {"type": "object", "properties": {
+            "end_time": {
+                "type": "string",
+                "description": "叙事文本最后一句描写对应的时刻，ISO 8601格式（如1979-10-26T10:00:00）。必填。严格对齐叙事末尾时间点",
+            },
+        }, "required": ["end_time"]},
+    }},
+    {"type": "function", "function": {
+        "name": "update_world",
+        "description": "更新宏观世界级变量（戒严等级、势力影响等），不写物件状态",
+        "parameters": {"type": "object", "properties": {
+            "world_property_changes": {
+                "type": "array",
+                "description": '世界属性变更: [{"id":"属性ID","value":"新值"}]。只写宏观世界级变量，不写物件状态（台灯/门窗等属于scene_details）',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "value": {"type": "string"},
+                }, "required": ["id", "value"]},
+            },
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "update_extended",
+        "description": "更新离场NPC动态、新NPC注册、阵营声望、道德维度、同伴变动",
+        "parameters": {"type": "object", "properties": {
+            "offscreen_npc_updates": {
+                "type": "array",
+                "description": '离场NPC动态（最多2-3个）: [{"name":"NPC中文全名","action":"简述行动","location":"当前位置"}]',
+                "items": {"type": "object", "properties": {
+                    "name": {"type": "string"}, "action": {"type": "string"}, "location": {"type": "string"},
+                }, "required": ["name", "action"]},
+            },
+            "new_npcs": {
+                "type": "array",
+                "description": '新NPC注册（叙事中有名有姓、有台词或具体互动的非预设角色必须注册）',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string", "description": "英文蛇形ID"},
+                    "name": {"type": "string", "description": "完整全名"},
+                    "title": {"type": "string"}, "bio": {"type": "string"},
+                    "personality": {"type": "string"}, "location": {"type": "string"},
+                    "trust": {"type": "integer"}, "affection": {"type": "integer"}, "fear": {"type": "integer"},
+                }, "required": ["id", "name", "location"]},
+            },
+            "faction_reputation_changes": {
+                "type": "array",
+                "description": '阵营声望变化: [{"faction_id":"","change":±数值,"reason":""}]（±1到±15）',
+                "items": {"type": "object", "properties": {
+                    "faction_id": {"type": "string"}, "change": {"type": "integer"}, "reason": {"type": "string"},
+                }, "required": ["faction_id", "change"]},
+            },
+            "moral_alignment_changes": {
+                "type": "array",
+                "description": '道德维度影响: [{"axis":"mercy_vs_cruelty|honesty_vs_deception|order_vs_chaos","change":±数值,"reason":""}]（±1到±15）',
+                "items": {"type": "object", "properties": {
+                    "axis": {"type": "string"}, "change": {"type": "integer"}, "reason": {"type": "string"},
+                }, "required": ["axis", "change"]},
+            },
+            "recruit_companions": {
+                "type": "array", "description": "加入队伍的NPC ID列表",
+                "items": {"type": "string"},
+            },
+            "dismiss_companions": {
+                "type": "array", "description": "离队的NPC ID列表",
+                "items": {"type": "string"},
+            },
+            "invalidate_lore": {
+                "type": "array", "description": "要废止的知识词条ID列表",
+                "items": {"type": "string"},
+            },
+        }},
+    }},
 ]
 
 
@@ -3564,57 +3765,12 @@ class GameSession:
             self._build_compose_context(plot_decision, ctx, scope=_scope, state=_state)
         )
 
-        # --- Stage 2: 环境渲染 ‖ 角色行为（自适应）---
-        _scene_type = route.get("scene_type", "")
-        _skip_env = _scene_type in ("social", "rest") or route.get("scope") == "minor"
-        if route.get("scope") == "minor":
-            env_text = ""
-            char_text = ""
-        else:
-            if _skip_env:
-                env_text = ""
-            else:
-                env_msgs, env_sys = self.prompt_builder.build_env_render_prompt(
-                    plot_decision, _state
-                )
-                _sd_env = ctx.get("stage_directives", {}).get("env")
-                if _sd_env and env_msgs:
-                    env_msgs[-1]["content"] += "\n\n## 环境剧情线指令\n" + "\n".join(_sd_env)
-                try:
-                    raw_env = await self.ai_provider.generate(env_msgs, system=env_sys, max_tokens=8192, **self._stage_kwargs("narrative"))
-                except Exception as _env_err:
-                    logger.warning("环境渲染失败: %s", _env_err)
-                    raw_env = ""
-                env_text = strip_think_tags(raw_env) if raw_env else ""
-            char_msgs, char_sys = self.prompt_builder.build_character_action_prompt(
-                plot_decision, _state,
-                present_npc_ids=ctx.get("present_npc_ids"),
-                dice_results=ctx.get("dice_dicts"),
-                check_result=ctx.get("check_result"),
-                triggered_events=ctx.get("triggered_events"),
-                triggered_consequences=ctx.get("triggered_consequences"),
-            )
-            _sd_char = ctx.get("stage_directives", {}).get("char")
-            if _sd_char and char_msgs:
-                char_msgs[-1]["content"] += "\n\n## 角色剧情线指令\n" + "\n".join(_sd_char)
-            if env_text and char_msgs:
-                _env_brief = env_text[:150]
-                char_msgs[-1]["content"] += f"\n\n== 已确定的环境描写（角色行为须与之一致）==\n{_env_brief}"
-            try:
-                raw_char = await self.ai_provider.generate(char_msgs, system=char_sys, max_tokens=8192, **self._stage_kwargs("narrative"))
-            except Exception as _char_err:
-                logger.warning("角色行为失败: %s", _char_err)
-                raw_char = ""
-            char_text = strip_think_tags(raw_char) if raw_char else ""
-
-        # --- Stage 3: 叙事润色整合 ---
+        # Shared pre-computation for Stage 2/3
         recent_openings = []
         for node in ctx.get("recent_nodes", [])[-3:]:
             resp = node.get("ai_response", "")
             if resp:
                 recent_openings.append(resp[:20])
-
-        compose_history = await _compose_ctx_task
 
         _prev_ending_type = ""
         if _prev_tail:
@@ -3628,118 +3784,248 @@ class GameSession:
             else:
                 _prev_ending_type = "画面定格"
 
-        compose_msgs, compose_sys = self.prompt_builder.build_narrative_compose_prompt(
-            plot_decision, env_text, char_text, _state, recent_openings,
-            missing_env=not env_text, missing_char=not char_text,
-            history_context=compose_history,
-            prev_narrative_tail=_prev_tail,
-            scene_type=route.get("scene_type", ""),
-            prev_ending_type=_prev_ending_type,
-            authors_note=self.authors_note,
-            action_text=action_text,
-            negative_prompt=self.negative_prompt,
-            logit_bias_hint=self._build_logit_bias_hint(),
-            scope=route.get("scope", "moderate"),
-            estimated_minutes=ctx.get("estimated_minutes", 30),
-            event_sections=ctx.get("event_sections"),
-        )
-        _pc_disc = _state.get("pc_discovered_lore", [])
-        _vis_lore = Lorebook.filter_by_visibility(ctx["activated_lore"], "pc", _pc_disc)
-        compose_msgs = self.prompt_builder.inject_depth_lore(compose_msgs, _vis_lore)
         _nearby_hint = self.prompt_builder.build_nearby_npc_hint(ctx.get("nearby_npc_ids", []), _state)
-        if _nearby_hint and compose_msgs:
-            compose_msgs[-1]["content"] += _nearby_hint
+        _use_merged_narrative = _use_native_tools  # P2: 合并 Stage 2+3 当工具调用可用时
 
-        # --- Stage 3 ‖ 4b parallel launch ---
-        _active_sys = route.get("systems") or None
-        _check_res = ctx.get("check_result")
+        if _use_merged_narrative:
+            # --- Stage 2+3 合并：单次叙事生成（工具调用模式）---
+            compose_history = await _compose_ctx_task
 
-        res_msgs, res_sys = self.prompt_builder.build_world_state_resource_prompt(
-            "", action_text, _state,
-            check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
-        )
-        spa_msgs, spa_sys = self.prompt_builder.build_world_state_spatial_prompt(
-            "", action_text, _state,
-            check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
-        )
-        wld_msgs, wld_sys = self.prompt_builder.build_world_state_world_prompt(
-            "", action_text, _state,
-            check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
-        )
-        ext_msgs, ext_sys = self.prompt_builder.build_world_state_ext_prompt(
-            "", action_text, _state,
-            check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
-            event_sections=ctx.get("event_sections"),
-        )
+            narrative_msgs, narrative_sys = self.prompt_builder.build_narrative_prompt(
+                ctx, plot_decision, route, _state,
+                recent_openings=recent_openings,
+                history_context=compose_history,
+                prev_narrative_tail=_prev_tail,
+                prev_ending_type=_prev_ending_type,
+                authors_note=self.authors_note,
+                action_text=action_text,
+                negative_prompt=self.negative_prompt,
+                logit_bias_hint=self._build_logit_bias_hint(),
+                estimated_minutes=ctx.get("estimated_minutes", 30),
+                event_sections=ctx.get("event_sections"),
+            )
+            # Inject lorebook and nearby NPC hints
+            _pc_disc = _state.get("pc_discovered_lore", [])
+            _vis_lore = Lorebook.filter_by_visibility(ctx["activated_lore"], "pc", _pc_disc)
+            narrative_msgs = self.prompt_builder.inject_depth_lore(narrative_msgs, _vis_lore)
+            if _nearby_hint and narrative_msgs:
+                narrative_msgs[-1]["content"] += _nearby_hint
+            # Inject stage directives
+            _sd_env = ctx.get("stage_directives", {}).get("env")
+            _sd_char = ctx.get("stage_directives", {}).get("char")
+            _extra_directives = []
+            if _sd_env:
+                _extra_directives.append("## 环境剧情线指令\n" + "\n".join(_sd_env))
+            if _sd_char:
+                _extra_directives.append("## 角色剧情线指令\n" + "\n".join(_sd_char))
+            if _extra_directives and narrative_msgs:
+                narrative_msgs[-1]["content"] += "\n\n" + "\n\n".join(_extra_directives)
 
-        # stage directives → resource
-        _sd_world = ctx.get("stage_directives", {}).get("world")
-        if _sd_world and wld_msgs:
-            wld_msgs[-1]["content"] += "\n\n## 当前剧情线指令\n" + "\n".join(_sd_world)
-        # time_guidance for temporal (deferred until after narrative is ready)
-        _old_time = ctx.get("old_time", "")
-        # lorebook context → resource
-        _core_lore = self._build_lore_context_for_core(ctx.get("activated_lore", []))
-        if _core_lore and res_msgs:
-            res_msgs[-1]["content"] += _core_lore
-        # nearby NPC hint → spatial (reuse cached _nearby_hint from Stage 3)
-        if _nearby_hint and spa_msgs:
-            spa_msgs[-1]["content"] += _nearby_hint
-        # story context → ext
-        _story_ctx = self.prompt_builder._build_story_context_section(_state)
-        if _story_ctx and ext_msgs:
-            ext_msgs[-1]["content"] += f"\n\n{_story_ctx}"
+            env_text = ""
+            char_text = ""
 
-        # Launch 4b tasks (concurrency limited by _4b_semaphore)
-        async def _4b_gen(msgs, sys_prompt):
-            async with self._4b_semaphore:
-                return await self.ai_provider.generate(msgs, system=sys_prompt, max_tokens=4096, **self._stage_kwargs("state"))
+            # Variables needed by post-narrative code (Stage 4b-temporal, review, state settlement)
+            _use_state_tools = True  # merged path always uses state tools
+            _active_sys = route.get("systems") or None
+            _check_res = ctx.get("check_result")
+            _old_time = ctx.get("old_time", "")
+            compose_msgs = narrative_msgs  # for review retry reuse
+            compose_sys = narrative_sys
 
-        _4b_res_task = asyncio.create_task(_4b_gen(res_msgs, res_sys))
-        _4b_spa_task = asyncio.create_task(_4b_gen(spa_msgs, spa_sys))
-        _4b_wld_task = asyncio.create_task(_4b_gen(wld_msgs, wld_sys))
-        _4b_ext_task = asyncio.create_task(_4b_gen(ext_msgs, ext_sys))
-        _4b_tasks = [_4b_res_task, _4b_spa_task, _4b_wld_task, _4b_ext_task]
+            async def _4b_gen(msgs, sys_prompt):
+                async with self._4b_semaphore:
+                    return await self.ai_provider.generate(msgs, system=sys_prompt, max_tokens=4096, **self._stage_kwargs("state"))
 
-        # Stage 3: narrative generation (streaming or non-streaming)
-        _narrative_reasoning = ""
-        try:
-            if streaming:
-                full_narrative = ""
-                _think_parts = []
-                raw_stream = self.ai_provider.generate_stream(
-                    compose_msgs, system=compose_sys, raw=True, **self._stage_kwargs("narrative")
+            # 合并叙事生成（工具调用模式不流式，等完整响应）
+            _narrative_reasoning = ""
+            _4b_tasks = []
+            try:
+                resp = await self.ai_provider.generate_with_tools(
+                    narrative_msgs, system=narrative_sys,
+                    tools=NARRATIVE_TOOLS_SCHEMA,
+                    max_tokens=8192, **self._stage_kwargs("narrative")
                 )
-                async for msg_type, chunk in stream_split_think(raw_stream):
-                    if msg_type == "think":
-                        _think_parts.append(chunk)
-                        yield {"type": "thinking", "content": chunk}
-                    else:
-                        full_narrative += chunk
-                        yield {"type": "text", "content": chunk}
-                narrative = strip_think_tags(full_narrative)
-                if _think_parts:
-                    _narrative_reasoning = "".join(_think_parts)
+                raw_narrative = resp.get("content", "")
+                _narrative_reasoning = _extract_reasoning(raw_narrative)
+                narrative = strip_think_tags(raw_narrative)
+
+                # 处理工具调用结果
+                for tc in (resp.get("tool_calls") or []):
+                    tc_name = tc.get("name", "")
+                    tc_args = tc.get("arguments", {})
+                    if tc_name == "set_atmosphere":
+                        ctx["atmosphere"] = tc_args
+                        logger.info("set_atmosphere: %s", tc_args)
+                    elif tc_name == "set_scene_image":
+                        ctx["scene_image_prompt"] = tc_args
+                        logger.info("set_scene_image: %s", tc_args)
+            except BaseException:
+                for t in _4b_tasks:
+                    t.cancel()
+                raise
+
+        else:
+            # --- fallback: 原 Stage 2 + Stage 3 分离逻辑 ---
+            # --- Stage 2: 环境渲染 ‖ 角色行为（自适应）---
+            _scene_type = route.get("scene_type", "")
+            _skip_env = _scene_type in ("social", "rest") or route.get("scope") == "minor"
+            if route.get("scope") == "minor":
+                env_text = ""
+                char_text = ""
             else:
-                raw_narrative_result = await self.ai_provider.generate(
-                    compose_msgs, system=compose_sys, raw=True, **self._stage_kwargs("narrative")
+                if _skip_env:
+                    env_text = ""
+                else:
+                    env_msgs, env_sys = self.prompt_builder.build_env_render_prompt(
+                        plot_decision, _state
+                    )
+                    _sd_env = ctx.get("stage_directives", {}).get("env")
+                    if _sd_env and env_msgs:
+                        env_msgs[-1]["content"] += "\n\n## 环境剧情线指令\n" + "\n".join(_sd_env)
+                    try:
+                        raw_env = await self.ai_provider.generate(env_msgs, system=env_sys, max_tokens=8192, **self._stage_kwargs("narrative"))
+                    except Exception as _env_err:
+                        logger.warning("环境渲染失败: %s", _env_err)
+                        raw_env = ""
+                    env_text = strip_think_tags(raw_env) if raw_env else ""
+                char_msgs, char_sys = self.prompt_builder.build_character_action_prompt(
+                    plot_decision, _state,
+                    present_npc_ids=ctx.get("present_npc_ids"),
+                    dice_results=ctx.get("dice_dicts"),
+                    check_result=ctx.get("check_result"),
+                    triggered_events=ctx.get("triggered_events"),
+                    triggered_consequences=ctx.get("triggered_consequences"),
                 )
-                _narrative_reasoning = _extract_reasoning(raw_narrative_result)
-                narrative = strip_think_tags(raw_narrative_result)
-        except BaseException:
-            for t in _4b_tasks:
-                t.cancel()
-            raise
+                _sd_char = ctx.get("stage_directives", {}).get("char")
+                if _sd_char and char_msgs:
+                    char_msgs[-1]["content"] += "\n\n## 角色剧情线指令\n" + "\n".join(_sd_char)
+                if env_text and char_msgs:
+                    _env_brief = env_text[:150]
+                    char_msgs[-1]["content"] += f"\n\n== 已确定的环境描写（角色行为须与之一致）==\n{_env_brief}"
+                try:
+                    raw_char = await self.ai_provider.generate(char_msgs, system=char_sys, max_tokens=8192, **self._stage_kwargs("narrative"))
+                except Exception as _char_err:
+                    logger.warning("角色行为失败: %s", _char_err)
+                    raw_char = ""
+                char_text = strip_think_tags(raw_char) if raw_char else ""
 
-        # 素材复用率监控
-        if char_text and narrative:
-            _n = 6
-            _src_ngrams = set(char_text[i:i+_n] for i in range(max(0, len(char_text) - _n + 1)))
-            _out_ngrams = [narrative[i:i+_n] for i in range(max(0, len(narrative) - _n + 1))]
-            if _out_ngrams and _src_ngrams:
-                _reuse = sum(1 for ng in _out_ngrams if ng in _src_ngrams) / len(_out_ngrams)
-                if _reuse > 0.6:
-                    logger.warning("Stage 3 素材复用率 %.1f%%（高于60%%阈值）", _reuse * 100)
+            # --- Stage 3: 叙事润色整合 ---
+            compose_history = await _compose_ctx_task
+
+            compose_msgs, compose_sys = self.prompt_builder.build_narrative_compose_prompt(
+                plot_decision, env_text, char_text, _state, recent_openings,
+                missing_env=not env_text, missing_char=not char_text,
+                history_context=compose_history,
+                prev_narrative_tail=_prev_tail,
+                scene_type=route.get("scene_type", ""),
+                prev_ending_type=_prev_ending_type,
+                authors_note=self.authors_note,
+                action_text=action_text,
+                negative_prompt=self.negative_prompt,
+                logit_bias_hint=self._build_logit_bias_hint(),
+                scope=route.get("scope", "moderate"),
+                estimated_minutes=ctx.get("estimated_minutes", 30),
+                event_sections=ctx.get("event_sections"),
+            )
+            _pc_disc = _state.get("pc_discovered_lore", [])
+            _vis_lore = Lorebook.filter_by_visibility(ctx["activated_lore"], "pc", _pc_disc)
+            compose_msgs = self.prompt_builder.inject_depth_lore(compose_msgs, _vis_lore)
+            if _nearby_hint and compose_msgs:
+                compose_msgs[-1]["content"] += _nearby_hint
+
+            # --- Stage 3 ‖ 4b parallel launch ---
+            _active_sys = route.get("systems") or None
+            _check_res = ctx.get("check_result")
+            _old_time = ctx.get("old_time", "")
+            _use_state_tools = _use_native_tools and hasattr(self.ai_provider, 'generate_with_tools')
+
+            # 4b parallel prompts/tasks only needed in fallback (non-tool) path
+            _4b_tasks = []
+            if not _use_state_tools:
+                res_msgs, res_sys = self.prompt_builder.build_world_state_resource_prompt(
+                    "", action_text, _state,
+                    check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
+                )
+                spa_msgs, spa_sys = self.prompt_builder.build_world_state_spatial_prompt(
+                    "", action_text, _state,
+                    check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
+                )
+                wld_msgs, wld_sys = self.prompt_builder.build_world_state_world_prompt(
+                    "", action_text, _state,
+                    check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
+                )
+                ext_msgs, ext_sys = self.prompt_builder.build_world_state_ext_prompt(
+                    "", action_text, _state,
+                    check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
+                    event_sections=ctx.get("event_sections"),
+                )
+
+                # stage directives → resource
+                _sd_world = ctx.get("stage_directives", {}).get("world")
+                if _sd_world and wld_msgs:
+                    wld_msgs[-1]["content"] += "\n\n## 当前剧情线指令\n" + "\n".join(_sd_world)
+                # lorebook context → resource
+                _core_lore = self._build_lore_context_for_core(ctx.get("activated_lore", []))
+                if _core_lore and res_msgs:
+                    res_msgs[-1]["content"] += _core_lore
+                # nearby NPC hint → spatial (reuse cached _nearby_hint from Stage 3)
+                if _nearby_hint and spa_msgs:
+                    spa_msgs[-1]["content"] += _nearby_hint
+                # story context → ext
+                _story_ctx = self.prompt_builder._build_story_context_section(_state)
+                if _story_ctx and ext_msgs:
+                    ext_msgs[-1]["content"] += f"\n\n{_story_ctx}"
+
+                # Launch 4b tasks (concurrency limited by _4b_semaphore)
+                async def _4b_gen(msgs, sys_prompt):
+                    async with self._4b_semaphore:
+                        return await self.ai_provider.generate(msgs, system=sys_prompt, max_tokens=4096, **self._stage_kwargs("state"))
+
+                _4b_res_task = asyncio.create_task(_4b_gen(res_msgs, res_sys))
+                _4b_spa_task = asyncio.create_task(_4b_gen(spa_msgs, spa_sys))
+                _4b_wld_task = asyncio.create_task(_4b_gen(wld_msgs, wld_sys))
+                _4b_ext_task = asyncio.create_task(_4b_gen(ext_msgs, ext_sys))
+                _4b_tasks = [_4b_res_task, _4b_spa_task, _4b_wld_task, _4b_ext_task]
+
+            # Stage 3: narrative generation (streaming or non-streaming)
+            _narrative_reasoning = ""
+            try:
+                if streaming:
+                    full_narrative = ""
+                    _think_parts = []
+                    raw_stream = self.ai_provider.generate_stream(
+                        compose_msgs, system=compose_sys, raw=True, **self._stage_kwargs("narrative")
+                    )
+                    async for msg_type, chunk in stream_split_think(raw_stream):
+                        if msg_type == "think":
+                            _think_parts.append(chunk)
+                            yield {"type": "thinking", "content": chunk}
+                        else:
+                            full_narrative += chunk
+                            yield {"type": "text", "content": chunk}
+                    narrative = strip_think_tags(full_narrative)
+                    if _think_parts:
+                        _narrative_reasoning = "".join(_think_parts)
+                else:
+                    raw_narrative_result = await self.ai_provider.generate(
+                        compose_msgs, system=compose_sys, raw=True, **self._stage_kwargs("narrative")
+                    )
+                    _narrative_reasoning = _extract_reasoning(raw_narrative_result)
+                    narrative = strip_think_tags(raw_narrative_result)
+            except BaseException:
+                for t in _4b_tasks:
+                    t.cancel()
+                raise
+
+            # 素材复用率监控
+            if char_text and narrative:
+                _n = 6
+                _src_ngrams = set(char_text[i:i+_n] for i in range(max(0, len(char_text) - _n + 1)))
+                _out_ngrams = [narrative[i:i+_n] for i in range(max(0, len(narrative) - _n + 1))]
+                if _out_ngrams and _src_ngrams:
+                    _reuse = sum(1 for ng in _out_ngrams if ng in _src_ngrams) / len(_out_ngrams)
+                    if _reuse > 0.6:
+                        logger.warning("Stage 3 素材复用率 %.1f%%（高于60%%阈值）", _reuse * 100)
 
         # NPC 声音校验
         pre_fix_narrative = narrative
@@ -3747,24 +4033,25 @@ class GameSession:
         if streaming and narrative != pre_fix_narrative:
             yield {"type": "narrative_revised", "content": narrative}
 
-        # Stage 4b-temporal: 延迟到叙事完成后，从实际叙事推断 end_time
-        tmp_msgs, tmp_sys = self.prompt_builder.build_world_state_temporal_prompt(
-            narrative, action_text, _state,
-            check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
-        )
-        if tmp_msgs:
-            tmp_msgs[-1]["content"] += (
-                f"\n\n## end_time 决策指引\n"
-                f"当前游戏时间: {_old_time}\n"
-                "你是end_time的唯一决策者。根据叙事最后场景的时间输出绝对时间戳：\n"
-                "- 对话/观察/翻阅文件: 当前时间 +10~30分钟\n"
-                "- 常规互动/短途移动: 当前时间 +30分钟~2小时\n"
-                "- 长途旅行/大型战斗: 当前时间 +2~8小时\n"
-                "- 睡觉/过夜: 若叙事写到入睡那一刻则给入睡时间（如23:30），若叙事写到醒来才给次日早晨\n"
-                f"格式示例: {_old_time[:10] or '1970-01-01'}T10:00:00"
+        # Stage 4b-temporal: 延迟到叙事完成后（仅 fallback 路径）
+        if not _use_state_tools:
+            tmp_msgs, tmp_sys = self.prompt_builder.build_world_state_temporal_prompt(
+                narrative, action_text, _state,
+                check_result=_check_res, active_systems=_active_sys, plot_decision=plot_decision,
             )
-        _4b_tmp_task = asyncio.create_task(_4b_gen(tmp_msgs, tmp_sys))
-        _4b_tasks.append(_4b_tmp_task)
+            if tmp_msgs:
+                tmp_msgs[-1]["content"] += (
+                    f"\n\n## end_time 决策指引\n"
+                    f"当前游戏时间: {_old_time}\n"
+                    "你是end_time的唯一决策者。根据叙事最后场景的时间输出绝对时间戳：\n"
+                    "- 对话/观察/翻阅文件: 当前时间 +10~30分钟\n"
+                    "- 常规互动/短途移动: 当前时间 +30分钟~2小时\n"
+                    "- 长途旅行/大型战斗: 当前时间 +2~8小时\n"
+                    "- 睡觉/过夜: 若叙事写到入睡那一刻则给入睡时间（如23:30），若叙事写到醒来才给次日早晨\n"
+                    f"格式示例: {_old_time[:10] or '1970-01-01'}T10:00:00"
+                )
+            _4b_tmp_task = asyncio.create_task(_4b_gen(tmp_msgs, tmp_sys))
+            _4b_tasks.append(_4b_tmp_task)
 
         # ★ Stage 3.5 review ‖ NPC RAG 并行 ★
         async def _do_review():
@@ -3812,22 +4099,36 @@ class GameSession:
                 except Exception as e:
                     logger.warning("叙事重试失败: %s", e)
 
-        # 汇合 4b 结果（temporal 在叙事后启动，但此时已并行运行）
-        _4b_raw = await asyncio.gather(
-            _4b_res_task, _4b_spa_task, _4b_tmp_task, _4b_wld_task, _4b_ext_task,
-            return_exceptions=True,
-        )
-        [raw_resource, raw_spatial, raw_temporal, raw_world, raw_world_ext], _4b_warns = self._sanitize_gather_results(
-            _4b_raw, [("资源状态推演", True), ("空间状态推演", False),
-                       ("时间状态推演", False), ("世界属性推演", False), ("扩展状态推演", False)],
-        )
-        _warnings.extend(_4b_warns)
+        # 汇合 Stage 4b 结果
+        if _use_state_tools:
+            # 工具调用路径：单次调用替代 5 路并行
+            try:
+                parsed = await self._execute_state_settlement(
+                    ctx, narrative, plot_decision, action_text, _state,
+                    old_time=_old_time,
+                )
+            except Exception as e:
+                logger.warning("状态推演工具调用失败，回退到空结果: %s", e)
+                parsed = self.response_parser._empty_result()
+                parsed["narrative"] = narrative.strip()
+                _warnings.append("状态推演工具调用失败，本回合属性/物品变化可能未正确记录")
+        else:
+            # fallback: 原 5 路并行 + parse_split_v3
+            _4b_raw = await asyncio.gather(
+                _4b_res_task, _4b_spa_task, _4b_tmp_task, _4b_wld_task, _4b_ext_task,
+                return_exceptions=True,
+            )
+            [raw_resource, raw_spatial, raw_temporal, raw_world, raw_world_ext], _4b_warns = self._sanitize_gather_results(
+                _4b_raw, [("资源状态推演", True), ("空间状态推演", False),
+                           ("时间状态推演", False), ("世界属性推演", False), ("扩展状态推演", False)],
+            )
+            _warnings.extend(_4b_warns)
 
-        # partial parse（不含NPC）→ 提取 world_change_hints
-        parsed = self.response_parser.parse_split_v3(narrative, "", raw_resource, raw_spatial, raw_temporal, raw_world, raw_world_ext)
+            # partial parse（不含NPC）→ 提取 world_change_hints
+            parsed = self.response_parser.parse_split_v3(narrative, "", raw_resource, raw_spatial, raw_temporal, raw_world, raw_world_ext)
 
-        if parsed.get("_state_parse_failed"):
-            _warnings.append("状态推演部分失败，本回合属性/物品变化可能未正确记录")
+            if parsed.get("_state_parse_failed"):
+                _warnings.append("状态推演部分失败，本回合属性/物品变化可能未正确记录")
 
         new_scene = parsed.get("scene_details")
         if new_scene and isinstance(new_scene, dict):
@@ -5540,7 +5841,390 @@ class GameSession:
                 self.script_variables.set(var_name, var_value)
                 return f"变量 {var_name} = {var_value}"
             return f"变量系统不可用"
+        # --- P1 上下文 Pull 工具 ---
+        if name == "recall_history":
+            query = args.get("query", "")
+            max_results = args.get("max_results", 5)
+            results = []
+            # 优先使用向量记忆检索
+            if self.vector_memory is not None:
+                try:
+                    hits = self.vector_memory.search(query, top_k=max_results)
+                    for h in hits:
+                        results.append({
+                            "turn": h.get("turn", "?"),
+                            "summary": h.get("text", "")[:200],
+                            "relevance": round(h.get("score", 0), 2),
+                        })
+                except Exception:
+                    pass
+            # 回退到 world_tree 节点文本搜索
+            if not results and self.world_tree is not None:
+                query_lower = query.lower()
+                recent_nodes = self.world_tree.get_recent_history(20)
+                for node in reversed(recent_nodes):
+                    node_text = node.get("ai_response", "") + " " + (
+                        node.get("player_action", {}).get("text", "")
+                        if isinstance(node.get("player_action"), dict)
+                        else str(node.get("player_action", ""))
+                    )
+                    if query_lower in node_text.lower():
+                        results.append({
+                            "turn": node.get("turn_number", "?"),
+                            "summary": node.get("ai_response", "")[:200],
+                            "relevance": 0.5,
+                        })
+                    if len(results) >= max_results:
+                        break
+            return json.dumps({"results": results}, ensure_ascii=False)
+        if name == "query_lorebook":
+            keyword = args.get("keyword", "")
+            kw_lower = keyword.lower()
+            entries = []
+            lb = getattr(self.prompt_builder, "lorebook", None)
+            if lb is not None:
+                for e in lb.entries:
+                    if not e.enabled:
+                        continue
+                    if (kw_lower in (e.comment or "").lower()
+                            or kw_lower in e.content[:500].lower()
+                            or any(kw_lower in k.lower() for k in e.keys)
+                            or any(kw_lower in k.lower() for k in getattr(e, "secondary_keys", []))):
+                        entries.append({
+                            "title": e.comment or e.id,
+                            "content": e.content[:500],
+                        })
+                    if len(entries) >= 5:
+                        break
+            return json.dumps({"entries": entries}, ensure_ascii=False)
+        if name == "query_npc_history":
+            npc_name = args.get("npc_name", "")
+            max_turns = args.get("max_turns", 5)
+            interactions = []
+            if self.world_tree is not None and npc_name:
+                npc_lower = npc_name.lower()
+                recent_nodes = self.world_tree.get_recent_history(30)
+                for node in reversed(recent_nodes):
+                    narrative = node.get("ai_response", "")
+                    action_raw = node.get("player_action")
+                    action_text = (
+                        action_raw.get("text", "") if isinstance(action_raw, dict) else str(action_raw or "")
+                    )
+                    combined = (narrative + " " + action_text).lower()
+                    if npc_lower in combined:
+                        interactions.append({
+                            "turn": node.get("turn_number", "?"),
+                            "summary": narrative[:200],
+                        })
+                    if len(interactions) >= max_turns:
+                        break
+            return json.dumps({"npc": npc_name, "interactions": interactions}, ensure_ascii=False)
         return f"未知工具: {name}"
+
+    # ── Stage 4 状态工具执行器 & 合并器 ──
+
+    _REJECT_STATE_PATTERNS_TOOL = (
+        "weather", "天气", "时段", "time_period", "dawn", "dusk",
+        "morning", "afternoon", "night", "noon", "黎明", "黄昏",
+        "上午", "午后", "夜晚", "深夜", "日出", "日落",
+    )
+    _REJECT_WP_PATTERNS_TOOL = (
+        "lamp", "light", "door", "window", "clock", "alarm",
+        "desk", "chair", "phone", "radio", "tv", "灯", "门",
+        "窗", "桌", "椅", "电话", "闹钟", "台灯", "scattered",
+        "curtain", "drawer", "paper", "document", "书桌", "抽屉",
+    )
+
+    def _run_state_tool(self, tool_name: str, args: dict) -> str:
+        """Execute a state-settlement tool call. Returns validation result as string.
+
+        Does NOT modify state directly — caller merges via _merge_state_tool_results.
+        """
+        MAX_DELTA = 30
+
+        if tool_name == "update_resources":
+            issues = []
+            # Validate state_changes
+            for sc in args.get("state_changes", []):
+                op = sc.get("op", "add")
+                val = sc.get("value", 0)
+                if op in ("add", "subtract") and not sc.get("reason"):
+                    issues.append(f"丢弃无reason属性变更: {sc.get('target', '?')}")
+                    continue
+                if isinstance(val, (int, float)) and op in ("add", "subtract") and abs(val) > MAX_DELTA:
+                    issues.append(f"属性变化幅度过大 {sc.get('target', '?')}: {val}, 已钳制到±{MAX_DELTA}")
+            # Validate activate_states
+            for entry in args.get("activate_states", []):
+                if isinstance(entry, dict):
+                    sid = entry.get("id", "")
+                    s_name = entry.get("name", "")
+                    _low = (sid + s_name).lower()
+                    if any(p in _low for p in self._REJECT_STATE_PATTERNS_TOOL):
+                        issues.append(f"过滤天气/时段状态: {sid}")
+            result = "资源状态已接收"
+            if issues:
+                result += "（警告: " + "; ".join(issues) + "）"
+            return result
+
+        if tool_name == "update_spatial":
+            issues = []
+            loc = args.get("location_change")
+            if loc and loc not in self._location_by_id:
+                issues.append(f"未知地点ID: {loc}")
+            for rl in args.get("reveal_locations", []):
+                if not rl.get("id"):
+                    issues.append("reveal_locations 缺少 id")
+            result = "空间状态已接收"
+            if issues:
+                result += "（警告: " + "; ".join(issues) + "）"
+            return result
+
+        if tool_name == "update_time":
+            et = args.get("end_time", "")
+            if not et:
+                return "错误: end_time 为空"
+            # Basic ISO format check
+            if "T" not in et and len(et) < 10:
+                return f"警告: end_time 格式可能不正确: {et}"
+            return f"时间状态已接收: {et}"
+
+        if tool_name == "update_world":
+            issues = []
+            for wp in args.get("world_property_changes", []):
+                wp_id = wp.get("id", "")
+                if wp_id and any(p in wp_id.lower() for p in self._REJECT_WP_PATTERNS_TOOL):
+                    issues.append(f"过滤物件级属性: {wp_id}")
+            result = "世界属性已接收"
+            if issues:
+                result += "（警告: " + "; ".join(issues) + "）"
+            return result
+
+        if tool_name == "update_extended":
+            issues = []
+            # NPC name→ID matching for offscreen_npc_updates
+            for upd in args.get("offscreen_npc_updates", []):
+                name = upd.get("name", "")
+                if name and name not in self._npc_name_to_id and not any(
+                    n.get("name") == name for n in self._npc_by_id.values() if isinstance(n, dict)
+                ):
+                    issues.append(f"离场NPC名称未匹配到已知NPC: {name}")
+            result = "扩展状态已接收"
+            if issues:
+                result += "（警告: " + "; ".join(issues) + "）"
+            return result
+
+        return f"未知状态工具: {tool_name}"
+
+    def _merge_state_tool_results(self, tool_calls: list[dict]) -> dict:
+        """Merge state tool call arguments into a parsed dict compatible with parse_split_v3 output.
+
+        tool_calls: [{"name": "update_resources", "args": {...}}, ...]
+        Returns a dict matching _empty_result() structure.
+        """
+        parsed = self.response_parser._empty_result()
+        MAX_DELTA = 30
+
+        for tc in tool_calls:
+            name = tc["name"]
+            args = tc["args"]
+
+            if name == "update_resources":
+                # state_changes: validate and clamp
+                validated = []
+                for sc in args.get("state_changes", []):
+                    op = sc.get("op", "add")
+                    val = sc.get("value", 0)
+                    if op in ("add", "subtract") and not sc.get("reason"):
+                        continue
+                    if isinstance(val, (int, float)) and op in ("add", "subtract") and abs(val) > MAX_DELTA:
+                        sc = {**sc, "value": MAX_DELTA if val > 0 else -MAX_DELTA}
+                    validated.append(sc)
+                parsed["state_changes"].extend(validated)
+                parsed["inventory_changes"].extend(args.get("inventory_changes", []))
+                # activate_states: filter weather/time-period
+                for entry in args.get("activate_states", []):
+                    if isinstance(entry, dict):
+                        sid = entry.get("id", "")
+                        s_name = entry.get("name", "")
+                        _low = (sid + s_name).lower()
+                        if any(p in _low for p in self._REJECT_STATE_PATTERNS_TOOL):
+                            continue
+                    parsed["activate_states"].append(entry)
+                parsed["deactivate_states"].extend(args.get("deactivate_states", []))
+                go = args.get("game_over")
+                if go:
+                    parsed["game_over"] = go
+
+            elif name == "update_spatial":
+                loc = args.get("location_change")
+                if loc and loc in self._location_by_id:
+                    parsed["location_change"] = loc
+                parsed["reveal_locations"].extend(args.get("reveal_locations", []))
+                parsed["npc_location_changes"].extend(args.get("npc_location_changes", []))
+                if args.get("room_changes"):
+                    # room_changes is not in _empty_result default, add dynamically
+                    parsed.setdefault("room_changes", []).extend(args["room_changes"])
+                sd = args.get("scene_details")
+                if sd:
+                    parsed["scene_details"] = sd
+
+            elif name == "update_time":
+                et = args.get("end_time")
+                if et:
+                    parsed["end_time"] = et
+
+            elif name == "update_world":
+                # Filter object-level properties
+                for wp in args.get("world_property_changes", []):
+                    wp_id = wp.get("id", "")
+                    if wp_id and any(p in wp_id.lower() for p in self._REJECT_WP_PATTERNS_TOOL):
+                        continue
+                    parsed["world_property_changes"].append(wp)
+
+            elif name == "update_extended":
+                parsed["offscreen_npc_updates"].extend(args.get("offscreen_npc_updates", []))
+                parsed["new_npcs"].extend(args.get("new_npcs", []))
+                parsed["faction_reputation_changes"].extend(args.get("faction_reputation_changes", []))
+                parsed["moral_alignment_changes"].extend(args.get("moral_alignment_changes", []))
+                parsed["recruit_companions"].extend(args.get("recruit_companions", []))
+                parsed["dismiss_companions"].extend(args.get("dismiss_companions", []))
+                parsed["invalidate_lore"].extend(args.get("invalidate_lore", []))
+
+        return parsed
+
+    async def _execute_state_settlement(
+        self, ctx: dict, narrative_text: str, plot_decision: str,
+        action_text: str, state: dict, old_time: str = "",
+    ) -> dict:
+        """Stage 4: 单次工具调用做状态推演（替代 5 路并行 LLM）。
+
+        Returns a parsed dict compatible with parse_split_v3 output.
+        """
+        # 构建合并的 system prompt
+        all_field_lines = [fdef["desc"] for fdef in self.prompt_builder._FIELD_DEFS.values()]
+        system = (
+            "你是游戏状态推演引擎。分析叙事文本和剧情骨架，通过工具调用更新游戏状态。\n"
+            "你可以调用多个工具，每个工具负责不同的状态域。必须至少调用 update_time。\n\n"
+            "各域对应工具：\n"
+            "- update_resources: 属性/物品/持续状态/胜负\n"
+            "- update_spatial: 位置/场景/NPC位置/房间\n"
+            "- update_time: 时间推进（必调用）\n"
+            "- update_world: 宏观世界属性\n"
+            "- update_extended: 离场NPC/新NPC注册/阵营/道德/同伴\n\n"
+            "字段参考：\n" + "\n".join(all_field_lines) + "\n\n"
+            "规则：\n"
+            "- 严格根据叙事中实际描写的事件推演，不推测或编造\n"
+            "- 物品add限制：只能添加叙事中明确描写角色获得的物品\n"
+            "- 仅[检定结果: 大成功]时可额外给予奖励；仅[检定结果: 大失败]时应施加惩罚\n"
+            "- activate_states 不得包含天气或时段\n"
+            "- world_property_changes 只写宏观世界级变量，不写物件状态\n"
+            "- location_change 必须使用已知地点列表中的精确ID\n"
+            "- end_time 是绝对时间戳，不是时长\n"
+            "- 无变化的域不需要调用对应工具\n"
+        )
+
+        # 构建合并的 user message（合并 5 个 group 的 XML 段落）
+        source_for_non_temporal = plot_decision if plot_decision else narrative_text
+        use_pd = bool(plot_decision)
+        _check_res = ctx.get("check_result")
+        _active_sys = ctx.get("route", {}).get("systems") if isinstance(ctx.get("route"), dict) else None
+
+        # resource 段落
+        resource_content = self.prompt_builder._build_world_state_user_message(
+            source_for_non_temporal, action_text, state, _check_res,
+            group="resource", use_plot_decision=use_pd,
+        )
+        # spatial 段落
+        spatial_content = self.prompt_builder._build_world_state_user_message(
+            source_for_non_temporal, action_text, state, _check_res,
+            group="spatial", use_plot_decision=use_pd,
+        )
+        # temporal 段落（使用 narrative 全文）
+        temporal_source = narrative_text if narrative_text else plot_decision
+        temporal_pd = not bool(narrative_text)
+        temporal_content = self.prompt_builder._build_world_state_user_message(
+            temporal_source, action_text, state, _check_res,
+            group="temporal", use_plot_decision=temporal_pd,
+        )
+        # world 段落
+        world_content = self.prompt_builder._build_world_state_user_message(
+            source_for_non_temporal, action_text, state, _check_res,
+            group="world", use_plot_decision=use_pd,
+        )
+        # ext 段落
+        ext_content = self.prompt_builder._build_world_state_user_message(
+            source_for_non_temporal, action_text, state, _check_res,
+            group="ext", use_plot_decision=use_pd,
+            event_sections=ctx.get("event_sections"),
+        )
+
+        # 去重合并：各段落有重叠的 player_action / narrative 等，只保留一份
+        # 用 XML tag 标识各段落（保留 resource/spatial/temporal/world/ext 的域特定信息）
+        from collections import OrderedDict
+        seen_sections = OrderedDict()
+        for content in [resource_content, spatial_content, temporal_content, world_content, ext_content]:
+            for block in content.split("\n\n"):
+                block = block.strip()
+                if not block:
+                    continue
+                # 用首行/tag 作为去重 key
+                key = block[:60]
+                if key not in seen_sections:
+                    seen_sections[key] = block
+        merged_content = "\n\n".join(seen_sections.values())
+
+        # end_time 决策指引
+        if old_time:
+            merged_content += (
+                f"\n\n## end_time 决策指引\n"
+                f"当前游戏时间: {old_time}\n"
+                "你是end_time的唯一决策者。根据叙事最后场景的时间输出绝对时间戳：\n"
+                "- 对话/观察/翻阅文件: 当前时间 +10~30分钟\n"
+                "- 常规互动/短途移动: 当前时间 +30分钟~2小时\n"
+                "- 长途旅行/大型战斗: 当前时间 +2~8小时\n"
+                "- 睡觉/过夜: 若叙事写到入睡那一刻则给入睡时间（如23:30），若叙事写到醒来才给次日早晨\n"
+                f"格式示例: {old_time[:10] or '1970-01-01'}T10:00:00"
+            )
+
+        messages = [{"role": "user", "content": merged_content}]
+
+        # 工具循环（复用 _stage1_with_native_tools 的模式）
+        state_tool_results = []
+        max_rounds = 3
+
+        for _ in range(max_rounds):
+            resp = await self.ai_provider.generate_with_tools(
+                messages, system=system, tools=STATE_TOOLS_SCHEMA,
+                max_tokens=4096, **self._stage_kwargs("state"),
+            )
+            tc_list = resp.get("tool_calls")
+            if not tc_list:
+                break
+
+            assistant_msg = {"role": "assistant", "content": resp.get("content") or None}
+            reasoning = resp.get("reasoning_content")
+            if reasoning:
+                assistant_msg["reasoning_content"] = reasoning
+            assistant_msg["tool_calls"] = [
+                {"id": tc["id"], "type": "function",
+                 "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"], ensure_ascii=False)}}
+                for tc in tc_list
+            ]
+            messages.append(assistant_msg)
+
+            for tc in tc_list:
+                result = self._run_state_tool(tc["name"], tc["arguments"])
+                state_tool_results.append({"name": tc["name"], "args": tc["arguments"]})
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result,
+                })
+
+        # 合并工具调用结果为 parsed 字典
+        parsed = self._merge_state_tool_results(state_tool_results)
+        parsed["narrative"] = narrative_text.strip() if narrative_text else ""
+        return parsed
 
     def _get_skill_bonus(self, skill: str) -> int:
         player = self.current_state.get("player", {})
@@ -12131,8 +12815,16 @@ npc_known 中只需包含需要改变的NPC（与当前状态不同的）。只�
         return "\n\n## 世界知识（state推演参考）\n" + "\n".join(lines)
 
     def _build_lore_summary_for_plot(self, activated_lore: list) -> str:
-        """Build a compact lorebook summary for Stage 1 plot_decision context."""
+        """Build a compact lorebook summary for Stage 1 plot_decision context.
+
+        P1: 只预注入 constant=True 的常驻条目。
+        非常驻条目由 Agent 通过 query_lorebook 工具按需获取。
+        """
         if not activated_lore:
+            return ""
+        # P1: 仅保留常驻条目，非常驻条目通过 query_lorebook 工具按需拉取
+        constant_lore = [e for e in activated_lore if getattr(e, "constant", False)]
+        if not constant_lore:
             return ""
         _PLOT_TYPE_PRIORITY = {
             "event_context": 0, "story_event": 0, "key_event": 0,
@@ -12140,7 +12832,7 @@ npc_known 中只需包含需要改变的NPC（与当前状态不同的）。只�
             "pc_identity": 3, "player_behavior": 4,
         }
         sorted_lore = sorted(
-            activated_lore,
+            constant_lore,
             key=lambda e: (_PLOT_TYPE_PRIORITY.get(e.entry_type, 2), -e.priority),
         )
         lines = []
