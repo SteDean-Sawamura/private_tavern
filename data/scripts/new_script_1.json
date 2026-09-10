@@ -1,0 +1,241 @@
+{
+  "script_id": "new_script_1",
+  "script_name": "王之誓约",
+  "version": "1.0",
+  "start_time": "1385-04-17T05:30:00",
+  "world_background": "在这片名为艾尔德兰的大陆上，骑士的荣耀与国王的意志交织成秩序的基石。古老的魔法早已褪色，只余下传说在吟游诗人的歌谣中低语。王国统一已有三百余年，但边境的纷争与森林中的阴影始终未绝，王室正广招英勇之士，欲重建传说中的圣剑骑士团。\n贵族门阀明争暗斗，隐秘的预言指向一场颠覆王座的阴谋。残存的古籍提及一处被遗忘的遗迹，其中埋藏着足以改写战局的古老力量。平民仰望骑士，骑士效忠领主，而领主则在王冠的阴影下计算着每一次盟约与背叛。\n在这动荡的时代，每一个誓言都可能成为命运的转轮。你，一个破落贵族之家的末子，握紧祖传的锈剑，踏上了通往荣耀或毁灭的道路。",
+  "settings": {
+    "dice_check": false
+  },
+  "opening": {
+    "text": "汗水顺着你的额角滑落，滴在训练场的沙土地上。你紧握木剑，对着练习柱完成最后一轮劈砍，虎口震得发麻。突然，城堡塔楼响起低沉的号角声——那是领主紧急召集全体骑士与侍从的信号。几位同期的侍从已经丢下武器朝主堡奔去，而你的身体因晨练而疲惫不堪，但心脏却因突如其来的紧张而猛烈跳动。你会如何行动？",
+    "choices": [
+      {
+        "id": "choice_rush_hall",
+        "text": "扔下木剑，迅速赶往城堡大厅，看看发生了什么紧急军务。"
+      },
+      {
+        "id": "choice_keep_training",
+        "text": "深呼吸，继续完成今天的训练计划，你不想在考核前留下任何懈怠的借口。"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "id": "loc_training_yard",
+      "name": "铁冠堡训练场",
+      "description": "城堡外院的夯土空地，四周插着磨损的练习木桩，兵器架上的长剑与木盾沾满晨露。晨光刚刚越过东墙，远处传来马嘶与铁匠铺的锤声。",
+      "visual_profile": {}
+    },
+    {
+      "id": "loc_great_hall",
+      "name": "铁冠堡大厅",
+      "description": "领主召集骑士的石砌大殿，墙上悬着历代堡主的破损盾徽，火把在铁环中噼啪作响，尽头的高背椅上端坐着年迈的雷纳德爵士。",
+      "visual_profile": {}
+    },
+    {
+      "id": "loc_whispering_wood",
+      "name": "低语森林",
+      "description": "城堡以北的古老林地，树干粗壮扭曲，枝叶遮天蔽日。猎人们说林中有野兽，也有比野兽更危险的东西——废墟与遗忘的誓约之石。",
+      "visual_profile": {
+        "base_color": "#2d4a22",
+        "dark_color": "#1a2b14",
+        "light_color": "#4a7c3b",
+        "accent_color": "#9e7c5c",
+        "shape": "multi"
+      }
+    },
+    {
+      "id": "loc_old_battlefield",
+      "name": "弃誓者荒原",
+      "description": "一片遍布锈蚀兵刃与风化骸骨的旷野，当年圣剑骑士团覆灭之处。野草在风中呜咽，偶有乌鸦啄食泥土中闪光的小物件。",
+      "visual_profile": {}
+    },
+    {
+      "id": "loc_royal_capital",
+      "name": "辉石城",
+      "description": "王国的核心，白垩城墙与高耸的圣堂尖塔在阳光下泛着金色。骑士团的册封典礼、贵族间的密谋与国王的谕令，皆由此地发出。",
+      "visual_profile": {}
+    }
+  ],
+  "player_character": {
+    "id": "pc_01",
+    "bio": "你出身于古老的莫兰家族，家道中落，仅剩一把刻有模糊纹章的钝剑。为恢复家族名誉，你自幼作为侍从寄身于铁冠堡领主麾下，日复一日在汗水与击打中磨练武艺。你对荣誉的渴望比任何人都炽烈，却常被贵族的冷眼提醒着自己的卑微。",
+    "initial_location": "loc_training_yard",
+    "long_term_goal": "通过骑士试炼赢得正式骑士头衔，并揭开家族纹章背后失落的秘密，让莫兰之名再度响彻大陆。",
+    "attributes": {
+      "剑术": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "使用长剑类武器的技巧，影响攻击命中与伤害。可通过训练、战斗和导师指点提升。"
+      },
+      "耐力": {
+        "value": 65,
+        "min": 0,
+        "max": 100,
+        "rule": "承受疲劳、伤势与长时间行动的能力。影响生命值与持久行动。可通过体能锻炼和承受磨难提升。"
+      },
+      "骑术": {
+        "value": 40,
+        "min": 0,
+        "max": 100,
+        "rule": "驾驭马匹、在马上作战的技能。可通过骑行训练和实战提升。"
+      },
+      "魅力": {
+        "value": 40,
+        "min": 0,
+        "max": 100,
+        "rule": "社交亲和力与说服效果，影响与其他角色的互动。可通过成功交涉、展示荣誉或赠送礼物提升。"
+      },
+      "学识": {
+        "value": 35,
+        "min": 0,
+        "max": 100,
+        "rule": "对历史、纹章、古语和魔法遗迹的了解。可通过阅读书籍、解读铭文和向智者请教提升。"
+      },
+      "荣誉": {
+        "value": 70,
+        "min": 0,
+        "max": 100,
+        "rule": "体现骑士美德与誓言分量，影响贵族对你的态度和某些事件走向。遵守誓言、行侠仗义可以提升，背信弃义会降低。"
+      }
+    },
+    "relationships": {
+      "npc_reynard": 65,
+      "npc_alistair": 80,
+      "npc_seraphina": 45,
+      "npc_varkas": 30,
+      "npc_orla": 70,
+      "npc_hawke": 55
+    }
+  },
+  "npcs": [
+    {
+      "id": "npc_reynard",
+      "name": "雷纳德爵士",
+      "bio": "铁冠堡的老领主，一位战功赫赫但年事已高的骑士。他的左膝在五年前的边境冲突中受损，如今更多依赖权杖与智慧而非长剑。他恪守古老的骑士道，对领地内的年轻侍从既严厉又寄予厚望。",
+      "personality": "刚正不阿、沧桑而慈祥、对荣誉看得极重",
+      "title": "铁冠堡领主",
+      "attitude_toward_player": 65,
+      "capabilities": "统率、战术、政治、剑术",
+      "default_location": "loc_great_hall",
+      "visual_profile": {}
+    },
+    {
+      "id": "npc_alistair",
+      "name": "阿利斯泰尔",
+      "bio": "与你在铁冠堡一同训练的侍从，出身于一个经营磨坊的平民家庭。他身材敦实，笑容憨厚，但战斗时意外的敏锐。他崇拜骑士故事，总梦想着有朝一日能成为吟游诗人歌颂的英雄。",
+      "personality": "乐观、忠诚、有点呆、勇敢",
+      "title": "侍从",
+      "attitude_toward_player": 80,
+      "capabilities": "格挡、鼓舞、草药辨识",
+      "default_location": "loc_training_yard",
+      "visual_profile": {
+        "shirt_color": "#4A90E2",
+        "hair_color": "#8B5A2B",
+        "hair_style": "short",
+        "pant_color": "#5C5248",
+        "skin_color": "#F1C27D"
+      }
+    },
+    {
+      "id": "npc_seraphina",
+      "name": "塞拉菲娜",
+      "bio": "一位来历神秘的红发女游侠，常出没于低语森林。她不效忠任何领主，却对古物与旧时代传说有着执着的兴趣。偶尔会与猎人交易，或是帮村民驱赶野兽，收取奇怪的物件作为报酬。",
+      "personality": "机敏、冷漠中藏着好奇、独立、话语犀利",
+      "title": "森林漫游者",
+      "attitude_toward_player": 45,
+      "capabilities": "追踪、远程射击、野外生存、古代文字解读",
+      "default_location": "loc_whispering_wood",
+      "visual_profile": {
+        "shirt_color": "#556B2F",
+        "hair_color": "#3B2F2F",
+        "hair_style": "bun",
+        "pant_color": "#4A412A",
+        "skin_color": "#C19A6B"
+      }
+    },
+    {
+      "id": "npc_varkas",
+      "name": "瓦卡斯",
+      "bio": "辉石城宫廷中的次席顾问，一个靠权谋手段上位的贵族。他衣着华丽，永远带着礼貌而虚假的微笑。表面拥护王室，暗地里却与数个门阀勾连，对圣剑骑士团的旧闻特别关注。",
+      "personality": "狡诈、冷静、野心勃勃、善于伪装",
+      "title": "王室顾问",
+      "attitude_toward_player": 30,
+      "capabilities": "政治操弄、情报收集、心理学、辩论",
+      "default_location": "loc_royal_capital",
+      "visual_profile": {
+        "shirt_color": "#4B0082",
+        "hair_color": "#1C1C1C",
+        "hair_style": "slick",
+        "pant_color": "#2F2F2F",
+        "skin_color": "#D4A574"
+      }
+    },
+    {
+      "id": "npc_orla",
+      "name": "奥拉修女",
+      "bio": "铁冠堡圣堂的管理者，一位面容温和的中年女性。她负责治疗伤患、抄写经文，但鲜有人知道她曾作为随军医生经历过弃誓者荒原的最后一战。她的眼神中藏着沉重的往事。",
+      "personality": "慈悲、沉默寡言、内心坚毅、洞察力强",
+      "title": "圣堂修女",
+      "attitude_toward_player": 70,
+      "capabilities": "医术、草药、历史知识、心理辅导",
+      "default_location": "loc_great_hall",
+      "visual_profile": {}
+    },
+    {
+      "id": "npc_hawke",
+      "name": "老霍克",
+      "bio": "一个常年在低语森林打猎的老猎人，络腮胡，少言寡语。他是少数能深入林地又安然返回的人，对森林中的野兽与废墟了如指掌，偶尔会带几块锈铁片卖给铁匠。",
+      "personality": "务实、谨慎、外冷内热、迷信",
+      "title": "猎人",
+      "attitude_toward_player": 55,
+      "capabilities": "追踪、设置陷阱、地理知识、生存经验",
+      "default_location": "loc_whispering_wood",
+      "visual_profile": {
+        "shirt_color": "#4A5D23",
+        "hair_color": "#3B3C36",
+        "hair_style": "short",
+        "pant_color": "#2F2F2F",
+        "skin_color": "#D2A679"
+      }
+    }
+  ],
+  "world_properties": [
+    {
+      "id": "wp_stability",
+      "name": "王国稳定度",
+      "value": 60,
+      "rule": "反映艾尔德兰王国的整体稳定程度，受边境冲突、宫廷阴谋和民众支持度影响。"
+    },
+    {
+      "id": "wp_forest_secret",
+      "name": "森林秘密揭示度",
+      "value": 10,
+      "rule": "追踪低语森林中古老遗物与誓约之石真相的进度，达到一定程度将解锁关键线索。"
+    },
+    {
+      "id": "wp_moran_honor",
+      "name": "莫兰家族名誉",
+      "value": 20,
+      "rule": "莫兰家族在贵族与平民眼中的声望，恢复名誉是玩家长期目标的核心衡量。"
+    },
+    {
+      "id": "wp_knight_revival",
+      "name": "圣剑骑士团复兴度",
+      "value": 5,
+      "rule": "王室与民间重建圣剑骑士团的实质进展，影响可获取的支援和任务的开放。"
+    },
+    {
+      "id": "wp_conspiracy",
+      "name": "宫廷阴谋活跃度",
+      "value": 40,
+      "rule": "辉石城贵族门阀暗中策划活动的强度，数值过高可能引发颠覆性事件。"
+    }
+  ],
+  "variables": [],
+  "persistent_states": [],
+  "cyclic_events": [],
+  "one_time_events": []
+}

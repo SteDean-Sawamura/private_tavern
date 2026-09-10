@@ -1,0 +1,332 @@
+[
+  {
+    "legacy": {
+      "mode": "Legacy (动作#1)",
+      "wall_time_s": 57.28,
+      "ai_calls": 2,
+      "total_ai_latency_s": 57.28,
+      "overhead_s": 0.0,
+      "total_input_chars": 5440,
+      "total_output_chars": 1601,
+      "est_input_tokens": 2720,
+      "est_output_tokens": 800,
+      "narrative_length": 1601,
+      "choices_count": 3,
+      "state_changes_count": 0,
+      "npc_notifications": 0,
+      "has_scene_details": false,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 55.82,
+          "input_chars": 5033,
+          "output_chars": 1601
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 1.46,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    },
+    "8stage": {
+      "mode": "8-Stage (动作#1)",
+      "wall_time_s": 180.1,
+      "ai_calls": 8,
+      "total_ai_latency_s": 202.33,
+      "overhead_s": -22.23,
+      "total_input_chars": 16311,
+      "total_output_chars": 4741,
+      "est_input_tokens": 8155,
+      "est_output_tokens": 2370,
+      "narrative_length": 1285,
+      "choices_count": 4,
+      "state_changes_count": 0,
+      "npc_notifications": 0,
+      "has_scene_details": true,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 21.84,
+          "input_chars": 3208,
+          "output_chars": 361
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 20.56,
+          "input_chars": 581,
+          "output_chars": 459
+        },
+        {
+          "call_no": 3,
+          "method": "generate",
+          "latency_s": 26.16,
+          "input_chars": 868,
+          "output_chars": 601
+        },
+        {
+          "call_no": 4,
+          "method": "generate",
+          "latency_s": 43.48,
+          "input_chars": 2524,
+          "output_chars": 1285
+        },
+        {
+          "call_no": 5,
+          "method": "generate",
+          "latency_s": 1.68,
+          "input_chars": 2174,
+          "output_chars": 2
+        },
+        {
+          "call_no": 6,
+          "method": "generate",
+          "latency_s": 71.23,
+          "input_chars": 3195,
+          "output_chars": 1373
+        },
+        {
+          "call_no": 7,
+          "method": "generate",
+          "latency_s": 16.17,
+          "input_chars": 3354,
+          "output_chars": 660
+        },
+        {
+          "call_no": 8,
+          "method": "generate",
+          "latency_s": 1.2,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    }
+  },
+  {
+    "legacy": {
+      "mode": "Legacy (动作#2)",
+      "wall_time_s": 55.84,
+      "ai_calls": 2,
+      "total_ai_latency_s": 55.84,
+      "overhead_s": 0.0,
+      "total_input_chars": 5560,
+      "total_output_chars": 1625,
+      "est_input_tokens": 2780,
+      "est_output_tokens": 812,
+      "narrative_length": 1625,
+      "choices_count": 3,
+      "state_changes_count": 1,
+      "npc_notifications": 0,
+      "has_scene_details": false,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 54.67,
+          "input_chars": 5153,
+          "output_chars": 1625
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 1.17,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    },
+    "8stage": {
+      "mode": "8-Stage (动作#2)",
+      "wall_time_s": 206.11,
+      "ai_calls": 8,
+      "total_ai_latency_s": 242.39,
+      "overhead_s": -36.29,
+      "total_input_chars": 15187,
+      "total_output_chars": 4238,
+      "est_input_tokens": 7593,
+      "est_output_tokens": 2119,
+      "narrative_length": 1374,
+      "choices_count": 4,
+      "state_changes_count": 2,
+      "npc_notifications": 0,
+      "has_scene_details": true,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 26.64,
+          "input_chars": 2381,
+          "output_chars": 286
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 20.33,
+          "input_chars": 506,
+          "output_chars": 466
+        },
+        {
+          "call_no": 3,
+          "method": "generate",
+          "latency_s": 23.32,
+          "input_chars": 854,
+          "output_chars": 494
+        },
+        {
+          "call_no": 4,
+          "method": "generate",
+          "latency_s": 54.58,
+          "input_chars": 2344,
+          "output_chars": 1374
+        },
+        {
+          "call_no": 5,
+          "method": "generate",
+          "latency_s": 15.96,
+          "input_chars": 2290,
+          "output_chars": 387
+        },
+        {
+          "call_no": 6,
+          "method": "generate",
+          "latency_s": 53.41,
+          "input_chars": 3277,
+          "output_chars": 614
+        },
+        {
+          "call_no": 7,
+          "method": "generate",
+          "latency_s": 47.26,
+          "input_chars": 3128,
+          "output_chars": 617
+        },
+        {
+          "call_no": 8,
+          "method": "generate",
+          "latency_s": 0.89,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    }
+  },
+  {
+    "legacy": {
+      "mode": "Legacy (动作#3)",
+      "wall_time_s": 48.97,
+      "ai_calls": 2,
+      "total_ai_latency_s": 48.97,
+      "overhead_s": 0.0,
+      "total_input_chars": 4984,
+      "total_output_chars": 1353,
+      "est_input_tokens": 2492,
+      "est_output_tokens": 676,
+      "narrative_length": 1353,
+      "choices_count": 3,
+      "state_changes_count": 1,
+      "npc_notifications": 0,
+      "has_scene_details": false,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 47.65,
+          "input_chars": 4577,
+          "output_chars": 1353
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 1.32,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    },
+    "8stage": {
+      "mode": "8-Stage (动作#3)",
+      "wall_time_s": 172.28,
+      "ai_calls": 8,
+      "total_ai_latency_s": 204.75,
+      "overhead_s": -32.48,
+      "total_input_chars": 16241,
+      "total_output_chars": 4249,
+      "est_input_tokens": 8120,
+      "est_output_tokens": 2124,
+      "narrative_length": 1454,
+      "choices_count": 4,
+      "state_changes_count": 1,
+      "npc_notifications": 0,
+      "has_scene_details": true,
+      "has_emotion": false,
+      "call_details": [
+        {
+          "call_no": 1,
+          "method": "generate",
+          "latency_s": 26.49,
+          "input_chars": 2427,
+          "output_chars": 598
+        },
+        {
+          "call_no": 2,
+          "method": "generate",
+          "latency_s": 24.08,
+          "input_chars": 1165,
+          "output_chars": 551
+        },
+        {
+          "call_no": 3,
+          "method": "generate",
+          "latency_s": 25.14,
+          "input_chars": 818,
+          "output_chars": 375
+        },
+        {
+          "call_no": 4,
+          "method": "generate",
+          "latency_s": 53.58,
+          "input_chars": 2616,
+          "output_chars": 1454
+        },
+        {
+          "call_no": 5,
+          "method": "generate",
+          "latency_s": 8.4,
+          "input_chars": 2361,
+          "output_chars": 2
+        },
+        {
+          "call_no": 6,
+          "method": "generate",
+          "latency_s": 33.89,
+          "input_chars": 3349,
+          "output_chars": 411
+        },
+        {
+          "call_no": 7,
+          "method": "generate",
+          "latency_s": 31.55,
+          "input_chars": 3098,
+          "output_chars": 858
+        },
+        {
+          "call_no": 8,
+          "method": "generate",
+          "latency_s": 1.62,
+          "input_chars": 407,
+          "output_chars": 0
+        }
+      ]
+    }
+  }
+]

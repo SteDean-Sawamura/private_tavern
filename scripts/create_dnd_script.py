@@ -1,0 +1,994 @@
+# -*- coding: utf-8 -*-
+"""Build the D&D open-world script JSON: 灰烬大陆·王冠之城"""
+import json, os, sys
+
+sys.stdout.reconfigure(encoding="utf-8")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "scripts", "dnd_open_world_ashenvale.json")
+
+WORLD_BG = (
+    "灰烬大陆，一片由远古龙战塑造的广袤土地。"
+    "千年前五色巨龙与诸神爆发了\"灭世龙战\"，大地被龙息焚烧，山脉被撕裂，"
+    "最终诸神以生命为代价将巨龙封印于大地深处。"
+    "战争留下的焦土逐渐恢复生机，人类、精灵、矮人、兽人在废墟上建立了新的文明。\n\n"
+    "王冠城（Coronholm）是大陆最大的贸易都市，坐落于三河交汇之处。"
+    "城中五大势力盘根错节：贵族以王室血统自居，法师学院掌控奥术知识，"
+    "商会公会左右经济命脉，圣光教会宣扬神明意志，暗影之中盗贼公会和更隐秘的组织也在编织自己的网。\n\n"
+    "当前局势：老国王驾崩已满一年，两位王子争夺继承权。"
+    "北方边境传来兽人部落异动的消息。法师学院近期实验引发数起魔力暴走事件。"
+    "圣光教会内部出现分裂迹象。矿工们在灰岩山脉深处发现了刻有远古龙文的石板"
+    "——那些本应被遗忘的封印，似乎正在松动。\n\n"
+    "没有既定命运的世界。成为英雄、商人、学者或阴影中的操纵者，一切取决于你的选择。"
+)
+
+# ── settings ──
+settings = {
+    "check_rule": "dnd",
+    "dice_check": {"default_enabled": True, "player_can_toggle": True},
+    "fixed_opening": {"default_enabled": True, "player_can_toggle": False},
+    "allow_player_control_switch": True,
+    "vector_memory_enabled": True,
+    "vector_summarize": True,
+    "summary_interval": 8,
+    "summary_keep_recent": 4,
+    "summary_word_threshold": 200,
+    "lorebook_token_budget": 4000,
+    "lorebook_max_recursion": 2,
+    "ai_tools_enabled": True,
+    "skill_check_map": {
+        "搬": "STR", "推": "STR", "拉": "STR", "举": "STR", "踹": "STR",
+        "破门": "STR", "攀爬": "STR", "摔跤": "STR", "击打": "STR",
+        "躲": "DEX", "闪": "DEX", "翻滚": "DEX", "潜行": "DEX", "偷": "DEX",
+        "扒": "DEX", "开锁": "DEX", "射击": "DEX", "杂技": "DEX",
+        "忍耐": "CON", "抵抗": "CON", "毒": "CON", "寒冷": "CON",
+        "长途": "CON", "坚持": "CON", "憋气": "CON", "饮酒": "CON",
+        "辨识": "INT", "分析": "INT", "回忆": "INT", "调查": "INT",
+        "解读": "INT", "鉴定": "INT", "历史": "INT", "奥术": "INT",
+        "察觉": "WIS", "聆听": "WIS", "追踪": "WIS", "洞察": "WIS",
+        "感应": "WIS", "直觉": "WIS", "观察": "WIS", "搜索": "WIS",
+        "说服": "CHA", "欺骗": "CHA", "威吓": "CHA", "表演": "CHA",
+        "交涉": "CHA", "魅惑": "CHA", "谈判": "CHA", "领导": "CHA",
+    },
+}
+
+# ── player_character ──
+player_character = {
+    "id": "player",
+    "name": "",
+    "bio": "",
+    "personality": "",
+    "portrait_desc": "",
+    "initial_location": "city_south_gate",
+    "long_term_goal": "",
+    "attributes": {
+        "STR": {"value": 50, "min": 0, "max": 100, "display_name": "力量",
+                "rule": "物理力量与近战能力。影响搬运、破门、近战攻击等检定。"},
+        "DEX": {"value": 50, "min": 0, "max": 100, "display_name": "敏捷",
+                "rule": "灵活性与反应速度。影响闪避、潜行、远程攻击、开锁等检定。"},
+        "CON": {"value": 50, "min": 0, "max": 100, "display_name": "体质",
+                "rule": "身体耐力与抗性。影响中毒抵抗、长途跋涉等检定。"},
+        "INT": {"value": 50, "min": 0, "max": 100, "display_name": "智力",
+                "rule": "学识与推理能力。影响奥术鉴定、历史回忆、调查分析等检定。"},
+        "WIS": {"value": 50, "min": 0, "max": 100, "display_name": "感知",
+                "rule": "直觉与洞察力。影响察觉、洞察、追踪等检定。"},
+        "CHA": {"value": 50, "min": 0, "max": 100, "display_name": "魅力",
+                "rule": "人格魅力与社交能力。影响说服、欺骗、威吓等检定。"},
+        "HP":  {"value": 100, "min": 0, "max": 100, "display_name": "生命值",
+                "rule": "降至0时角色陷入濒死状态。"},
+        "MP":  {"value": 50, "min": 0, "max": 100, "display_name": "魔力值",
+                "rule": "施法消耗魔力，可通过休息或药水恢复。"},
+        "gold": {"value": 15, "min": 0, "max": 99999, "display_name": "金币",
+                 "rule": "通用货币。"},
+        "reputation": {"value": 0, "min": -100, "max": 100, "display_name": "声望",
+                       "rule": "正值好名声，负值恶名。影响NPC态度和任务。"},
+    },
+    "initial_inventory": [
+        {"item": "旅行者背包", "quantity": 1},
+        {"item": "干粮（三日份）", "quantity": 1},
+        {"item": "水壶", "quantity": 1},
+        {"item": "火绒盒", "quantity": 1},
+        {"item": "旧匕首", "quantity": 1},
+    ],
+    "relationships": {},
+}
+
+# ── locations (28) ──
+locations = [
+    # --- 城区 12 ---
+    {"id": "city_south_gate", "name": "王冠城南门",
+     "description": "王冠城的主入口，高耸石质城门上雕刻双龙抱冠城徽。守卫盘查旅人，收税官哨所两侧。",
+     "initially_visible": True, "connections": ["city_market", "city_slums", "plains_road"]},
+    {"id": "city_market", "name": "中央市场",
+     "description": "最繁华的商业区，数百个摊位店铺。香料丝绸武器药剂汇聚，青铜喷泉为地标。",
+     "initially_visible": True, "connections": ["city_south_gate", "city_noble_district", "city_guild_hall", "city_temple_district", "city_slums", "city_inn"]},
+    {"id": "city_noble_district", "name": "贵族区",
+     "description": "林荫大道旁各大贵族府邸。王城矗立于最高处山丘，骑士巡逻维持秩序。",
+     "initially_visible": True, "connections": ["city_market", "city_castle", "city_mage_tower"]},
+    {"id": "city_castle", "name": "王冠城堡",
+     "description": "三层城墙守护的王室居所。两位王子各占一翼，空气中弥漫着紧张与猜忌。",
+     "initially_visible": True, "connections": ["city_noble_district"], "access_condition": "需要贵族通行证或王室召见令"},
+    {"id": "city_temple_district", "name": "神殿区",
+     "description": "圣光大教堂金顶辉煌，周围环绕次级神殿和小庙宇。每日钟声响彻全城。",
+     "initially_visible": True, "connections": ["city_market", "city_noble_district"]},
+    {"id": "city_mage_tower", "name": "奥术高塔",
+     "description": "法师学院所在，悬浮符文尖塔直入云霄。图书馆和一楼商店对外开放，上层仅学院成员可入。",
+     "initially_visible": True, "connections": ["city_noble_district", "city_market"]},
+    {"id": "city_guild_hall", "name": "冒险者公会",
+     "description": "宏大石质建筑，告示板贴满委托悬赏。酒吧区永远喧闹，二楼为管理层办公室。",
+     "initially_visible": True, "connections": ["city_market", "city_inn"]},
+    {"id": "city_inn", "name": "金龙酒馆",
+     "description": "冒险者最爱的落脚点。半精灵退役冒险者老板娘经营，是情报交换的隐秘中心。",
+     "initially_visible": True, "connections": ["city_market", "city_guild_hall", "city_slums"]},
+    {"id": "city_slums", "name": "下城区",
+     "description": "城墙脚下的贫民窟，狭窄巷道与破旧房屋。信息流通最快的地方，也是最危险的角落。",
+     "initially_visible": True, "connections": ["city_south_gate", "city_market", "city_inn", "city_sewers"]},
+    {"id": "city_sewers", "name": "地下水道",
+     "description": "黑暗潮湿的下水道系统。盗贼公会的秘密据点隐藏在某处暗门之后。",
+     "initially_visible": False, "connections": ["city_slums"], "access_condition": "需要找到暗门入口或由知情人引路"},
+    {"id": "city_arena", "name": "竞技场",
+     "description": "角斗竞技场，集市日举办角斗赛和魔兽搏击。地下关押着各种凶猛魔兽。",
+     "initially_visible": True, "connections": ["city_market", "city_slums"]},
+    {"id": "city_library", "name": "大图书馆",
+     "description": "法师学院附属的公共图书馆，收藏大陆历史、地理、魔法书籍，学者云集之处。",
+     "initially_visible": True, "connections": ["city_mage_tower", "city_temple_district"]},
+    # --- 村镇 3 ---
+    {"id": "village_millhaven", "name": "磨坊镇",
+     "description": "城南半日路程的农业小镇，水车磨坊和优质麦酒闻名。近来田地歉收，流盗出没。",
+     "initially_visible": True, "connections": ["plains_road"], "travel_time": "步行半日"},
+    {"id": "village_ironhollow", "name": "铁谷村",
+     "description": "灰岩山脉脚下的矿业村落，矮人和人类为主。矿工们在深处发现了刻有龙文的神秘石板。",
+     "initially_visible": True, "connections": ["mountain_pass"], "travel_time": "步行一日"},
+    {"id": "village_sylvanmere", "name": "银叶渡",
+     "description": "翡翠密林边缘精灵与人类混居的小村。千年银杏树是村庄的标志和精神象征。",
+     "initially_visible": True, "connections": ["emerald_forest_edge"], "travel_time": "步行一日"},
+    # --- 野外 7 ---
+    {"id": "plains_road", "name": "南方平原大道",
+     "description": "连接王冠城与南方城镇的商路。近来赤狼匪帮频繁出没，商队多结队而行。",
+     "initially_visible": True, "connections": ["city_south_gate", "village_millhaven", "crossroads"], "travel_time": "步行数小时"},
+    {"id": "crossroads", "name": "三岔路口",
+     "description": "南方大道、东方密林道、西方山路交汇处。旅人神龛和一棵古老橡树是地标。",
+     "initially_visible": True, "connections": ["plains_road", "emerald_forest_edge", "mountain_pass", "swamp_border"]},
+    {"id": "emerald_forest_edge", "name": "翡翠密林边缘",
+     "description": "大陆最古老森林的外围地带。阳光穿过浓密树冠洒下斑驳光影。",
+     "initially_visible": True, "connections": ["crossroads", "village_sylvanmere", "emerald_forest_deep"]},
+    {"id": "emerald_forest_deep", "name": "翡翠密林深处",
+     "description": "密林的核心区域，遮天蔽日，充满未知。精灵的隐秘聚落藏于其中。",
+     "initially_visible": False, "connections": ["emerald_forest_edge", "elven_ruins"],
+     "access_condition": "需精灵向导或通过感知检定"},
+    {"id": "mountain_pass", "name": "灰岩山口",
+     "description": "灰岩山脉唯一可通行的山口，险峻狭窄，寒风凛冽。",
+     "initially_visible": True, "connections": ["crossroads", "village_ironhollow", "dragon_peak"], "travel_time": "步行一日"},
+    {"id": "swamp_border", "name": "腐沼边界",
+     "description": "毒雾沼泽的入口。腐败气息扑鼻，枯死的树木如骷髅般矗立。",
+     "initially_visible": True, "connections": ["crossroads", "swamp_depths"]},
+    {"id": "swamp_depths", "name": "毒雾沼泽深处",
+     "description": "有毒瘴气弥漫的沼泽深处。巨型蜥蜴和沼泽怪物潜伏其中。",
+     "initially_visible": False, "connections": ["swamp_border", "dark_altar"],
+     "access_condition": "需要解毒药剂或足够高的体质"},
+    # --- 地下城 4 ---
+    {"id": "ruins_oldfort", "name": "旧堡废墟",
+     "description": "百年前废弃的边防要塞。亡灵游荡其中，据说守护着一位骑士的宝藏。",
+     "initially_visible": True, "connections": ["plains_road"]},
+    {"id": "elven_ruins", "name": "精灵遗迹",
+     "description": "远古精灵神殿遗址，龙战前封印绿龙的关键节点。墙壁上的符文仍在微弱发光。",
+     "initially_visible": False, "connections": ["emerald_forest_deep"],
+     "access_condition": "需要找到隐藏入口"},
+    {"id": "dark_altar", "name": "暗影祭坛",
+     "description": "沼泽最深处的黑色石质祭坛，虚空教团在此举行解封仪式。空气中弥漫着硫磺和腐败的气味。",
+     "initially_visible": False, "connections": ["swamp_depths"],
+     "access_condition": "需要发现虚空教团线索"},
+    {"id": "dragon_peak", "name": "龙息峰",
+     "description": "灰岩山脉的最高峰。千年前最后一条红龙被封印之处，山顶终年笼罩着不自然的热雾。",
+     "initially_visible": False, "connections": ["mountain_pass"],
+     "access_condition": "需从铁谷村或山口获得情报"},
+    # --- 隐藏 2 ---
+    {"id": "thieves_den", "name": "暗影巢穴",
+     "description": "盗贼公会的秘密总部，藏于地下水道深处的天然洞穴中。",
+     "initially_visible": False, "connections": ["city_sewers"],
+     "access_condition": "需要盗贼公会信物或暗号"},
+    {"id": "feywild_grove", "name": "精灵秘境",
+     "description": "翡翠密林中的半位面空间，现实与梦境的交界。只在月圆之夜于特定石环处可进入。",
+     "initially_visible": False, "connections": ["emerald_forest_deep"],
+     "access_condition": "需要月圆之夜在精灵石环处进行仪式"},
+]
+
+# ── organizations (7) ──
+organizations = [
+    {"id": "org_adventurer_guild", "name": "冒险者公会", "type": "公会",
+     "description": "大陆最大的冒险者互助组织。提供任务委托、情报交换和紧急援助。中立立场不介入政治。",
+     "leader": "npc_guildmaster_voss", "stance": "中立",
+     "aliases": ["公会", "冒险者工会"],
+     "hierarchy": [{"rank": 1, "title": "公会长"}, {"rank": 2, "title": "白金级"}, {"rank": 3, "title": "黄金级"}, {"rank": 4, "title": "白银级"}, {"rank": 5, "title": "青铜级"}, {"rank": 6, "title": "新手"}]},
+    {"id": "org_mage_academy", "name": "奥术学院", "type": "学院",
+     "description": "大陆最高奥术学府。近年来激进派推动解封远古实验引发魔力暴走事件，保守派与激进派矛盾加深。",
+     "leader": "npc_archmage_elara", "stance": "亲王室",
+     "aliases": ["法师学院", "魔法学院", "高塔"],
+     "hierarchy": [{"rank": 1, "title": "大法师"}, {"rank": 2, "title": "高阶法师"}, {"rank": 3, "title": "法师"}, {"rank": 4, "title": "学徒"}]},
+    {"id": "org_thieves_guild", "name": "暗影之手", "type": "地下组织",
+     "description": "王冠城最大的盗贼组织。控制黑市、情报网和走私通道。有自己的规矩——不杀无辜、不偷穷人、不碰孩子。",
+     "leader": "npc_shadow_master", "stance": "中立偏暗",
+     "aliases": ["盗贼公会", "暗影", "黑手"],
+     "hierarchy": [{"rank": 1, "title": "暗影主宰"}, {"rank": 2, "title": "暗刃"}, {"rank": 3, "title": "夜行者"}, {"rank": 4, "title": "扒手"}]},
+    {"id": "org_house_aldric", "name": "奥德里克家族", "type": "贵族",
+     "description": "最古老贵族之一，掌控军事力量。大王子赛拉斯主张武力统一边疆。",
+     "leader": "npc_prince_silas", "stance": "保守强硬",
+     "aliases": ["奥德里克", "大王子派"],
+     "hierarchy": [{"rank": 1, "title": "家主"}, {"rank": 2, "title": "家族骑士"}, {"rank": 3, "title": "家臣"}]},
+    {"id": "org_house_valen", "name": "瓦伦家族", "type": "贵族",
+     "description": "商业贸易崛起的新兴贵族。二王子阿德里安母族，主张外交贸易解决争端。",
+     "leader": "npc_prince_adrian", "stance": "开明改革",
+     "aliases": ["瓦伦", "二王子派"],
+     "hierarchy": [{"rank": 1, "title": "家主"}, {"rank": 2, "title": "家族顾问"}, {"rank": 3, "title": "家臣"}]},
+    {"id": "org_church_light", "name": "圣光教会", "type": "宗教组织",
+     "description": "信仰光明之神艾利昂。经营医院孤儿院。温和派主张包容慈悲，激进派审判庭要求清除\"异端\"。",
+     "leader": "npc_high_priest", "stance": "秩序善良（内部分裂）",
+     "aliases": ["教会", "圣光", "光明教会"],
+     "hierarchy": [{"rank": 1, "title": "大主教"}, {"rank": 2, "title": "主教"}, {"rank": 3, "title": "神官"}, {"rank": 4, "title": "修士"}]},
+    {"id": "org_void_cult", "name": "虚空教团", "type": "邪教",
+     "description": "崇拜被封印远古巨龙之力的秘密邪教。企图解放沉睡的巨龙。成员来自社会各阶层。",
+     "leader": "npc_cult_leader", "stance": "混乱邪恶",
+     "aliases": ["虚空", "龙教", "邪教"],
+     "hierarchy": [{"rank": 1, "title": "龙裔使者"}, {"rank": 2, "title": "虚空祭司"}, {"rank": 3, "title": "信徒"}]},
+]
+
+org_relationships = [
+    {"a": "org_house_aldric", "b": "org_house_valen", "type": "对立", "description": "两大家族争夺王位继承权，政治对立但尚未公开冲突"},
+    {"a": "org_house_aldric", "b": "org_church_light", "type": "联盟", "description": "大王子与教会审判庭关系密切，互相支持"},
+    {"a": "org_house_valen", "b": "org_mage_academy", "type": "联盟", "description": "二王子与学院保守派关系友好，支持学术研究"},
+    {"a": "org_church_light", "b": "org_mage_academy", "type": "紧张", "description": "审判庭视部分奥术研究为异端，与学院激进派冲突频发"},
+    {"a": "org_church_light", "b": "org_void_cult", "type": "敌对", "description": "教会视虚空教团为最大异端威胁，但尚未发现其真实规模"},
+    {"a": "org_adventurer_guild", "b": "org_thieves_guild", "type": "中立默契", "description": "互不干涉，偶尔有信息交换"},
+    {"a": "org_mage_academy", "b": "org_void_cult", "type": "未知", "description": "教团领袖原为学院成员，学院不知教团已渗透学院激进派"},
+]
+
+# ── PLACEHOLDER for NPCs, relationships, events, lorebook ──
+# (appended in subsequent edits)
+npcs = [
+    # ── 6A: 城市领袖与贵族 (4) ──
+    {"id": "npc_prince_silas", "name": "赛拉斯·奥德里克", "title": "大王子",
+     "bio": "已故国王长子，35岁，身材魁梧面容刚毅。自幼接受军事训练，曾亲自击退兽人入侵。坚信唯有铁腕才能统一混乱的王国。渴望父亲认可，但老国王生前更偏爱二王子。",
+     "personality": "威严果断，崇尚力量与荣耀。刚愎自用不善妥协，但对忠诚者极为慷慨。",
+     "capabilities": "精通剑术和战术指挥，掌控王城北翼和半数王室卫队。",
+     "portrait_desc": "身材高大的黑发男子，剑眉星目，下颌线条坚毅。着黑金色铠甲，腰佩家传阔剑。",
+     "attitude_toward_player": 40, "known": True, "met": False, "talkativeness": 35,
+     "default_location": "city_castle",
+     "schedule": [
+         {"time_range": "06:00-08:00", "location": "city_castle", "activity": "在城堡庭院晨练剑术"},
+         {"time_range": "08:00-12:00", "location": "city_castle", "activity": "处理政务，接见军事将领"},
+         {"time_range": "14:00-17:00", "location": "city_noble_district", "activity": "视察贵族区和军营"},
+         {"time_range": "17:00-19:00", "location": "city_arena", "activity": "偶尔观看竞技场比赛"},
+         {"time_range": "19:00-22:00", "location": "city_castle", "activity": "与亲信密谋政务"}],
+     "organizations": [{"org_id": "org_house_aldric", "rank": 1, "role": "家族领袖"}]},
+
+    {"id": "npc_prince_adrian", "name": "阿德里安·瓦伦", "title": "二王子",
+     "bio": "次子28岁，继承母亲精灵般的俊美和外交才华。曾南方游学精通多国语言。渴望和平建设，但明白有时必须做出残酷选择。",
+     "personality": "温文尔雅善于倾听和说服。表面温和内心坚定，热爱知识与艺术。",
+     "capabilities": "出色的外交官，掌控王城南翼和半数王室顾问团。与南方诸国和精灵有外交关系。",
+     "portrait_desc": "修长俊秀的青年，栗色长发半束，碧绿眼瞳。着深蓝色华服，手持白玉折扇。",
+     "attitude_toward_player": 55, "known": True, "met": False, "talkativeness": 65,
+     "default_location": "city_castle",
+     "schedule": [
+         {"time_range": "08:00-10:00", "location": "city_castle", "activity": "处理政务文书"},
+         {"time_range": "10:00-12:00", "location": "city_noble_district", "activity": "拜访中立派贵族"},
+         {"time_range": "12:00-14:00", "location": "city_market", "activity": "微服巡视民间"},
+         {"time_range": "14:00-17:00", "location": "city_library", "activity": "在图书馆研究历史"},
+         {"time_range": "19:00-22:00", "location": "city_castle", "activity": "宴请宾客或处理外交事务"}],
+     "organizations": [{"org_id": "org_house_valen", "rank": 1, "role": "家族领袖"}]},
+
+    {"id": "npc_captain_roth", "name": "罗斯·铁盾", "title": "守卫队长",
+     "bio": "人类45岁，出身平民凭武勇忠诚升至守卫队长。对两王子争斗保持中立，只忠于守护城市和百姓。",
+     "personality": "正直务实言语简练。对违法零容忍但明白世事并非非黑即白。",
+     "capabilities": "精通多种武器，指挥300名城市守卫。与冒险者公会合作良好。",
+     "portrait_desc": "方脸壮汉，短灰发，鼻梁有旧伤疤。着城市守卫队长制服铠甲。",
+     "attitude_toward_player": 50, "known": True, "met": False, "talkativeness": 30,
+     "default_location": "city_south_gate",
+     "schedule": [
+         {"time_range": "06:00-12:00", "location": "city_south_gate", "activity": "南门巡视与盘查"},
+         {"time_range": "12:00-13:00", "location": "city_guild_hall", "activity": "与公会协调安全事务"},
+         {"time_range": "13:00-18:00", "location": "city_slums", "activity": "下城区巡逻"},
+         {"time_range": "18:00-22:00", "location": "city_castle", "activity": "向城堡汇报治安情况"}]},
+
+    {"id": "npc_lady_miranda", "name": "米兰达·塞文", "title": "塞文伯爵夫人",
+     "bio": "塞文伯爵家族女当家40岁。丈夫三年前死于\"意外\"。表面是两派间的调停者，实际暗中布局让双方都依赖她。",
+     "personality": "优雅迷人深谙人心。每句话经过精密计算。偶尔独处时展露疲惫与孤独。",
+     "capabilities": "控制城中三分之一粮食供应链。擅长情报收集和政治操纵。",
+     "portrait_desc": "风韵犹存的贵妇，深红卷发盘起，琥珀色眼瞳。着暗紫色丝绒长裙，佩戴繁复珠宝。",
+     "attitude_toward_player": 50, "known": True, "met": False, "talkativeness": 60,
+     "default_location": "city_noble_district",
+     "schedule": [
+         {"time_range": "09:00-11:00", "location": "city_noble_district", "activity": "处理家族产业"},
+         {"time_range": "11:00-13:00", "location": "city_temple_district", "activity": "参加教会社交活动"},
+         {"time_range": "14:00-16:00", "location": "city_market", "activity": "视察粮食贸易"},
+         {"time_range": "16:00-18:00", "location": "city_noble_district", "activity": "举办或参加贵妇茶会"},
+         {"time_range": "20:00-22:00", "location": "city_noble_district", "activity": "晚宴或秘密会面"}]},
+
+    # ── 6B: 公会领袖与商人 (5) ──
+    {"id": "npc_guildmaster_voss", "name": "沃斯·铁拳", "title": "公会长",
+     "bio": "冒险者公会王冠城分部会长，矮人180岁。退役白金级冒险者，曾深入龙穴并活着回来。左眼在那次冒险中失去。",
+     "personality": "豪爽直率嗜酒如命。对新手既严厉又慈爱。极度厌恶欺诈和背叛。",
+     "capabilities": "战力惊人，遍布大陆的冒险者人脉。能提供任务、装备折扣和情报。",
+     "portrait_desc": "身材矮壮肌肉虬结的红发矮人，编辫浓密胡须系三个金属扣环。左眼皮质眼罩。",
+     "attitude_toward_player": 55, "known": True, "met": False, "talkativeness": 75,
+     "default_location": "city_guild_hall",
+     "schedule": [
+         {"time_range": "08:00-12:00", "location": "city_guild_hall", "activity": "处理公会事务"},
+         {"time_range": "12:00-14:00", "location": "city_inn", "activity": "在酒馆午饭喝酒"},
+         {"time_range": "14:00-18:00", "location": "city_guild_hall", "activity": "接见冒险者发布任务"},
+         {"time_range": "18:00-23:00", "location": "city_inn", "activity": "在酒馆饮酒讲述冒险故事"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 1}]},
+
+    {"id": "npc_merchant_lin", "name": "林可儿", "title": "万物阁店主",
+     "bio": "中央市场最成功的综合商人，人类女性30岁。从东方大陆远渡而来，白手起家建立商业帝国\"万物阁\"。",
+     "personality": "精明世故但待客热情。善于推销但不强买强卖，绝不售卖违禁品。",
+     "capabilities": "广泛的商业网络，能搞到各地稀有商品。市场价格情报的权威来源。",
+     "portrait_desc": "东方面孔的年轻女商人，黑色发髻插玉簪，杏眼含笑。着素色绣花对襟衫。",
+     "attitude_toward_player": 60, "known": True, "met": False, "talkativeness": 70,
+     "default_location": "city_market",
+     "schedule": [
+         {"time_range": "07:00-12:00", "location": "city_market", "activity": "在万物阁营业接待客人"},
+         {"time_range": "12:00-13:00", "location": "city_inn", "activity": "午饭"},
+         {"time_range": "13:00-19:00", "location": "city_market", "activity": "继续营业处理订单"},
+         {"time_range": "19:00-21:00", "location": "city_market", "activity": "盘点库存整理账目"}]},
+
+    {"id": "npc_blacksmith_durgan", "name": "杜尔根·熔炉之子", "title": "大师铁匠",
+     "bio": "王冠城最优秀的铁匠，矮人200岁。只为他认可的人打造定制装备。与铁谷村矿工联系密切。",
+     "personality": "沉默寡言对锻造疯狂执着。谈论武器和金属时会突然滔滔不绝。",
+     "capabilities": "大师级锻造技艺，能制作魔法武器和特殊合金装备。",
+     "portrait_desc": "满脸烟灰的老矮人，光头，灰色络腮胡烧焦了几缕。肌肉如铁，双手布满老茧和烫伤。",
+     "attitude_toward_player": 35, "known": True, "met": False, "talkativeness": 20,
+     "default_location": "city_market",
+     "schedule": [
+         {"time_range": "05:00-12:00", "location": "city_market", "activity": "在锻造坊工作"},
+         {"time_range": "12:00-13:00", "location": "city_inn", "activity": "午饭"},
+         {"time_range": "13:00-20:00", "location": "city_market", "activity": "继续锻造工作"},
+         {"time_range": "20:00-22:00", "location": "city_inn", "activity": "与沃斯饮酒聊矮人故乡"}]},
+
+    {"id": "npc_innkeeper_sera", "name": "瑟拉·银弦", "title": "酒馆老板娘",
+     "bio": "金龙酒馆老板娘，半精灵女性90岁（外貌35）。退役黄金级冒险者，失去右小腿后装了矮人锻造的机械义肢。酒馆是城中最重要的情报交换中心。",
+     "personality": "热情爽朗母性十足。善于套取信息也乐于分享有价值的情报。惹怒她会被机械义肢踢出酒馆。",
+     "capabilities": "出色的情报掮客，剑术依然了得。与公会长沃斯是多年老战友。",
+     "portrait_desc": "精灵般秀美的半精灵女性，蜜色长发马尾，尖耳。围着酒馆围裙，右腿是精密的矮人机械义肢。",
+     "attitude_toward_player": 65, "known": True, "met": False, "talkativeness": 80,
+     "default_location": "city_inn",
+     "schedule": [
+         {"time_range": "10:00-14:00", "location": "city_inn", "activity": "准备酒馆开业接待午客"},
+         {"time_range": "14:00-16:00", "location": "city_market", "activity": "采购食材酒水"},
+         {"time_range": "16:00-24:00", "location": "city_inn", "activity": "经营酒馆收集情报"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 5, "role": "退役顾问"}]},
+
+    {"id": "npc_fence_marlo", "name": "马洛·灰影", "title": "古董商（黑市掮客）",
+     "bio": "\"古董店\"老板，实为暗影之手高级成员和王冠城黑市掮客。表面和蔼可亲的商人，暗地里经手一切灰色交易。",
+     "personality": "圆滑世故笑容可掬但眼神冰冷。重信守诺，但承诺的内容需仔细斟酌。",
+     "capabilities": "黑市网络的核心节点。与暗影之手高层有直接联系，能搞到任何违禁品。",
+     "portrait_desc": "中年人类男性，削瘦面庞，深陷的灰色眼窝。着考究的暗灰色大衣，手指戴着多枚戒指。",
+     "attitude_toward_player": 45, "known": False, "met": False, "talkativeness": 55,
+     "default_location": "city_market",
+     "schedule": [
+         {"time_range": "10:00-18:00", "location": "city_market", "activity": "经营古董店门面生意"},
+         {"time_range": "18:00-20:00", "location": "city_slums", "activity": "在下城区处理灰色生意"},
+         {"time_range": "22:00-02:00", "location": "thieves_den", "activity": "在暗影巢穴参加会议"}],
+     "organizations": [{"org_id": "org_thieves_guild", "rank": 2}]},
+
+    # ── 6C: 宗教人物 (3) ──
+    {"id": "npc_high_priest", "name": "奥古斯丁·光耀", "title": "大主教",
+     "bio": "圣光教会大主教，人类60岁。温和慈悲的长者。审判庭势力膨胀、绕过他的权威，这令他深感忧虑。",
+     "personality": "温和睿智真诚关怀。涉及信仰核心时展现钢铁般的意志。",
+     "capabilities": "强大的神圣魔法使用者（治疗、驱邪）。在教会和平民中拥有崇高威望。",
+     "portrait_desc": "白发白须的慈祥老者，穿金白色主教法袍，手持圣光杖。眼神明亮而温和。",
+     "attitude_toward_player": 60, "known": True, "met": False, "talkativeness": 55,
+     "default_location": "city_temple_district",
+     "schedule": [
+         {"time_range": "05:00-07:00", "location": "city_temple_district", "activity": "晨祷"},
+         {"time_range": "07:00-12:00", "location": "city_temple_district", "activity": "处理教务接见信徒"},
+         {"time_range": "14:00-17:00", "location": "city_slums", "activity": "巡视教会医院和孤儿院"},
+         {"time_range": "17:00-19:00", "location": "city_temple_district", "activity": "晚祷"}],
+     "organizations": [{"org_id": "org_church_light", "rank": 1}]},
+
+    {"id": "npc_inquisitor_theron", "name": "塞隆·净焰", "title": "审判官",
+     "bio": "审判庭首席审判官，人类38岁。失去战友后对一切\"不洁之物\"怀有偏执的仇恨。",
+     "personality": "狂热坚定非黑即白。对同伴严厉忠诚，对\"异端\"毫不留情。",
+     "capabilities": "强大的圣骑士战力，指挥20人审判庭精英小队。",
+     "portrait_desc": "消瘦面庞灼热双眼的男子，短金发，穿银白色审判庭铠甲，胸前巨大圣光徽记。",
+     "attitude_toward_player": 45, "known": True, "met": False, "talkativeness": 25,
+     "default_location": "city_temple_district",
+     "schedule": [
+         {"time_range": "05:00-07:00", "location": "city_temple_district", "activity": "祈祷和武装训练"},
+         {"time_range": "07:00-12:00", "location": "city_slums", "activity": "在下城区巡逻搜查异端"},
+         {"time_range": "14:00-18:00", "location": "city_market", "activity": "调查可疑人物和商品"},
+         {"time_range": "20:00-22:00", "location": "city_temple_district", "activity": "独自祈祷"}],
+     "organizations": [{"org_id": "org_church_light", "rank": 2, "role": "审判庭首席审判官"}]},
+
+    {"id": "npc_sister_lyra", "name": "莉拉修女", "title": "治疗修女",
+     "bio": "年轻修女，半精灵50岁（外表20）。在教会孤儿院长大。温和派代表，暗中对审判庭的激进行为感到不安，并发现了可疑文件。",
+     "personality": "温柔善良容易害羞但内心坚强。相信善行比教义更重要。",
+     "capabilities": "出色的治疗法师，擅长草药学和急救。",
+     "portrait_desc": "年轻半精灵女性，淡金色短发，温柔的蓝色眼瞳。穿白色修女袍，系圣光教会徽章。",
+     "attitude_toward_player": 70, "known": False, "met": False, "talkativeness": 50,
+     "default_location": "city_temple_district",
+     "schedule": [
+         {"time_range": "06:00-08:00", "location": "city_temple_district", "activity": "晨祷"},
+         {"time_range": "08:00-12:00", "location": "city_slums", "activity": "在下城区义诊"},
+         {"time_range": "13:00-17:00", "location": "city_temple_district", "activity": "在教会医院工作"},
+         {"time_range": "17:00-19:00", "location": "city_temple_district", "activity": "晚祷"},
+         {"time_range": "19:00-21:00", "location": "city_library", "activity": "偶尔到图书馆读书"}],
+     "organizations": [{"org_id": "org_church_light", "rank": 4}]},
+
+    # ── 6D: 冒险者/潜在同伴 (5) ──
+    {"id": "npc_ranger_kael", "name": "凯尔·疾风", "title": "半精灵游侠",
+     "bio": "半精灵70岁（外表25）。在翡翠密林长大，精通弓术和荒野求生。混血身份让他在精灵和人类两族中都找不到归属。",
+     "personality": "沉默内敛，对自然有深厚感情。表面冷淡但内心渴望友谊与归属。",
+     "capabilities": "顶尖弓箭手和追踪者。在密林中几乎无人能及。",
+     "portrait_desc": "精瘦结实的半精灵青年，褐色短发，尖耳不如纯血精灵明显。穿暗绿色猎装，背负长弓。",
+     "attitude_toward_player": 40, "known": False, "met": False, "talkativeness": 20,
+     "default_location": "city_guild_hall",
+     "schedule": [
+         {"time_range": "06:00-08:00", "location": "city_guild_hall", "activity": "查看告示板寻找任务"},
+         {"time_range": "08:00-17:00", "location": "emerald_forest_edge", "activity": "在密林边缘狩猎巡逻"},
+         {"time_range": "17:00-19:00", "location": "city_market", "activity": "出售猎获物"},
+         {"time_range": "19:00-22:00", "location": "city_inn", "activity": "在酒馆角落独自饮酒"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 4}]},
+
+    {"id": "npc_mage_finn", "name": "芬恩·星火", "title": "法师学徒",
+     "bio": "人类法师22岁，天才学徒。出身贫寒但天赋极高，被大法师艾拉拉亲自收为弟子。对远古魔法有着近乎痴迷的好奇心。",
+     "personality": "热情话多好奇心旺盛。冒失但关键时刻才华横溢。对朋友极其忠诚。",
+     "capabilities": "天赋异禀的奥术使用者，擅长元素魔法和魔法辨识。实战经验不足。",
+     "portrait_desc": "瘦高的红发青年，脸上有雀斑，眼睛闪烁着求知的光芒。穿皱巴巴的蓝色学徒袍。",
+     "attitude_toward_player": 65, "known": False, "met": False, "talkativeness": 85,
+     "default_location": "city_mage_tower",
+     "schedule": [
+         {"time_range": "07:00-12:00", "location": "city_mage_tower", "activity": "在高塔上课学习"},
+         {"time_range": "12:00-13:00", "location": "city_market", "activity": "买点心充饥"},
+         {"time_range": "13:00-17:00", "location": "city_library", "activity": "在图书馆查阅资料"},
+         {"time_range": "17:00-19:00", "location": "city_mage_tower", "activity": "进行魔法实验"},
+         {"time_range": "19:00-22:00", "location": "city_inn", "activity": "在酒馆听冒险故事"}],
+     "organizations": [{"org_id": "org_mage_academy", "rank": 4}]},
+
+    {"id": "npc_warrior_bryn", "name": "布琳·碎颅", "title": "兽人女战士",
+     "bio": "兽人女性25岁。从北方部落流亡到南方。在人类社会饱受歧视，但用拳头和武勇在冒险者公会赢得了认可。",
+     "personality": "直率鲁莽重视荣誉。脾气火爆但心地善良。对种族歧视极度敏感。",
+     "capabilities": "可怕的近战战士，擅长双手战斧。拥有超越常人的力量和耐力。",
+     "portrait_desc": "高大健壮的兽人女性，灰绿色皮肤，下颌突出的小獠牙。黑色短发剃了半边，穿粗犷皮甲。",
+     "attitude_toward_player": 50, "known": False, "met": False, "talkativeness": 60,
+     "default_location": "city_guild_hall",
+     "schedule": [
+         {"time_range": "06:00-08:00", "location": "city_arena", "activity": "在竞技场训练"},
+         {"time_range": "08:00-12:00", "location": "city_guild_hall", "activity": "接取任务"},
+         {"time_range": "12:00-14:00", "location": "city_inn", "activity": "大吃大喝"},
+         {"time_range": "18:00-23:00", "location": "city_inn", "activity": "在酒馆比腕力饮酒"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 5}]},
+
+    {"id": "npc_rogue_pip", "name": "皮普·巧手", "title": "半身人浪客",
+     "bio": "半身人35岁。曾是暗影之手成员，因拒绝对孩子下手而叛逃，被组织追杀。如今以冒险者身份藏身公会。",
+     "personality": "油嘴滑舌机智幽默。表面嘻哈但内心严重缺乏安全感。一旦认定朋友会拼命保护。",
+     "capabilities": "出色的开锁、解陷阱和潜行能力。了解地下水道和暗影之手的内部运作。",
+     "portrait_desc": "身材矮小的半身人男性，棕色卷发，贼溜溜的绿眼睛，嘴角永远挂着玩世不恭的笑。",
+     "attitude_toward_player": 55, "known": False, "met": False, "talkativeness": 90,
+     "default_location": "city_inn",
+     "schedule": [
+         {"time_range": "10:00-12:00", "location": "city_inn", "activity": "睡到自然醒"},
+         {"time_range": "12:00-15:00", "location": "city_guild_hall", "activity": "寻找合适的任务"},
+         {"time_range": "15:00-18:00", "location": "city_slums", "activity": "在下城区闲逛收集情报"},
+         {"time_range": "18:00-23:00", "location": "city_inn", "activity": "在酒馆耍牌赌博"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 5}]},
+
+    {"id": "npc_paladin_elena", "name": "艾莲娜·曙光", "title": "圣骑士",
+     "bio": "人类圣骑士27岁。教会培养的精英战士。目睹审判庭迫害无辜法师后开始质疑教会，暗中调查教会内部的腐败。",
+     "personality": "正义凛然言行一致。有骑士礼节但不摆架子。在信仰与现实之间痛苦挣扎。",
+     "capabilities": "优秀的剑盾战士，掌握基础神圣魔法（治疗、祝福、驱邪）。",
+     "portrait_desc": "英姿飒爽的金发女骑士，蓝色眼瞳坚定而温暖。穿银白色轻甲，腰佩直剑。",
+     "attitude_toward_player": 60, "known": False, "met": False, "talkativeness": 45,
+     "default_location": "city_guild_hall",
+     "schedule": [
+         {"time_range": "05:00-07:00", "location": "city_temple_district", "activity": "晨祷"},
+         {"time_range": "07:00-12:00", "location": "city_guild_hall", "activity": "接取和执行公会任务"},
+         {"time_range": "13:00-17:00", "location": "city_guild_hall", "activity": "继续执行任务或训练"},
+         {"time_range": "17:00-19:00", "location": "city_temple_district", "activity": "在教会医院帮忙"},
+         {"time_range": "19:00-21:00", "location": "city_inn", "activity": "在酒馆安静独坐思考"}],
+     "organizations": [{"org_id": "org_adventurer_guild", "rank": 4}, {"org_id": "org_church_light", "rank": 3, "role": "游历骑士"}]},
+
+    # ── 6E: 村民与平民 (5) ──
+    {"id": "npc_elder_tommas", "name": "托马斯老爹", "title": "磨坊镇村长",
+     "bio": "人类65岁，一辈子生活在磨坊镇。田地歉收和流盗骚扰让他忧心忡忡，正四处寻求外部援助。",
+     "personality": "慈祥朴实说话慢条斯理。极度重视镇民的安全与生计。",
+     "capabilities": "对本地地形和历史非常了解。在镇民中拥有绝对信任。",
+     "portrait_desc": "白发苍苍的老农，脸上布满皱纹但眼神慈祥。穿粗布衣裳，手中总拄着一根旧拐杖。",
+     "attitude_toward_player": 55, "known": False, "met": False, "talkativeness": 55,
+     "default_location": "village_millhaven",
+     "schedule": [
+         {"time_range": "06:00-18:00", "location": "village_millhaven", "activity": "处理村务巡视田地"},
+         {"time_range": "18:00-21:00", "location": "village_millhaven", "activity": "在村中小酒馆与村民交流"}]},
+
+    {"id": "npc_miner_brokk", "name": "布洛克·裂岩", "title": "矮人矿工头领",
+     "bio": "矮人150岁，在灰岩山脉的矿道中工作了上百年。发现龙文石板后既兴奋又不安——石板附近温度异常，空气中弥漫硫磺味。",
+     "personality": "勤劳踏实，矿石地质方面的活百科全书。发现石板后变得神经兮兮。",
+     "capabilities": "精通采矿和矿石鉴定。对灰岩山脉的地下通道了如指掌。",
+     "portrait_desc": "粗壮的矮人矿工，满脸煤灰，粗大的手指关节肿大。穿工作皮围裙，腰间挂着矿镐。",
+     "attitude_toward_player": 50, "known": False, "met": False, "talkativeness": 40,
+     "default_location": "village_ironhollow",
+     "schedule": [
+         {"time_range": "05:00-17:00", "location": "village_ironhollow", "activity": "在矿道中工作"},
+         {"time_range": "17:00-21:00", "location": "village_ironhollow", "activity": "在矮人酒馆饮酒"}]},
+
+    {"id": "npc_herbalist_willow", "name": "柳絮", "title": "木精灵药草师",
+     "bio": "木精灵200岁。与人类和精灵社区都有联系，能自由出入密林深处。注意到近来动物开始反常迁徙。",
+     "personality": "恬静淡泊说话如林间微风。对打扰自然平衡的行为会表达克制但坚定的反感。",
+     "capabilities": "大师级药草学和炼药术。能制作治疗药水和解毒剂。与精灵和自然精魂有沟通渠道。",
+     "portrait_desc": "纤细的木精灵女性，深绿长发编入藤蔓，琥珀色眼瞳。穿树皮色长袍，随身带药草篮。",
+     "attitude_toward_player": 55, "known": False, "met": False, "talkativeness": 35,
+     "default_location": "village_sylvanmere",
+     "schedule": [
+         {"time_range": "06:00-12:00", "location": "emerald_forest_edge", "activity": "在密林边缘采集药草"},
+         {"time_range": "12:00-18:00", "location": "village_sylvanmere", "activity": "在药草铺制药和接待"},
+         {"time_range": "18:00-21:00", "location": "village_sylvanmere", "activity": "在千年银杏树下冥想"}]},
+
+    {"id": "npc_beggar_old_joe", "name": "老乔", "title": "街头情报王",
+     "bio": "下城区老乞丐，年龄在60-70之间。表面疯癫实际上是城中最老练的情报来源。曾经的身份是个谜。",
+     "personality": "表面疯癫颠三倒四，话语中夹杂谜语。给他施舍的人会获得有价值的信息——前提是你能听懂。",
+     "capabilities": "王冠城最强大的街头情报网络。没有他不知道的秘密。",
+     "portrait_desc": "蓬头垢面的老乞丐，裹着破烂斗篷。但偶尔目光闪烁时透出不属于乞丐的精明。",
+     "attitude_toward_player": 40, "known": False, "met": False, "talkativeness": 60,
+     "default_location": "city_slums",
+     "schedule": [
+         {"time_range": "08:00-12:00", "location": "city_south_gate", "activity": "在南门附近行乞"},
+         {"time_range": "12:00-18:00", "location": "city_market", "activity": "在市场角落打盹（实则观察）"},
+         {"time_range": "18:00-22:00", "location": "city_slums", "activity": "在下城区游荡收集情报"}]},
+
+    {"id": "npc_farmgirl_anna", "name": "安娜", "title": "托马斯老爹的孙女",
+     "bio": "人类18岁，活泼开朗，梦想去王冠城见识大世面。好朋友在流盗袭击中受伤，让她从天真少女变得愤怒而坚定。",
+     "personality": "活泼好奇有些天真但并不愚蠢。紧要关头有超越年龄的勇气和决断力。",
+     "capabilities": "擅长骑马和基础弓术。对磨坊镇周边地形了如指掌。",
+     "portrait_desc": "扎着麻花辫的乡村少女，晒黑的脸颊上有几颗雀斑。穿粗布裙子和皮靴。",
+     "attitude_toward_player": 65, "known": False, "met": False, "talkativeness": 75,
+     "default_location": "village_millhaven",
+     "schedule": [
+         {"time_range": "06:00-12:00", "location": "village_millhaven", "activity": "帮忙干农活"},
+         {"time_range": "14:00-17:00", "location": "village_millhaven", "activity": "在镇上闲逛"},
+         {"time_range": "17:00-20:00", "location": "village_millhaven", "activity": "照顾受伤的朋友"}]},
+
+    # ── 6F: 反派与灰色角色 (5) ──
+    {"id": "npc_shadow_master", "name": "无面者", "title": "暗影主宰",
+     "bio": "暗影之手的首领。没人知道其真实身份、种族或性别。每次现身都戴不同面具、使用变声法术。传闻与王室有古老的协定。",
+     "personality": "深不可测极少露面。决策冷酷精准。对背叛者处置残忍。",
+     "capabilities": "身手和魔法能力都是谜。掌控最大的地下情报网和走私通道。",
+     "portrait_desc": "身形被宽大黑色斗篷完全遮蔽。面具每次不同——有时是白色面具，有时是兽面。",
+     "attitude_toward_player": 35, "known": False, "met": False, "talkativeness": 15,
+     "default_location": "thieves_den",
+     "schedule": [
+         {"time_range": "00:00-06:00", "location": "thieves_den", "activity": "在暗影巢穴处理组织事务"},
+         {"time_range": "22:00-24:00", "location": "city_sewers", "activity": "巡视地下水道"}],
+     "organizations": [{"org_id": "org_thieves_guild", "rank": 1}]},
+
+    {"id": "npc_cult_leader", "name": "莫格温·蛇瞳", "title": "虚空教团领袖",
+     "bio": "原奥术学院高阶法师，因研究禁忌龙魂术被驱逐。发现暗影祭坛后深信巨龙力量是\"正确秩序\"。眼瞳已变成蛇形竖瞳。",
+     "personality": "狂热偏执但带着扭曲的学者气质。能侃侃而谈远古历史令人难以反驳。真诚相信自己在\"拯救世界\"。",
+     "capabilities": "强大的暗黑法师。掌握龙魂术和亡灵术，能召唤和控制虚空裂隙。",
+     "portrait_desc": "消瘦的精灵混血男性，苍白皮肤，金色蛇形竖瞳。穿暗紫色法袍，周身隐约笼罩黑雾。",
+     "attitude_toward_player": 30, "known": False, "met": False, "talkativeness": 45,
+     "default_location": "dark_altar",
+     "schedule": [
+         {"time_range": "00:00-06:00", "location": "dark_altar", "activity": "在暗影祭坛进行仪式"},
+         {"time_range": "06:00-18:00", "location": "swamp_depths", "activity": "在沼泽深处研究龙魂术"},
+         {"time_range": "18:00-24:00", "location": "dark_altar", "activity": "指挥教团活动"}],
+     "organizations": [{"org_id": "org_void_cult", "rank": 1}]},
+
+    {"id": "npc_bandit_chief", "name": "赤狼·格里芬", "title": "义匪首领",
+     "bio": "曾是王城骑士百夫长，因抗命保护被强迫迁移的农民而被驱逐。落草为寇后只抢贵族和富商，不伤百姓。",
+     "personality": "愤世嫉俗但有原则。对权贵满怀仇恨对平民友善。渴望正义但不再相信体制。",
+     "capabilities": "精通骑术和剑术，拥有军事指挥经验。麾下约50名匪众。",
+     "portrait_desc": "红发壮汉，左脸一道从额头到下巴的旧伤疤。穿旧骑士甲，肩披赤色狼皮斗篷。",
+     "attitude_toward_player": 30, "known": True, "met": False, "talkativeness": 35,
+     "default_location": "ruins_oldfort",
+     "schedule": [
+         {"time_range": "06:00-12:00", "location": "ruins_oldfort", "activity": "在旧堡废墟营地策划行动"},
+         {"time_range": "12:00-18:00", "location": "plains_road", "activity": "在商路上巡逻设伏"},
+         {"time_range": "18:00-22:00", "location": "ruins_oldfort", "activity": "在营地休整"}]},
+
+    {"id": "npc_corrupt_noble", "name": "维克多·洛赫", "title": "洛赫子爵",
+     "bio": "贵族商人，表面是两大家族间的中间人和调停者。暗中资助虚空教团——不是出于信仰而是贪婪权力。",
+     "personality": "虚伪圆滑对上谄媚对下傲慢。贪财好权但本质胆小怕死。",
+     "capabilities": "控制重要贸易渠道。为虚空教团提供资金和情报。",
+     "portrait_desc": "肥胖的中年贵族，油光满面的圆脸，小眼睛精光闪闪。穿过于华丽的丝绸外套。",
+     "attitude_toward_player": 55, "known": True, "met": False, "talkativeness": 65,
+     "default_location": "city_noble_district",
+     "schedule": [
+         {"time_range": "09:00-12:00", "location": "city_noble_district", "activity": "在府邸接待访客"},
+         {"time_range": "12:00-14:00", "location": "city_market", "activity": "视察贸易产业"},
+         {"time_range": "14:00-17:00", "location": "city_noble_district", "activity": "拜访其他贵族"},
+         {"time_range": "17:00-19:00", "location": "city_castle", "activity": "参加城堡活动"},
+         {"time_range": "21:00-23:00", "location": "city_slums", "activity": "与虚空教团联络人秘密接头"}],
+     "organizations": [{"org_id": "org_void_cult", "rank": 3, "role": "秘密资助者"}]},
+
+    {"id": "npc_assassin_shade", "name": "影刺·夏德", "title": "暗精灵独立刺客",
+     "bio": "暗精灵刺客年龄不详。不属于任何组织，只接\"坏人\"目标。可能是被灭族的暗精灵氏族最后幸存者。",
+     "personality": "冷漠寡言行事如影。极少表露情感但对猫和小动物展现出反差的温柔。",
+     "capabilities": "顶尖暗杀者，精通毒术和暗影魔法。在完全黑暗中也能视物。",
+     "portrait_desc": "身材修长的暗精灵，灰蓝色皮肤银白色短发，紫色眼瞳。穿黑色紧身皮甲，面部下半遮蒙面巾。",
+     "attitude_toward_player": 30, "known": False, "met": False, "talkativeness": 10,
+     "default_location": "city_slums",
+     "schedule": [
+         {"time_range": "06:00-18:00", "location": "city_slums", "activity": "在下城区隐蔽处休息"},
+         {"time_range": "20:00-04:00", "location": "city_slums", "activity": "夜间活动执行委托"}]},
+
+    # ── 6G: 神秘/特殊NPC (6) ──
+    {"id": "npc_archmage_elara", "name": "艾拉拉·晨星", "title": "大法师",
+     "bio": "奥术学院院长，高等精灵500岁。大陆最强法师之一。据说曾与灭世龙战最后一条巨龙交谈过。对封印研究讳莫如深。",
+     "personality": "高贵疏远言辞精确。对愚蠢缺乏耐心但对真正的求知者会给予帮助。背负着不为人知的沉重秘密。",
+     "capabilities": "大陆顶尖奥术使用者。精通几乎所有魔法流派，尤其预言术和封印术。",
+     "portrait_desc": "高挑优雅的高等精灵女性，银白长发如瀑，金色双瞳。穿深蓝星纹法袍，手持水晶法杖。",
+     "attitude_toward_player": 35, "known": True, "met": False, "talkativeness": 25,
+     "default_location": "city_mage_tower",
+     "schedule": [
+         {"time_range": "06:00-12:00", "location": "city_mage_tower", "activity": "在私人实验室研究"},
+         {"time_range": "12:00-14:00", "location": "city_mage_tower", "activity": "偶尔为高年级学员授课"},
+         {"time_range": "14:00-18:00", "location": "city_library", "activity": "不定期在图书馆查阅古籍"},
+         {"time_range": "18:00-22:00", "location": "city_mage_tower", "activity": "处理学院事务或继续研究"}],
+     "organizations": [{"org_id": "org_mage_academy", "rank": 1}]},
+
+    {"id": "npc_dragon_spirit", "name": "伊格尼斯", "title": "远古红龙（封印态）",
+     "bio": "龙息峰深处远古红龙的意识碎片。肉体被封印但精神力量渗透为幻象和低语。古老而非善非恶。",
+     "personality": "古老骄傲而神秘。说话充满谜语和暗示。对凡人既轻蔑又带着一丝怜悯。",
+     "capabilities": "通过梦境和幻象交流。知晓远古秘密。封印松动时可能影响周围的魔法环境。",
+     "portrait_desc": "梦境中显现为一只巨大的红龙虚影，金红色眼瞳如两轮烈日。声音如岩浆涌动。",
+     "attitude_toward_player": 50, "known": False, "met": False, "talkativeness": 30,
+     "default_location": "dragon_peak",
+     "schedule": []},
+
+    {"id": "npc_wandering_merchant", "name": "旅行者·扎克", "title": "神秘旅行商人",
+     "bio": "神出鬼没的旅行商人，种族不明。出现在最意想不到的地方。他的手推车内部空间远大于外部——这明显违反了物理法则。",
+     "personality": "热情洋溢喋喋不休。交易精明但公平。似乎知道很多他不该知道的事。",
+     "capabilities": "持有稀有且独特的商品。对世界各地有不可思议的了解。可能拥有空间魔法。",
+     "portrait_desc": "裹着彩色异域头巾的神秘人物，面容总是处于阴影中看不清。推着一辆堆满奇怪商品的木推车。",
+     "attitude_toward_player": 65, "known": False, "met": False, "talkativeness": 95,
+     "default_location": "crossroads",
+     "schedule": [
+         {"time_range": "08:00-18:00", "location": "crossroads", "activity": "在三岔路口摆摊（不固定出现）"}]},
+
+    {"id": "npc_elven_warden", "name": "塞兰迪尔·银叶", "title": "精灵守望者首领",
+     "bio": "高等精灵800岁。精灵与外界接触的守门人。密林的异常现象——动物迁徙、古树不安——让他深感忧虑。",
+     "personality": "尊贵内敛从容不迫。重视承诺与信义。必要时展现令人畏惧的威严。",
+     "capabilities": "精通自然魔法和精灵战技。指挥一支精锐精灵游侠小队。",
+     "portrait_desc": "高大威严的高等精灵男性，银色长发及腰，翠绿眼瞳如密林深潭。穿树叶纹精灵铠甲。",
+     "attitude_toward_player": 35, "known": False, "met": False, "talkativeness": 25,
+     "default_location": "emerald_forest_deep",
+     "schedule": [
+         {"time_range": "06:00-18:00", "location": "emerald_forest_deep", "activity": "巡视密林"},
+         {"time_range": "18:00-22:00", "location": "emerald_forest_edge", "activity": "偶尔在林缘巡逻"}]},
+
+    {"id": "npc_drunk_bard", "name": "醉吟诗人·雷恩", "title": "流浪吟游诗人",
+     "bio": "人类吟游诗人40岁。曾是宫廷御用诗人，因写了讽刺贵族的歌谣被逐出宫廷。如今以酒为伴在各酒馆卖唱。酒后的歌谣中藏着令人意想不到的历史真相。",
+     "personality": "放浪不羁嗜酒如命。清醒时聪明但忧郁，喝醉后热情但话多。歌谣是他的武器和盾牌。",
+     "capabilities": "出色的信息载体——他的歌谣中编码了各种秘密和历史。精通乐器和表演魔法。",
+     "portrait_desc": "不修边幅的中年男子，乱蓬蓬的深棕色头发，布满血丝的聪明眼睛。背着一把旧鲁特琴。",
+     "attitude_toward_player": 60, "known": False, "met": False, "talkativeness": 80,
+     "default_location": "city_inn",
+     "schedule": [
+         {"time_range": "12:00-14:00", "location": "city_inn", "activity": "在酒馆醒来吃早午餐"},
+         {"time_range": "14:00-18:00", "location": "city_market", "activity": "在市场街头卖唱"},
+         {"time_range": "18:00-02:00", "location": "city_inn", "activity": "在金龙酒馆表演饮酒"}]},
+
+    {"id": "npc_mysterious_child", "name": "星瞳", "title": "神秘孩童",
+     "bio": "约10岁的人类女孩，总是独自出现在奇怪的地方。苍白的皮肤和异常深邃的紫色眼睛。似乎能预知未来——她说出的话常常在日后应验。没有人知道她的来历。",
+     "personality": "安静深沉，言行与年龄极不相称。说话简短但每句都意味深长。对玩家展现出一种奇异的亲近感。",
+     "capabilities": "不完整的预知能力。似乎能看到普通人看不到的东西。可能与远古封印有某种未知的联系。",
+     "portrait_desc": "苍白瘦小的女孩，一头不自然的银白色长发，紫色双瞳深邃如星空。穿旧白色连衣裙，赤脚。",
+     "attitude_toward_player": 70, "known": False, "met": False, "talkativeness": 15,
+     "default_location": "city_temple_district",
+     "schedule": []},
+]
+npc_relationships = [
+    # 王室/贵族
+    {"from": "npc_prince_silas", "to": "npc_prince_adrian", "trust": 20, "affection": 15, "fear": 0, "description": "对弟弟的软弱外交政策嗤之以鼻，视其为王位竞争者", "initially_known": True},
+    {"from": "npc_prince_adrian", "to": "npc_prince_silas", "trust": 25, "affection": 20, "fear": 15, "description": "理解兄长能力但担忧其激进政策，在政治上对立但仍有兄弟之情", "initially_known": True},
+    {"from": "npc_prince_silas", "to": "npc_captain_roth", "trust": 60, "affection": 30, "fear": 0, "description": "尊重其军人本色但不满其中立立场", "initially_known": True},
+    {"from": "npc_captain_roth", "to": "npc_prince_silas", "trust": 50, "affection": 20, "fear": 10, "description": "敬重其军事才能但警惕其独断倾向", "initially_known": True},
+    {"from": "npc_prince_adrian", "to": "npc_lady_miranda", "trust": 55, "affection": 40, "fear": 5, "description": "视其为可靠的政治盟友但知道她有自己的算盘", "initially_known": True},
+    {"from": "npc_lady_miranda", "to": "npc_prince_adrian", "trust": 60, "affection": 35, "fear": 0, "description": "最有利用价值的棋子，但也真心欣赏他的才华", "initially_known": True},
+    {"from": "npc_lady_miranda", "to": "npc_prince_silas", "trust": 45, "affection": 15, "fear": 10, "description": "保持表面友好但暗中限制其扩张", "initially_known": True},
+    {"from": "npc_corrupt_noble", "to": "npc_lady_miranda", "trust": 40, "affection": 10, "fear": 30, "description": "害怕她洞察自己与虚空教团的秘密", "initially_known": False},
+    # 公会/商业
+    {"from": "npc_guildmaster_voss", "to": "npc_innkeeper_sera", "trust": 85, "affection": 75, "fear": 0, "description": "老战友般的深厚友谊，无话不谈", "initially_known": True},
+    {"from": "npc_innkeeper_sera", "to": "npc_guildmaster_voss", "trust": 85, "affection": 70, "fear": 0, "description": "最信任的人，唯一能让她说出真心话的老友", "initially_known": True},
+    {"from": "npc_guildmaster_voss", "to": "npc_blacksmith_durgan", "trust": 75, "affection": 60, "fear": 0, "description": "矮人同族的老友，互相尊重各自的手艺", "initially_known": True},
+    {"from": "npc_guildmaster_voss", "to": "npc_captain_roth", "trust": 65, "affection": 40, "fear": 0, "description": "合作关系中产生的互相信任，共同维护城市安全", "initially_known": True},
+    {"from": "npc_merchant_lin", "to": "npc_innkeeper_sera", "trust": 60, "affection": 55, "fear": 0, "description": "生意伙伴也是好友，经常互相分享市场情报", "initially_known": True},
+    {"from": "npc_merchant_lin", "to": "npc_fence_marlo", "trust": 30, "affection": 10, "fear": 5, "description": "知道他不简单但不想深究，保持距离", "initially_known": False},
+    # 冒险者
+    {"from": "npc_ranger_kael", "to": "npc_innkeeper_sera", "trust": 50, "affection": 40, "fear": 0, "description": "对这位半精灵前辈有敬意，是少数他愿意交谈的人", "initially_known": True},
+    {"from": "npc_mage_finn", "to": "npc_warrior_bryn", "trust": 45, "affection": 55, "fear": 5, "description": "对她的力量既敬畏又好奇，想成为她的朋友", "initially_known": True},
+    {"from": "npc_warrior_bryn", "to": "npc_mage_finn", "trust": 35, "affection": 40, "fear": 0, "description": "觉得这个人类书呆子有点烦但不讨厌，愿意保护他", "initially_known": True},
+    {"from": "npc_rogue_pip", "to": "npc_warrior_bryn", "trust": 50, "affection": 55, "fear": 5, "description": "欣赏她的直率，觉得她是可靠的搭档", "initially_known": True},
+    {"from": "npc_rogue_pip", "to": "npc_fence_marlo", "trust": 15, "affection": 5, "fear": 45, "description": "前组织成员，极度警惕其存在", "initially_known": False},
+    {"from": "npc_paladin_elena", "to": "npc_sister_lyra", "trust": 65, "affection": 60, "fear": 0, "description": "志同道合的朋友，都对教会内部问题感到不安", "initially_known": False},
+    {"from": "npc_paladin_elena", "to": "npc_inquisitor_theron", "trust": 30, "affection": 10, "fear": 20, "description": "曾是同门师兄妹，如今理念分歧越来越大", "initially_known": True},
+    # 宗教/学术
+    {"from": "npc_high_priest", "to": "npc_inquisitor_theron", "trust": 40, "affection": 25, "fear": 5, "description": "欣赏其虔诚但担忧其极端化倾向", "initially_known": True},
+    {"from": "npc_inquisitor_theron", "to": "npc_high_priest", "trust": 55, "affection": 35, "fear": 0, "description": "尊重大主教但认为他太温和无法应对真正的威胁", "initially_known": True},
+    {"from": "npc_inquisitor_theron", "to": "npc_archmage_elara", "trust": 10, "affection": 0, "fear": 5, "description": "视奥术学院为潜在的异端温床", "initially_known": True},
+    {"from": "npc_archmage_elara", "to": "npc_inquisitor_theron", "trust": 20, "affection": 5, "fear": 0, "description": "认为其无知且危险，但不值得正面冲突", "initially_known": True},
+    {"from": "npc_archmage_elara", "to": "npc_mage_finn", "trust": 70, "affection": 55, "fear": 0, "description": "对爱徒寄予厚望但担忧其过度好奇心", "initially_known": True},
+    {"from": "npc_mage_finn", "to": "npc_archmage_elara", "trust": 80, "affection": 75, "fear": 15, "description": "极度崇敬和信任师父，但也害怕让她失望", "initially_known": True},
+    {"from": "npc_archmage_elara", "to": "npc_cult_leader", "trust": 30, "affection": 0, "fear": 10, "description": "曾经的学院同僚，如今走上歧路。忧虑其对封印的威胁", "initially_known": False},
+    # 反派/暗线
+    {"from": "npc_shadow_master", "to": "npc_fence_marlo", "trust": 75, "affection": 30, "fear": 0, "description": "最可靠的下属和对外窗口", "initially_known": False},
+    {"from": "npc_fence_marlo", "to": "npc_shadow_master", "trust": 60, "affection": 20, "fear": 50, "description": "忠诚但也畏惧，知道背叛的后果", "initially_known": False},
+    {"from": "npc_shadow_master", "to": "npc_rogue_pip", "trust": 10, "affection": 0, "fear": 0, "description": "叛逃者，但暂时不急于处理", "initially_known": False},
+    {"from": "npc_cult_leader", "to": "npc_corrupt_noble", "trust": 40, "affection": 5, "fear": 0, "description": "有用的工具，但不完全信任其动机", "initially_known": False},
+    {"from": "npc_corrupt_noble", "to": "npc_cult_leader", "trust": 20, "affection": 0, "fear": 60, "description": "被其力量和野心吓到但已骑虎难下", "initially_known": False},
+    {"from": "npc_cult_leader", "to": "npc_dragon_spirit", "trust": 80, "affection": 70, "fear": 30, "description": "将其视为神明般的存在，渴望获得其认可", "initially_known": False},
+    {"from": "npc_bandit_chief", "to": "npc_captain_roth", "trust": 15, "affection": 0, "fear": 10, "description": "曾经的同袍，如今是追捕者与被追捕者", "initially_known": True},
+    {"from": "npc_captain_roth", "to": "npc_bandit_chief", "trust": 20, "affection": 10, "fear": 0, "description": "理解其遭遇但职责所在必须追捕", "initially_known": True},
+    # 村民/精灵
+    {"from": "npc_elder_tommas", "to": "npc_farmgirl_anna", "trust": 90, "affection": 95, "fear": 0, "description": "最疼爱的孙女，担心她的安全", "initially_known": True},
+    {"from": "npc_farmgirl_anna", "to": "npc_elder_tommas", "trust": 85, "affection": 90, "fear": 0, "description": "深爱爷爷但不想一辈子困在小镇", "initially_known": True},
+    {"from": "npc_herbalist_willow", "to": "npc_elven_warden", "trust": 70, "affection": 50, "fear": 5, "description": "尊重守望者的职责，是密林外少数被信任的人", "initially_known": True},
+    {"from": "npc_elven_warden", "to": "npc_herbalist_willow", "trust": 65, "affection": 45, "fear": 0, "description": "信任其品性，是与人类世界沟通的桥梁", "initially_known": True},
+    {"from": "npc_elven_warden", "to": "npc_ranger_kael", "trust": 40, "affection": 30, "fear": 0, "description": "接纳这个半精灵在密林边缘活动但未完全信任", "initially_known": True},
+    {"from": "npc_ranger_kael", "to": "npc_elven_warden", "trust": 45, "affection": 35, "fear": 10, "description": "渴望被精灵社会接纳但感受到距离", "initially_known": True},
+    {"from": "npc_miner_brokk", "to": "npc_blacksmith_durgan", "trust": 70, "affection": 55, "fear": 0, "description": "矿石供应链上的老搭档", "initially_known": True},
+    {"from": "npc_blacksmith_durgan", "to": "npc_miner_brokk", "trust": 70, "affection": 50, "fear": 0, "description": "最信任的原材料来源", "initially_known": True},
+    {"from": "npc_mysterious_child", "to": "npc_dragon_spirit", "trust": 50, "affection": 30, "fear": 20, "description": "能在梦中感知到巨龙的存在，两者之间存在未知的联系", "initially_known": False},
+]
+random_items = [
+    {"id": "weather", "description": "天气变化。", "trigger": "永远生效。", "trigger_type": "always",
+     "dice": {"count": 1, "faces": 100, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 40, "label": "晴朗", "description": "阳光明媚，适合旅行和户外活动。"},
+         {"min": 41, "max": 65, "label": "多云", "description": "云层遮日，凉爽宜人。"},
+         {"min": 66, "max": 80, "label": "阴天", "description": "天色阴沉，可能即将下雨。"},
+         {"min": 81, "max": 90, "label": "小雨", "description": "细雨绵绵，户外活动不便。"},
+         {"min": 91, "max": 96, "label": "暴雨", "description": "狂风暴雨，旅行危险，可能遭遇山洪。"},
+         {"min": 97, "max": 100, "label": "魔力风暴", "description": "天空出现异色极光，施法者感到魔力波动，法术可能失控。",
+          "state_changes": [{"target": "player.MP", "op": "add", "value": -5}]}]},
+    {"id": "road_encounter", "description": "在商路上旅行时的随机遭遇。", "trigger": "在南方平原大道或三岔路口旅行时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 20, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 6, "label": "平安无事", "description": "旅途平静。"},
+         {"min": 7, "max": 9, "label": "商队", "description": "遇到一支商队，可以交易或护送。"},
+         {"min": 10, "max": 12, "label": "巡逻骑士", "description": "遇到王城巡逻骑士检查证件。"},
+         {"min": 13, "max": 15, "label": "流浪旅人", "description": "遇到一个有故事的旅人，愿意分享信息。"},
+         {"min": 16, "max": 17, "label": "野兽袭击", "description": "遭遇狼群或野猪的攻击！",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -10}]},
+         {"min": 18, "max": 19, "label": "匪徒伏击", "description": "遭遇赤狼部下的拦路抢劫！"},
+         {"min": 20, "max": 20, "label": "稀有发现", "description": "在路边发现了一件古物或稀有药草。",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 5}]}]},
+    {"id": "dungeon_trap", "description": "探索地下城时的陷阱。", "trigger": "探索废墟、遗迹或地下城时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 10, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 3, "label": "安全", "description": "这一段路没有陷阱。"},
+         {"min": 4, "max": 5, "label": "机关陷阱", "description": "触发了箭矢或落石陷阱！",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -15}]},
+         {"min": 6, "max": 7, "label": "魔法陷阱", "description": "踩到了符文陷阱，魔力被抽取！",
+          "state_changes": [{"target": "player.MP", "op": "add", "value": -10}]},
+         {"min": 8, "max": 9, "label": "毒气陷阱", "description": "空气中弥漫毒气，需要体质检定！",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -10}]},
+         {"min": 10, "max": 10, "label": "宝箱", "description": "发现一个上锁的宝箱！",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 20}]}]},
+    {"id": "forest_encounter", "description": "翡翠密林中的随机遭遇。", "trigger": "在翡翠密林探索时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 20, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 5, "label": "宁静林道", "description": "阳光透过树冠洒下斑驳光影，一切宁静。"},
+         {"min": 6, "max": 8, "label": "精灵巡逻队", "description": "遭遇精灵巡逻队，态度取决于你的声望。"},
+         {"min": 9, "max": 11, "label": "药草发现", "description": "发现一丛稀有药草！"},
+         {"min": 12, "max": 14, "label": "迷路", "description": "在密林中迷失方向，需要感知检定才能找到出路。"},
+         {"min": 15, "max": 17, "label": "魔兽遭遇", "description": "遇到林中魔兽！",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -10}]},
+         {"min": 18, "max": 19, "label": "精灵遗物", "description": "发现远古精灵留下的小物件。"},
+         {"min": 20, "max": 20, "label": "树灵显现", "description": "一棵古老的树灵向你开口说话，提供关于密林秘密的线索。"}]},
+    {"id": "market_bargain", "description": "市场交易时的价格波动。", "trigger": "在中央市场购物或交易时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 100, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 20, "label": "涨价", "description": "商人开价高出正常价格50%。"},
+         {"min": 21, "max": 50, "label": "正常价格", "description": "标准市价交易。"},
+         {"min": 51, "max": 75, "label": "小折扣", "description": "获得10%折扣。"},
+         {"min": 76, "max": 90, "label": "好价格", "description": "获得20%折扣。"},
+         {"min": 91, "max": 98, "label": "意外赠品", "description": "商人额外赠送一件小物品。"},
+         {"min": 99, "max": 100, "label": "传奇货物", "description": "发现一件极为稀有的商品正在出售！"}]},
+    {"id": "tavern_rumor", "description": "酒馆中流传的传闻。", "trigger": "在酒馆饮酒聊天时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 12, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 2, "label": "王位传闻", "description": "关于两位王子争斗的最新传闻。"},
+         {"min": 3, "max": 4, "label": "矿道发现", "description": "关于灰岩山脉矿道中奇异发现的消息。"},
+         {"min": 5, "max": 6, "label": "密林异动", "description": "关于翡翠密林中精灵异常活动的谈论。"},
+         {"min": 7, "max": 8, "label": "失踪案件", "description": "关于下城区最近的失踪案件的议论。"},
+         {"min": 9, "max": 10, "label": "废墟宝藏", "description": "关于某位冒险者在旧堡废墟中发现宝藏的传闻。"},
+         {"min": 11, "max": 11, "label": "暗影动荡", "description": "关于暗影之手内部发生动荡的小道消息。"},
+         {"min": 12, "max": 12, "label": "古老传说", "description": "关于王冠城堡深处密室中藏有远古遗物的传说。"}]},
+    {"id": "swamp_hazard", "description": "毒雾沼泽中的危险。", "trigger": "在毒雾沼泽探索时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 8, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 2, "label": "安全通过", "description": "找到一条相对安全的路径。"},
+         {"min": 3, "max": 4, "label": "瘴气侵袭", "description": "吸入了有毒瘴气！需要体质检定。",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -10}]},
+         {"min": 5, "max": 6, "label": "泥沼陷阱", "description": "陷入深泥沼中！需要力量检定脱身。"},
+         {"min": 7, "max": 7, "label": "沼泽怪物", "description": "遭遇巨型沼泽蜥蜴的攻击！",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -15}]},
+         {"min": 8, "max": 8, "label": "炼金材料", "description": "找到稀有的沼泽草药，可以制作特殊药水。"}]},
+    {"id": "arena_result", "description": "竞技场角斗赛的结果。", "trigger": "参加竞技场角斗赛时。", "trigger_type": "conditional",
+     "dice": {"count": 1, "faces": 20, "modifier": 0}, "ranges": [
+         {"min": 1, "max": 3, "label": "惨败", "description": "被对手击倒在地，颜面尽失。",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -20}, {"target": "player.reputation", "op": "add", "value": -2}]},
+         {"min": 4, "max": 8, "label": "落败", "description": "虽然输了但表现不差。",
+          "state_changes": [{"target": "player.HP", "op": "add", "value": -10}]},
+         {"min": 9, "max": 12, "label": "平手", "description": "不分胜负的精彩对决，观众叫好。",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 5}]},
+         {"min": 13, "max": 17, "label": "胜利", "description": "漂亮地赢下比赛！",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 15}, {"target": "player.reputation", "op": "add", "value": 3}]},
+         {"min": 18, "max": 19, "label": "完胜", "description": "压倒性胜利赢得观众喝彩！",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 25}, {"target": "player.reputation", "op": "add", "value": 5}]},
+         {"min": 20, "max": 20, "label": "传奇表现", "description": "以绝对实力征服全场，你的名字将被铭记！",
+          "state_changes": [{"target": "player.gold", "op": "add", "value": 50}, {"target": "player.reputation", "op": "add", "value": 10}]}]},
+]
+cyclic_events = [
+    {"id": "market_day", "description": "每三天一次的集市日，商人云集，物价波动，竞技场有表演赛。大量NPC聚集在市场区域。", "frequency_value": 3, "frequency_unit": "day", "first_trigger": "1247-06-15T08:00:00", "expires_at": None},
+    {"id": "guard_patrol", "description": "城市守卫的例行巡逻。下城区巡逻时偶尔会与暗影之手的成员发生冲突。", "frequency_value": 1, "frequency_unit": "day", "first_trigger": "1247-06-15T07:00:00", "expires_at": None},
+    {"id": "morning_prayer", "description": "圣光教会的晨祷仪式。虔诚的信徒聚集在神殿区，大主教偶尔发表讲话。", "frequency_value": 1, "frequency_unit": "day", "first_trigger": "1247-06-15T06:00:00", "expires_at": None},
+    {"id": "tavern_gossip_cycle", "description": "酒馆中的情报更新。新的传闻和八卦在冒险者之间流传。", "frequency_value": 2, "frequency_unit": "day", "first_trigger": "1247-06-15T19:00:00", "expires_at": None},
+    {"id": "guild_quest_refresh", "description": "冒险者公会的任务更新。告示板上张贴新的委托和悬赏。", "frequency_value": 3, "frequency_unit": "day", "first_trigger": "1247-06-16T08:00:00", "expires_at": None},
+    {"id": "mage_experiment", "description": "奥术学院的魔法实验。偶尔会导致轻微的魔力波动，引发城中异象。", "frequency_value": 5, "frequency_unit": "day", "first_trigger": "1247-06-17T14:00:00", "expires_at": None},
+    {"id": "noble_council", "description": "贵族议事会。两大家族和中立贵族在城堡中讨论政务，政治暗流涌动。", "frequency_value": 7, "frequency_unit": "day", "first_trigger": "1247-06-18T10:00:00", "expires_at": None},
+    {"id": "bandit_raid", "description": "赤狼匪帮的商路袭击。南方平原大道上的商队遭到拦截。", "frequency_value": 5, "frequency_unit": "day", "first_trigger": "1247-06-16T12:00:00", "expires_at": None},
+    {"id": "cult_ritual", "description": "虚空教团在暗影祭坛的秘密仪式。每次仪式都会使龙封印进一步松动。", "frequency_value": 7, "frequency_unit": "day", "first_trigger": "1247-06-20T00:00:00", "expires_at": None},
+    {"id": "full_moon", "description": "月圆之夜。精灵秘境的入口会在月圆时短暂显现。同时城中狼人传闻增多。", "frequency_value": 30, "frequency_unit": "day", "first_trigger": "1247-06-28T21:00:00", "expires_at": None},
+]
+one_time_events = [
+    {"id": "gate_arrival_commotion", "description": "南门处一支受伤的商队抵达，带来北方兽人部落大规模集结的消息，城门口一片混乱。", "trigger_time": "1247-06-15T10:30:00"},
+    {"id": "market_theft", "description": "中央市场发生一起精心策划的盗窃案，林可儿的万物阁被偷走了一批贵重药水。", "trigger_time": "1247-06-16T14:00:00"},
+    {"id": "mage_accident", "description": "奥术高塔发生魔力暴走事件，一道蓝色光柱冲天而起——芬恩的实验出了严重差错。", "trigger_time": "1247-06-17T15:00:00"},
+    {"id": "temple_sermon", "description": "审判官塞隆在神殿区发表激进演说，呼吁清除城中一切\"暗黑魔法使用者\"，在市民中引发恐慌。", "trigger_time": "1247-06-18T08:00:00"},
+    {"id": "bandit_ultimatum", "description": "赤狼向王冠城发出通告——要求释放被囚禁的前农民并惩处压迫者，否则将升级袭击。", "trigger_time": "1247-06-19T10:00:00"},
+    {"id": "noble_feast", "description": "洛赫子爵举办盛大宴会邀请各方贵族，实际上暗中为虚空教团筹集资金。", "trigger_time": "1247-06-20T19:00:00"},
+    {"id": "guild_emergency", "description": "冒险者公会收到紧急委托——磨坊镇附近发现了一处亡灵巢穴，需要立即处理。", "trigger_time": "1247-06-21T08:00:00"},
+    {"id": "mine_tremor", "description": "铁谷村矿道深处发生异常震动，数名矿工失踪。布洛克请求外部援助。", "trigger_time": "1247-06-22T12:00:00"},
+    {"id": "forest_disturbance", "description": "翡翠密林边缘出现大量动物恐慌逃窜，精灵守望者封锁了林间通道。", "trigger_time": "1247-06-24T06:00:00"},
+    {"id": "slums_disappearance", "description": "下城区再次发生失踪案。这次失踪的是暗影之手的一名低级成员，组织内部开始紧张。", "trigger_time": "1247-06-25T22:00:00"},
+    {"id": "prince_duel", "description": "两位王子在贵族议事会上发生激烈争吵，赛拉斯拔剑挑战阿德里安。城堡紧急封锁。", "trigger_time": "1247-06-27T11:00:00"},
+    {"id": "dragon_dream", "description": "拥有魔法感知的人在深夜做了一个共同的梦——看到了一条巨龙的金红色眼睛在黑暗中缓缓睁开。", "trigger_time": "1247-06-28T03:00:00"},
+    {"id": "church_schism", "description": "圣光教会内部矛盾公开化。大主教和审判官在教务会议上公开对峙，教会分裂迹象愈发明显。", "trigger_time": "1247-06-30T10:00:00"},
+    {"id": "cult_attack", "description": "虚空教团的信徒袭击了奥术高塔，试图盗取一件远古封印碎片。学院进入戒备状态。", "trigger_time": "1247-07-02T02:00:00"},
+    {"id": "refugee_wave", "description": "大批北方边境难民涌入王冠城，带来兽人联合部落即将大规模南侵的确切消息。", "trigger_time": "1247-07-04T08:00:00"},
+    {"id": "seal_weakening", "description": "灰岩山脉传来一声沉闷的咆哮，大地轻微震动。所有法师感受到了来自远古封印的强烈魔力脉冲。", "trigger_time": "1247-07-06T00:00:00"},
+    {"id": "alliance_proposal", "description": "面对兽人威胁和内部危机，有人提议召开全城大会议，所有势力联合应对。", "trigger_time": "1247-07-08T10:00:00"},
+    {"id": "mysterious_child_prophecy", "description": "神秘孩童星瞳出现在玩家面前，用含糊的语言说出了一个关于\"五个抉择将决定灰烬大陆命运\"的预言。", "trigger_time": "1247-07-10T12:00:00"},
+]
+lorebook = [
+    {"id": "lore_dragon_war", "keys": ["灭世龙战", "龙战", "远古龙", "巨龙", "封印"], "content": "约一千年前，五色巨龙——红龙伊格尼斯、蓝龙萨拉迪尔、绿龙维瑞迪斯、白龙弗罗斯特、黑龙涅克洛斯——因不满诸神对凡人世界的干预，联合发动了灭世之战。战争持续三十年，大地被焚烧，海洋沸腾，山脉被撕裂。最终六位主神以牺牲自身神格为代价，将五条巨龙封印于大地深处。从此诸神沉默，信仰变成了单向的祈祷。封印分布在大陆五处——灰岩山脉（红龙）、深海之渊（蓝龙）、翡翠密林（绿龙）、极北冰原（白龙）、暗影深渊（黑龙）。", "priority": 200, "constant": False, "enabled": True, "scan_depth": 5, "position": "after_world"},
+    {"id": "lore_coronholm", "keys": ["王冠城", "城市", "Coronholm"], "content": "灰烬大陆最大的贸易都市，人口约八万。建城于龙战结束后的第一个世纪。城市以三河交汇处的王冠岩为中心向外扩展呈扇形。共有三道城墙——最外圈包含下城区和市场，中圈是贵族区和神殿区，最内圈是王城。王冠城是大陆商路的枢纽，东连精灵领地，西通矮人山脉，南接平原诸国，北望边疆。", "priority": 190, "constant": True, "enabled": True},
+    {"id": "lore_arcane_theory", "keys": ["魔法", "奥术", "法术", "施法", "魔力"], "content": "灰烬大陆的魔法源自\"以太之流\"——弥漫于万物间的超自然能量。法师通过手势、咒语和符文引导以太之流转化为法术。魔法分七大学派：塑能、防护、变化、咒法、预言、幻术、死灵（被教会视为禁忌）。远古龙战后以太之流变得不稳定，部分高阶法术危险或不可预测。", "priority": 150, "enabled": True},
+    {"id": "lore_faith_light", "keys": ["圣光", "教会", "艾利昂", "光明之神", "信仰"], "content": "圣光教会信奉光明之神艾利昂——龙战中牺牲的六位主神之一。虽然艾利昂已无法降下神谕，但信徒相信他的意志仍存于圣光之中。教会教义强调慈悲、正义和秩序。近年教会分裂为温和派（慈悲治疗）和审判庭（净化审判），审判庭尤其敌视死灵术和黑暗魔法。", "priority": 140, "enabled": True},
+    {"id": "lore_elven_civilization", "keys": ["精灵", "高等精灵", "木精灵", "暗精灵", "精灵族"], "content": "精灵是大陆最古老种族之一。分三支：高等精灵（擅长奥术，多居城市或学院），木精灵（亲近自然，居于翡翠密林），暗精灵（夜行种族，大多居于地下城市，因历史原因被不信任）。精灵寿命可达千年以上。龙战中精灵与诸神并肩作战，翡翠密林中的遗迹是绿龙封印的关键。精灵社会封闭保守，对人类世界保持警惕但不敌对。", "priority": 130, "enabled": True},
+    {"id": "lore_dwarven_culture", "keys": ["矮人", "矮人族", "锻造", "矮人工匠"], "content": "矮人是工匠种族，以精湛锻造技艺和采矿能力闻名。矮人社会以氏族为单位，崇尚荣誉、工艺和节俭。灰岩山脉是矮人最大聚居地，铁谷村是与人类世界的贸易窗口。矮人能活到300-400岁。传说中矮人大师能将魔法注入金属。矮人不太信任奥术魔法，更依赖自己的工艺。", "priority": 120, "enabled": True},
+    {"id": "lore_orc_culture", "keys": ["兽人", "兽人族", "兽人部落", "北方部落"], "content": "兽人居住在大陆北方苍莽草原，以部落为单位生活。虽被多数人类视为野蛮人，但兽人有自己的文化——崇拜祖灵、重视战斗荣誉、有口口相传的史诗传统。近年北方气候恶化（可能与龙封印松动有关），多个部落开始南迁，与人类边疆产生冲突。并非所有兽人都好战——有些部落主张和平共处，但强硬派目前占据主导。", "priority": 120, "enabled": True},
+    {"id": "lore_thieves_guild", "keys": ["暗影之手", "盗贼", "黑市", "地下世界", "走私"], "content": "暗影之手是王冠城最大也最有组织的地下势力。有严格等级制度和行为准则，核心业务包括情报买卖、走私贸易、保护费收取和高端盗窃。组织与城市守卫维持一种默契——帮助控制底层犯罪、提供情报，换取一定程度的营业自由。皮普的叛逃和下城区失踪案给组织带来不稳定。", "priority": 130, "enabled": True},
+    {"id": "lore_void_cult", "keys": ["虚空教团", "虚空", "龙魂术", "邪教", "教团"], "content": "秘密邪教组织，相信远古巨龙代表世界真正秩序，诸神封印是对自然法则的扭曲。由前学院法师莫格温创立，在暗影祭坛进行解封仪式。成员来自各阶层——从贫民到贵族——被力量、永生或其他承诺吸引。终极目标是解除灰岩山脉红龙封印，释放伊格尼斯。", "priority": 150, "enabled": True},
+    {"id": "lore_dragon_tablet", "keys": ["龙文", "石板", "远古文字", "龙文石板"], "content": "铁谷村矿工在灰岩山脉深处发现的石板，刻满龙战时代文字——只有精灵长老和极少数学者能辨识。石板记录红龙伊格尼斯封印阵法的一部分。石板附近温度异常升高，表明封印可能正在松动。目前被布洛克保管，虚空教团和奥术学院都对其虎视眈眈。", "priority": 160, "enabled": True},
+    {"id": "lore_politics", "keys": ["王位", "继承", "政治", "大王子", "二王子", "王国"], "content": "老国王格雷戈尔一世驾崩后，王位继承权在两个儿子间陷入僵局。按传统长子赛拉斯应当继位，但老国王生前暗示更属意次子阿德里安。贵族议事会分裂：军事贵族和保守派支持大王子，商业贵族和改革派支持二王子。伯爵夫人米兰达等中立派在两方间左右逢源。如果没有外部威胁的压力，内战可能在数月内爆发。", "priority": 160, "enabled": True},
+    {"id": "lore_trade_routes", "keys": ["贸易", "商路", "商人", "商队", "贸易路线"], "content": "王冠城是四条主要商路的枢纽：北方通往边疆和兽人草原（因安全问题基本中断），东方通往精灵领地（通过银叶渡），南方通往平原诸国和海港（受赤狼匪帮威胁），西方通往矮人城市。南方商路是最重要的贸易动脉，赤狼匪帮的活动正在严重影响物资供应。", "priority": 120, "enabled": True},
+    {"id": "lore_ancient_relics", "keys": ["遗物", "古物", "远古", "遗迹", "宝物"], "content": "灭世龙战留下大量远古遗物——龙鳞铸成的武器、封印碎片、诸神法器残片。由于龙战能量残留，远古遗物通常具有强大但不稳定的魔法效果。奥术学院和虚空教团都在积极搜寻——前者想研究封存，后者想利用它们削弱封印。旅行者扎克的手推车中据说也有来历不明的远古物品。", "priority": 100, "enabled": True},
+    {"id": "lore_healing_magic", "keys": ["治疗", "药水", "草药", "治愈", "医术"], "content": "治疗主要有三种途径：草药学（自然疗效，温和持久），神圣魔法（圣光教会治疗术，效果即时但消耗精力），炼金术（药草和魔法材料合成药水，方便携带但原料昂贵）。银叶渡的柳絮是草药学大师，教会的莉拉修女擅长神圣治疗。", "priority": 100, "enabled": True},
+    {"id": "lore_dragon_soul_magic", "keys": ["龙魂术", "禁忌", "黑魔法", "龙魂", "禁术"], "content": "龙魂术试图汲取被封印巨龙之力的禁忌魔法。使用者通过仪式在封印裂缝处抽取龙魂能量，转化为强大但危险的法术。长期使用导致身体精神异变——莫格温的蛇瞳即典型症状。被学院列为最高禁忌，被教会视为亵渎。但其蕴含的力量极其诱人。", "priority": 140, "enabled": True},
+    {"id": "lore_emerald_forest", "keys": ["翡翠密林", "密林", "森林", "古树", "树灵"], "content": "大陆最古老的森林，龙战之前就已存在。密林由传说中\"世界树\"的根系滋养，内部有独立于外界的生态系统。栖息着精灵、树人、独角兽、精灵龙等。密林深处的精灵遗迹是绿龙封印所在。近来的异常——动物迁徙、魔力波动、古树不安——与灰岩山脉封印松动有关联。", "priority": 130, "enabled": True},
+    {"id": "lore_adventurer_tales", "keys": ["冒险者", "冒险", "佣兵", "赏金", "委托"], "content": "冒险者公会是大陆最大的自由职业者组织。公会等级从低到高：新手、青铜、白银、黄金、白金。据传大陆历史上只有不到十位冒险者达到过白金级。公会内部有个不成文规矩——酒馆里的冒险故事只能信一半，另一半要自己去验证。", "priority": 100, "enabled": True},
+    {"id": "lore_millhaven", "keys": ["磨坊镇", "磨坊", "农村", "田地"], "content": "王冠城以南的农业小镇，约三百户居民。以水力磨坊和优质麦酒闻名。近来遭受双重困境：田地歉收（可能与封印松动引起的地下水脉变化有关）和赤狼匪帮骚扰商路。村长托马斯老爹正在四处求援。旧堡废墟距镇不远，废墟中的亡灵活动近期有增加迹象。", "priority": 110, "enabled": True},
+]
+variables = [
+    {"id": "succession_tension", "type": "number", "default": 30, "min": 0, "max": 100},
+    {"id": "seal_integrity", "type": "number", "default": 90, "min": 0, "max": 100},
+    {"id": "cult_influence", "type": "number", "default": 10, "min": 0, "max": 100},
+    {"id": "orc_threat", "type": "number", "default": 20, "min": 0, "max": 100},
+    {"id": "church_unity", "type": "number", "default": 60, "min": 0, "max": 100},
+    {"id": "guild_reputation", "type": "number", "default": 0, "min": 0, "max": 100},
+    {"id": "thieves_guild_standing", "type": "number", "default": 0, "min": -100, "max": 100},
+    {"id": "bandit_resolved", "type": "bool", "default": False},
+    {"id": "dragon_awakening", "type": "number", "default": 0, "min": 0, "max": 100},
+    {"id": "kingdom_stability", "type": "number", "default": 50, "min": 0, "max": 100},
+]
+triggers = [
+    {"event": "turn_end", "condition": "seal_integrity <= 50", "action": "inject_prompt", "params": {"text": "远方传来低沉的震动，地面微微颤抖。法师们感到一股不安的魔力波动。封印正在松动。"}, "enabled": True},
+    {"event": "turn_end", "condition": "succession_tension >= 70", "action": "inject_prompt", "params": {"text": "城中气氛紧张到了极点。贵族区传来争吵声和铠甲碰撞声。巡逻的士兵们神情凝重。"}, "enabled": True},
+    {"event": "turn_end", "condition": "cult_influence >= 50", "action": "inject_prompt", "params": {"text": "城中出现了越来越多神秘的涂鸦——蛇形竖瞳的标记。有人在暗中散布关于\"龙的回归\"的传单。"}, "enabled": True},
+    {"event": "turn_end", "condition": "orc_threat >= 60", "action": "inject_prompt", "params": {"text": "北方传来烽火的消息。边境城镇正在紧急疏散。兽人的战鼓声似乎已能在风中隐约听到。"}, "enabled": True},
+    {"event": "turn_end", "condition": "church_unity <= 40", "action": "inject_prompt", "params": {"text": "神殿区的气氛异常凝重。温和派和审判庭的修士们不再共同祈祷，分别占据教堂的两侧。"}, "enabled": True},
+    {"event": "turn_end", "condition": "dragon_awakening >= 80", "action": "inject_prompt", "params": {"text": "灰岩山脉方向传来震耳欲聋的咆哮声，天空泛起不自然的红光。所有人都感受到了原始的恐惧。"}, "enabled": True},
+    {"event": "turn_end", "condition": "guild_reputation >= 50", "action": "notify", "params": {"message": "你在冒险者公会的声望已经提升到白银级！"}, "enabled": True},
+]
+persistent_states = [
+    {"id": "newcomer_anonymity", "description": "初来乍到的无名旅人，没有人认识你。这既是保护也是限制——你还无法接触城市的核心圈子。", "expires_at": "1247-06-20T00:00:00", "initially_active": True},
+    {"id": "summer_heat", "description": "盛夏酷热。白天户外活动消耗更多体力，但夜晚凉爽宜人。", "expires_at": "1247-09-01T00:00:00", "initially_active": True},
+    {"id": "political_uncertainty", "description": "王位空悬带来的政治不确定性。所有政治相关的交涉都更加敏感和危险。", "expires_at": None, "initially_active": True},
+    {"id": "seal_tremors", "description": "封印松动引起的微弱地震。矿道和地下城更加危险，但也暴露了新的通道。", "expires_at": None, "initially_active": False},
+    {"id": "wartime_footing", "description": "战时状态。城门管制加强，物价上涨，冒险者可获得更多军事任务。", "expires_at": None, "initially_active": False},
+]
+world_properties = [
+    {"id": "current_era", "name": "当前纪元", "value": "夏历1247年，龙战千年祭前夕", "rule": "影响时间和历史参考"},
+    {"id": "kingdom_state", "name": "王国现状", "value": "国王驾崩，双王子争位，北方兽人威胁", "rule": "核心政治背景"},
+    {"id": "magic_stability", "name": "魔法环境", "value": "以太之流不稳定，高阶法术有失控风险", "rule": "影响魔法使用"},
+    {"id": "trade_health", "name": "贸易状况", "value": "南方商路受匪帮威胁，北方商路因兽人中断", "rule": "影响物价和商品可用性"},
+    {"id": "public_mood", "name": "民众情绪", "value": "不安但尚未绝望。关注王位继承和北方威胁", "rule": "影响NPC态度"},
+]
+opening = {
+    "text": (
+        "你站在王冠城的南门前。高耸的石质城门上雕刻着双龙抱冠的古老城徽，"
+        "在正午的阳光下闪烁着金色的光芒。身后是你走了数日的南方平原大道，"
+        "前方是大陆上最繁华的贸易都市——王冠城。\n\n"
+        "城门口人来人往，商队的骡马、赶路的旅人、巡逻的守卫交织在一起。"
+        "一名表情严肃的守卫正在盘查入城者的身份和来意。"
+        "与此同时，你注意到城门左侧的布告栏上贴满了各种告示"
+        "——冒险者公会的委托、守卫队的通缉令、还有一张看起来很新的告示似乎在招募什么人。\n\n"
+        "远处的城中传来钟声，标志着正午的到来。"
+        "一阵微风吹来，混合着集市的喧嚣、食物的香气和马厩的气味。"
+        "你的冒险，从这里开始。"
+    ),
+    "choices": [
+        {"id": "open_walk_in", "text": "整理好行装，排队接受守卫的盘查，然后走进城门。",
+         "result": {"type": "deterministic",
+                    "description": "你平静地排队等待，守卫例行公事地询问了你的来历和目的后挥手放行。踏入王冠城的那一刻，扑面而来的是市场的喧嚣和人群的热闹——一个全新的世界在你面前展开。"}},
+        {"id": "open_check_board", "text": "先去查看布告栏上的告示，看看有什么有用的信息。",
+         "result": {"type": "conditional",
+                    "description": "你仔细阅读了布告栏上的信息——冒险者公会正在招募新成员，守卫队在通缉一个名为'赤狼'的匪首，还有一张几乎被风吹走的纸条上写着一个奇怪的符号……",
+                    "state_changes": [{"target": "player.INT", "op": "add", "value": 2}],
+                    "conditions": [{"check": "dice < 40", "description": "你匆匆浏览了布告栏，只注意到冒险者公会在招人和一些商业广告。", "state_changes": []}]}},
+        {"id": "open_commotion", "text": "向城门口那群围观的人挤过去，看看发生了什么骚动。",
+         "result": {"type": "deterministic",
+                    "description": "你挤过人群，看到一支衣衫褴褛的商队刚刚到达。他们的马车上有箭矢和劈砍的痕迹。领队正在向守卫队长罗斯报告——他们在路上遭到了匪徒的袭击，而且带来了北方兽人异动的消息。",
+                    "state_changes": [{"target": "player.reputation", "op": "add", "value": 1}]}},
+    ],
+}
+milestones = [
+    {"id": "first_quest", "name": "初出茅庐", "description": "完成第一个公会任务", "condition": "guild_reputation >= 10", "rewards": [{"target": "player.gold", "op": "add", "value": 10}]},
+    {"id": "silver_rank", "name": "白银冒险者", "description": "公会声望达到白银级", "condition": "guild_reputation >= 50", "rewards": [{"target": "player.reputation", "op": "add", "value": 10}]},
+    {"id": "gold_rank", "name": "黄金冒险者", "description": "公会声望达到黄金级", "condition": "guild_reputation >= 80", "rewards": [{"target": "player.reputation", "op": "add", "value": 20}]},
+    {"id": "dragon_discoverer", "name": "龙的印记", "description": "深入了解龙封印的秘密", "condition": "dragon_awakening >= 30", "rewards": [{"target": "player.INT", "op": "add", "value": 5}]},
+    {"id": "peacemaker", "name": "和平使者", "description": "成功缓和王位继承争端", "condition": "succession_tension <= 20", "rewards": [{"target": "player.reputation", "op": "add", "value": 15}]},
+    {"id": "cult_hunter", "name": "异端猎人", "description": "彻底瓦解虚空教团", "condition": "cult_influence <= 5", "rewards": [{"target": "player.reputation", "op": "add", "value": 20}]},
+    {"id": "forest_friend", "name": "密林之友", "description": "获得精灵守望者的信任和认可", "condition": "guild_reputation >= 40", "rewards": [{"target": "player.WIS", "op": "add", "value": 5}]},
+    {"id": "underworld_king", "name": "暗影之王", "description": "在盗贼公会中获得极高地位", "condition": "thieves_guild_standing >= 80", "rewards": [{"target": "player.DEX", "op": "add", "value": 5}]},
+]
+regex_scripts = [
+    {"find": "\\[OOC:.*?\\]", "replace": "", "placement": "ai_output", "enabled": True},
+    {"find": "\\*\\*系统提示\\*\\*.*?(?=\\n\\n)", "replace": "", "placement": "ai_output", "enabled": True},
+]
+
+
+# ── final assembly & write ──
+def build_and_write():
+    script = {
+        "script_id": "dnd_open_world_ashenvale",
+        "script_name": "灰烬大陆：王冠之城",
+        "version": "1.0",
+        "start_time": "1247-06-15T10:00:00",
+        "world_background": WORLD_BG,
+        "settings": settings,
+        "player_character": player_character,
+        "locations": locations,
+        "organizations": organizations,
+        "org_relationships": org_relationships,
+        "npcs": npcs,
+        "npc_relationships": npc_relationships,
+        "random_items": random_items,
+        "cyclic_events": cyclic_events,
+        "one_time_events": one_time_events,
+        "lorebook": lorebook,
+        "variables": variables,
+        "triggers": triggers,
+        "persistent_states": persistent_states,
+        "world_properties": world_properties,
+        "opening": opening,
+        "milestones": milestones,
+        "regex_scripts": regex_scripts,
+        "player_presets": [],
+        "opening_variants": [],
+        "post_processing_rules": [],
+    }
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(script, f, ensure_ascii=False, indent=2)
+    size = os.path.getsize(OUT)
+    print(f"Written {OUT}")
+    print(f"  Size: {size:,} bytes")
+    print(f"  Locations: {len(locations)}")
+    print(f"  NPCs: {len(npcs)}")
+    print(f"  Organizations: {len(organizations)}")
+    print(f"  NPC Relationships: {len(npc_relationships)}")
+    print(f"  Random Items: {len(random_items)}")
+    print(f"  Cyclic Events: {len(cyclic_events)}")
+    print(f"  One-time Events: {len(one_time_events)}")
+    print(f"  Lorebook: {len(lorebook)}")
+    print(f"  Variables: {len(variables)}")
+    print(f"  Triggers: {len(triggers)}")
+    print(f"  Milestones: {len(milestones)}")
+
+
+if __name__ == "__main__":
+    build_and_write()

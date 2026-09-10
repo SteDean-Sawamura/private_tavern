@@ -1,0 +1,3428 @@
+{
+  "milestones": [
+    {
+      "id": "ms_first_match",
+      "name": "职业首秀",
+      "description": "完成职业生涯第一场正式比赛",
+      "condition": "games_played >= 1",
+      "rewards": [
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "ms_first_goal",
+      "name": "破门时刻",
+      "description": "打入职业生涯第一粒进球",
+      "condition": "career_goals >= 1",
+      "rewards": [
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 5
+        },
+        {
+          "target": "player.射门",
+          "op": "add",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "ms_season_20goals",
+      "name": "赛季20球",
+      "description": "单赛季打入20粒进球",
+      "condition": "season_goals >= 20",
+      "rewards": [
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 15
+        },
+        {
+          "target": "player.射门",
+          "op": "add",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "ms_hat_trick",
+      "name": "帽子戏法",
+      "description": "在一场比赛中上演帽子戏法",
+      "condition": "hat_tricks >= 1",
+      "rewards": [
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 10
+        },
+        {
+          "target": "player.射门",
+          "op": "add",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "ms_national_team",
+      "name": "国脚",
+      "description": "首次入选国家队",
+      "condition": "national_caps >= 1",
+      "rewards": [
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 12
+        }
+      ]
+    },
+    {
+      "id": "ms_100_appearances",
+      "name": "百场先生",
+      "description": "职业生涯累计100场出场",
+      "condition": "career_appearances >= 100",
+      "rewards": [
+        {
+          "target": "player.体能",
+          "op": "add",
+          "value": 3
+        },
+        {
+          "target": "player.球场声望",
+          "op": "add",
+          "value": 10
+        }
+      ]
+    }
+  ],
+  "script_id": "football_legend",
+  "script_name": "绿茵传说：巨星之路",
+  "version": "1.0",
+  "start_time": "2024-08-01T09:00",
+  "world_background": "2024-2025赛季的欧洲足坛正处于新旧交替的历史节点。皇马签下姆巴佩组建银河战舰3.0，巴萨在哈维离任后寻找新方向，曼城的王朝能否延续成为最大悬念。哈兰德与姆巴佩的金球奖之争取代了梅罗时代，成为足坛新的核心叙事。年轻一代——亚马尔、贝林厄姆、穆西亚拉——正在以惊人的速度崛起，而萨拉赫、德布劳内、莫德里奇等老将则在职业生涯的暮光中燃烧最后的能量。\n\n这个赛季有漫长的联赛征途、欧冠的淘汰赛残酷、国家队的荣耀与责任，以及转会市场的疯狂与焦虑。每天的节奏围绕着训练、比赛、恢复和媒体应对展开。场外的世界同样精彩和复杂：经纪人为你筹划商业版图，媒体放大你的每一个举动，社交媒体让球迷的声音前所未有地响亮。你的每一个选择——场上的每一次触球、场下的每一个决定——都在书写属于你的足球传奇。",
+  "settings": {
+    "dice_check": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "check_rule": "brp",
+    "fixed_opening": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "allow_player_control_switch": false,
+    "lorebook_token_budget": 0,
+    "lorebook_max_recursion": 2,
+    "summary_word_threshold": 3000,
+    "reasoning_lookback": 2,
+    "vector_summarize": true
+  },
+  "opening": {
+    "text": "",
+    "choices": []
+  },
+  "random_items": [
+    {
+      "id": "match_performance",
+      "description": "比赛表现随机波动。足球是一项充满不确定性的运动——脚感、对手强度、裁判尺度、主客场因素都会影响你的发挥。",
+      "trigger": "match_day",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 8,
+          "label": "灾难之夜",
+          "description": "所有射门都偏得离谱，传球失误比成功还多。被对手完全冻结，主教练在第60分钟就把你换下。赛后更衣室的沉默比任何批评都让人窒息。本场数据：0球0助攻，触球23次，传球成功率52%。",
+          "state_changes": [
+            {
+              "target": "player.射门",
+              "op": "add",
+              "value": -2
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -8
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": -3
+            }
+          ]
+        },
+        {
+          "min": 9,
+          "max": 28,
+          "label": "低迷表现",
+          "description": "脚感冰凉，节奏总慢半拍。虽然防守端还在跑动，但进攻端的挣扎让教练缩短了你的上场时间。本场数据：0球0助攻，触球38次，传球成功率68%。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -3
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "min": 29,
+          "max": 58,
+          "label": "中规中矩",
+          "description": "没有什么惊喜也没有灾难。该做的都做了，没有特别亮眼的表现但也没有致命失误。教练对你点了点头。本场数据：0球0-1助攻，触球52次，传球成功率78%。",
+          "state_changes": []
+        },
+        {
+          "min": 59,
+          "max": 82,
+          "label": "出色发挥",
+          "description": "脚感极好，跑位灵活，几次精彩的突破和传球让队友获得了绝佳机会。教练在战术板上频频点头。本场数据：1球1助攻，触球67次，传球成功率86%。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 3
+            },
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "min": 83,
+          "max": 94,
+          "label": "全明星级表现",
+          "description": "你像是被点燃了——每一次触球都充满灵感。解说员反复提到你的名字，对方教练不得不专门安排人盯防你。本场数据：2球1助攻，触球78次，传球成功率91%，包含一记精彩世界波。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 5
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 5
+            },
+            {
+              "target": "player.射门",
+              "op": "add",
+              "value": 1
+            },
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "min": 95,
+          "max": 100,
+          "label": "生涯之夜",
+          "description": "一切都完美地串联在一起。你打出了职业生涯最佳表现——进球、助攻、突破全面爆发。全场球迷起立鼓掌，连对方球员都投来敬佩的目光。本场数据：帽子戏法！3球2助攻，触球89次，赛季新高。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 12
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 8
+            },
+            {
+              "target": "player.射门",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "injury_risk",
+      "description": "伤病风险。足球赛季漫长且高强度，伤病是每个球员头上的达摩克利斯之剑。疲劳值越高，受伤风险越大。",
+      "trigger": "match_day",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 3,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 4,
+          "label": "严重伤病",
+          "description": "你在一次拼抢中听到膝盖传来一声脆响。队医立刻冲上来——初步诊断是十字韧带损伤。最坏的情况是赛季报销。你将缺席至少4个月。",
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": -25
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -20
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": -5
+            }
+          ]
+        },
+        {
+          "min": 5,
+          "max": 12,
+          "label": "中度伤病",
+          "description": "大腿后侧一阵剧痛——腿筋拉伤。不至于赛季报销，但至少需要休息3-4周。在替补席上看着队友比赛是一种煎熬。",
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": -12
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -8
+            }
+          ]
+        },
+        {
+          "min": 13,
+          "max": 22,
+          "label": "轻微伤痛",
+          "description": "脚踝轻微扭伤，不影响上场但跑动时总觉得别扭。队医帮你做了冰敷和固定。休息一周即可恢复。",
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": -5
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -3
+            }
+          ]
+        },
+        {
+          "min": 23,
+          "max": 100,
+          "label": "安然无恙",
+          "description": "这场比赛你的身体状态良好，没有任何伤病困扰。赛后的肌肉酸痛属于正常范畴。",
+          "state_changes": []
+        }
+      ]
+    },
+    {
+      "id": "media_encounter",
+      "description": "赛后媒体采访。每场比赛后都有记者等着你。你的回答将被剪辑、解读、传播。",
+      "trigger": "match_day",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 2,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 12,
+          "label": "口无遮拦",
+          "description": "记者问到一个敏感话题时你没忍住，说了一些不该说的话。第二天醒来发现自己的发言上了各大体育媒体头条。经纪人的电话已经打爆了。",
+          "state_changes": [
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 8
+            },
+            {
+              "target": "world.球队化学反应",
+              "op": "add",
+              "value": -3
+            },
+            {
+              "target": "player.舆论值",
+              "op": "add",
+              "value": -10
+            }
+          ]
+        },
+        {
+          "min": 13,
+          "max": 38,
+          "label": "平淡应对",
+          "description": "你给出了标准的官方回答。记者们写了几行不痛不痒的报道就收工了。",
+          "state_changes": []
+        },
+        {
+          "min": 39,
+          "max": 68,
+          "label": "真诚分享",
+          "description": "你对比赛的真诚分析被记者完整引用，球迷们觉得你是个有深度的球员。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.舆论值",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "min": 69,
+          "max": 88,
+          "label": "金句频出",
+          "description": "你的一段采访被制作成短视频在社交媒体疯传。粉丝暴涨。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 5
+            },
+            {
+              "target": "player.舆论值",
+              "op": "add",
+              "value": 10
+            },
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "min": 89,
+          "max": 100,
+          "label": "引爆舆论",
+          "description": "你在混合采访区的一句话被断章取义，引发了关于转会/更衣室的轩然大波。俱乐部新闻官不得不紧急发表声明澄清。",
+          "state_changes": [
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 12
+            },
+            {
+              "target": "player.舆论值",
+              "op": "add",
+              "value": -8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "training_quality",
+      "description": "训练质量波动。每次训练的效果取决于你的专注度、身体状态和训练内容的针对性。",
+      "trigger": "training_day",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 10,
+          "label": "糟糕的训练",
+          "description": "心不在焉，动作变形，被助理教练点名批评。主教练远远看了你一眼，摇了摇头。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -3
+            }
+          ]
+        },
+        {
+          "min": 11,
+          "max": 35,
+          "label": "普通训练",
+          "description": "完成了训练菜单上的所有内容，但没有特别投入。例行公事般的一天。",
+          "state_changes": []
+        },
+        {
+          "min": 36,
+          "max": 70,
+          "label": "高质量训练",
+          "description": "专注度很高，几次漂亮的配合赢得了队友的掌声。教练在笔记本上记下了什么。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 71,
+          "max": 90,
+          "label": "突破性训练",
+          "description": "你在训练中找到了一种新的感觉——某个技术动作突然变得流畅自然。这种肌肉记忆的形成是成长的关键时刻。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "min": 91,
+          "max": 100,
+          "label": "惊艳全场",
+          "description": "训练赛中你打出了让所有人侧目的表现。助理教练立刻跑去跟主教练汇报。队友们在更衣室讨论你的那个进球。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 6
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nightlife_event",
+      "description": "球员的夜生活充满诱惑与风险。在高端夜店、私人派对和社交场合中，一个不慎就可能成为狗仔的猎物。",
+      "trigger": "在夜店、派对或社交场合时",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 3,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 15,
+          "label": "狗仔偷拍",
+          "description": "你在VIP区域的照片被偷拍并上传到社交媒体。虽然你什么也没做，但照片的角度暗示了一些不存在的事情。经纪人第二天一早就打来电话。",
+          "state_changes": [
+            {
+              "target": "player.舆论值",
+              "op": "add",
+              "value": -8
+            },
+            {
+              "target": "world.媒体关注度",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "min": 16,
+          "max": 40,
+          "label": "平静夜晚",
+          "description": "和几个朋友安静地喝了几杯，聊了聊足球以外的事情。一个放松而愉快的夜晚。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 41,
+          "max": 65,
+          "label": "社交拓展",
+          "description": "在派对上认识了一些有趣的人——品牌经理、时尚界人士、其他运动员。这些人脉在未来可能有用。",
+          "state_changes": [
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 66,
+          "max": 85,
+          "label": "邂逅",
+          "description": "一个迷人的身影引起了你的注意——或者说，是你引起了对方的注意。城市的夜晚因此变得特别。",
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "min": 86,
+          "max": 100,
+          "label": "喝大了",
+          "description": "party的气氛太好，你多喝了几杯。第二天带着宿醉去训练，差点迟到。希望教练没注意到你眼睛里的红血丝。",
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": -3
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": -4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "id": "games_played",
+      "name": "已打场次",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 9999
+    },
+    {
+      "id": "season_goals",
+      "name": "赛季进球",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 999
+    },
+    {
+      "id": "season_assists",
+      "name": "赛季助攻",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 999
+    },
+    {
+      "id": "career_goals",
+      "name": "生涯总进球",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 9999
+    },
+    {
+      "id": "career_assists",
+      "name": "生涯总助攻",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 9999
+    },
+    {
+      "id": "career_appearances",
+      "name": "生涯总出场",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 9999
+    },
+    {
+      "id": "hat_tricks",
+      "name": "帽子戏法次数",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 999
+    },
+    {
+      "id": "current_club",
+      "name": "当前俱乐部",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "id": "is_starter",
+      "name": "是否首发",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "id": "is_injured",
+      "name": "是否受伤",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "id": "injury_weeks_out",
+      "name": "伤停周数",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 52
+    },
+    {
+      "id": "contract_years_left",
+      "name": "合同剩余年限",
+      "type": "number",
+      "default": 3,
+      "min": 0,
+      "max": 10
+    },
+    {
+      "id": "weekly_wage_k",
+      "name": "周薪(千欧)",
+      "type": "number",
+      "default": 5,
+      "min": 0,
+      "max": 99999
+    },
+    {
+      "id": "transfer_value_m",
+      "name": "身价(百万欧)",
+      "type": "number",
+      "default": 0.5,
+      "min": 0,
+      "max": 9999
+    },
+    {
+      "id": "fame_level",
+      "name": "名望等级",
+      "type": "string",
+      "default": "无名新人"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "t_season_panel",
+      "event": "before_generation",
+      "action": "inject_prompt",
+      "params": {
+        "text": "[赛季状态面板]\n赛季阶段: {{var::season_phase}} | 联赛排名: 第{{var::league_position}}名\n已打场次: {{var::games_played}} | 场均上场: {{var::minutes_per_game}}分钟 | 是否首发: {{var::is_starter}}\n赛季进球: {{var::season_goals}} | 赛季助攻: {{var::season_assists}} | 黄牌: {{var::season_yellow_cards}} | 红牌: {{var::season_red_cards}}\n生涯进球: {{var::career_goals}} | 生涯助攻: {{var::career_assists}} | 生涯出场: {{var::career_appearances}}\n帽子戏法: {{var::hat_tricks}} | 国家队出场: {{var::national_caps}} | 欧冠进球: {{var::ucl_goals}}\n合同剩余: {{var::contract_years_left}}年 | 周薪: {{var::weekly_wage_k}}千欧 | 身价: {{var::transfer_value_m}}百万欧\n名望等级: {{var::fame_level}}\n请使用set_variable更新比赛后的统计数据。"
+      },
+      "enabled": true
+    },
+    {
+      "id": "t_injury_mode",
+      "event": "before_generation",
+      "action": "inject_prompt",
+      "condition": "is_injured == true",
+      "params": {
+        "text": "球员目前处于伤病恢复期，剩余{{var::injury_weeks_out}}周无法参加比赛。场景应围绕康复训练、观看队友比赛、与训练师交流展开。每经过一周游戏时间，injury_weeks_out应减1，归零时设is_injured为false。"
+      },
+      "enabled": true
+    },
+    {
+      "id": "t_transfer_window",
+      "event": "before_generation",
+      "action": "inject_prompt",
+      "condition": "season_phase == transfer_window",
+      "params": {
+        "text": "当前处于转会窗口期。经纪人可能带来其他俱乐部的报价和兴趣，管理层可能找你谈续约。叙事中应适当体现转会市场的氛围——传闻、谈判、新闻发布会。"
+      },
+      "enabled": true
+    },
+    {
+      "id": "t_contract_year",
+      "event": "before_generation",
+      "action": "inject_prompt",
+      "condition": "contract_years_left <= 1",
+      "params": {
+        "text": "这是球员的合同年(剩余{{var::contract_years_left}}年)。经纪人、管理层和媒体都在密切关注表现，每场比赛都可能影响未来合同的价值。叙事中应适当体现这种压力。"
+      },
+      "enabled": true
+    },
+    {
+      "id": "t_opponent_query",
+      "event": "before_generation",
+      "action": "inject_prompt",
+      "condition": "season_phase != preseason",
+      "params": {
+        "text": "比赛日时，请使用query_lore查询对手球队的详细阵容和打法风格，据此生成有针对性的比赛叙事。教练、队友、对手球星均应参考lorebook中的真实数据，有名有姓有特点。"
+      },
+      "enabled": true
+    }
+  ],
+  "regex_scripts": [],
+  "locations": [
+    {
+      "id": "training_ground",
+      "name": "训练基地",
+      "description": "俱乐部训练基地，包含训练场、健身房和康复设施。"
+    },
+    {
+      "id": "stadium",
+      "name": "球场",
+      "description": "主场或客场比赛的足球场。"
+    },
+    {
+      "id": "locker_room",
+      "name": "更衣室",
+      "description": "赛前赛后的球员更衣室。"
+    },
+    {
+      "id": "player_home",
+      "name": "住所",
+      "description": "球员的住处。"
+    },
+    {
+      "id": "agent_office",
+      "name": "经纪人办公室",
+      "description": "经纪人的工作场所，合同和转会谈判在这里进行。"
+    },
+    {
+      "id": "city",
+      "name": "城区",
+      "description": "球队所在城市的公共区域。"
+    }
+  ],
+  "player_character": {
+    "id": "player",
+    "bio": "一个刚被提拔进一线队的年轻球员，站在职业生涯的起点。天赋、努力和机遇将决定你能走多远。",
+    "personality": "年轻有冲劲，对职业足球充满渴望。性格可由玩家在游戏中自行塑造。",
+    "portrait_desc": "二十岁出头，身材匀称有力，目光中带着年轻球员特有的锐气与期待。",
+    "long_term_goal": "从无名新人成长为足坛巨星，赢得金球奖、欧冠和世界杯，成为历史级球员。",
+    "attributes": {
+      "速度": {
+        "value": 55,
+        "min": 0,
+        "max": 100
+      },
+      "射门": {
+        "value": 50,
+        "min": 0,
+        "max": 100
+      },
+      "传球": {
+        "value": 50,
+        "min": 0,
+        "max": 100
+      },
+      "盘带": {
+        "value": 52,
+        "min": 0,
+        "max": 100
+      },
+      "防守": {
+        "value": 40,
+        "min": 0,
+        "max": 100
+      },
+      "体能": {
+        "value": 65,
+        "min": 0,
+        "max": 100
+      },
+      "意识": {
+        "value": 48,
+        "min": 0,
+        "max": 100
+      },
+      "天赋潜力": {
+        "value": 75,
+        "min": 0,
+        "max": 100
+      },
+      "竞技状态": {
+        "value": 70,
+        "min": 0,
+        "max": 100
+      },
+      "疲劳值": {
+        "value": 0,
+        "min": 0,
+        "max": 100
+      },
+      "舆论值": {
+        "value": 0,
+        "min": -100,
+        "max": 100
+      },
+      "球场声望": {
+        "value": 15,
+        "min": 0,
+        "max": 100
+      }
+    },
+    "relationships": {
+      "agent_jorge": {
+        "value": 70
+      },
+      "girlfriend_sofia": {
+        "value": 75
+      },
+      "trainer_carlos": {
+        "value": 55
+      },
+      "father": {
+        "value": 90
+      },
+      "mother": {
+        "value": 90
+      }
+    },
+    "initial_inventory": []
+  },
+  "npcs": [
+    {
+      "id": "agent_jorge",
+      "name": "经纪人豪尔赫",
+      "bio": "你的经纪人，在欧洲足坛经纪圈摸爬滚打十五年。",
+      "personality": "永远精力充沛，手机从不离手，说话时喜欢用夸张的手势强调数字。",
+      "title": "首席经纪人",
+      "attitude_toward_player": 70,
+      "talkativeness": 80,
+      "known": true,
+      "met": true,
+      "portrait_desc": "四十出头，发型打理得一丝不苟，永远穿着剪裁合身的深色西装。手腕上的百达翡丽是他最喜欢展示的配件。橄榄色皮肤，地中海人的深邃五官。",
+      "default_location": "agent_office",
+      "capabilities": "合同谈判、代言对接、公关危机处理、联赛人脉、转会运作、与俱乐部管理层周旋",
+      "related_lore": [
+        "lore_transfer_market",
+        "lore_agent_rules"
+      ],
+      "organizations": [
+        {
+          "org_id": "agent_firm",
+          "rank": 3
+        }
+      ]
+    },
+    {
+      "id": "girlfriend_sofia",
+      "name": "女友索菲亚",
+      "bio": "你的女友，是一名在Instagram上有50万粉丝的时尚博主兼兼职模特。",
+      "personality": "聪明独立，有自己的事业追求。",
+      "title": "女友",
+      "attitude_toward_player": 75,
+      "talkativeness": 65,
+      "known": true,
+      "met": true,
+      "portrait_desc": "二十四岁，身高1米72，深棕色卷发及肩，橄榄色皮肤，大而明亮的棕色眼睛。穿衣品味极好，即使是休闲装也透着精致。笑起来有两个小酒窝。",
+      "default_location": "player_apartment",
+      "capabilities": "情绪支持、社交媒体运营建议、时尚穿搭、人脉拓展、派对组织"
+    },
+    {
+      "id": "trainer_carlos",
+      "name": "私人训练师卡洛斯",
+      "bio": "你的私人体能训练师，前职业球员（因伤退役后转行）。",
+      "personality": "严厉但公正，对训练计划一丝不苟。",
+      "title": "私人训练师",
+      "attitude_toward_player": 55,
+      "talkativeness": 50,
+      "known": true,
+      "met": true,
+      "portrait_desc": "三十五岁，身高1米85，体格健壮。右膝有一道显眼的手术疤痕——那是结束他球员生涯的那次十字韧带撕裂留下的。总穿着运动装，脖子上挂着秒表。",
+      "default_location": "training_ground",
+      "capabilities": "体能训练、伤病康复、营养规划、运动心理疏导、身体状态监测",
+      "related_lore": [
+        "lore_injury_types"
+      ]
+    },
+    {
+      "id": "father",
+      "name": "父亲",
+      "bio": "你的父亲，年轻时也是一名业余足球运动员，因为天赋不足未能走上职业道路。",
+      "personality": "沉稳内敛，不善言辞但眼神中总是充满骄傲。",
+      "title": "父亲",
+      "attitude_toward_player": 95,
+      "talkativeness": 35,
+      "known": true,
+      "met": true,
+      "portrait_desc": "五十多岁，头发已经花白但身板依然硬朗。穿着朴素，唯一的装饰品是手腕上你送他的第一块手表。脸上的皱纹记录着为生活奔波和为你操心的岁月。",
+      "default_location": "player_apartment",
+      "capabilities": "精神支持、足球基础知识、人生建议、情绪稳定器"
+    },
+    {
+      "id": "mother",
+      "name": "母亲",
+      "bio": "你的母亲，一位温柔而坚强的女性。",
+      "personality": "温暖慈爱，是家庭的情感核心。",
+      "title": "母亲",
+      "attitude_toward_player": 95,
+      "talkativeness": 60,
+      "known": true,
+      "met": true,
+      "portrait_desc": "四十多岁，保养得体，头发染成了栗色。眼角有细纹但笑容温暖。穿着得体但不张扬，脖子上挂着一条带有你球衣号码吊坠的项链。",
+      "default_location": "player_apartment",
+      "capabilities": "无条件的情感支持、生活关怀、家庭联结"
+    }
+  ],
+  "player_presets": [
+    {
+      "id": "la_masia_winger",
+      "name": "拉玛西亚边锋",
+      "bio": "巴萨拉玛西亚青训营出品的技术型边锋，从14岁起就在这座传奇的青训学院磨练球技。你的偶像是梅西，你的脚下技术让青年队教练赞不绝口，但一线队竞争异常激烈。",
+      "personality": "技术流球员的自信与对完美触球的执着。训练刻苦但偶尔过于追求个人表现，需要学会融入团队。对巴萨的传控哲学有着骨子里的信仰。",
+      "long_term_goal": "在巴萨一线队站稳脚跟，成为诺坎普的新偶像，随巴萨赢得欧冠冠军。",
+      "portrait_desc": "十九岁，身高1米78，身材精瘦灵活。深色短发微卷，有着地中海人的橄榄色皮肤和灵动的深色眼睛。左脚腕上戴着一条编织手链——那是进入拉玛西亚时母亲送的。",
+      "opening_text": "八月的巴塞罗那，阳光炽烈得像是要把诺坎普球场的草坪烤焦。你站在通往一线队更衣室的走廊里，手里攥着新发的23号球衣——从今天起，你不再是拉玛西亚的孩子，而是巴塞罗那足球俱乐部的一线队球员。走廊尽头传来更衣室里队友们的笑声和西班牙语的玩笑。你深吸一口气，推开那扇门——职业生涯的第一章，正式开始。",
+      "attributes": {
+        "速度": {
+          "value": 62,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 52,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 68,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 58,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 58,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 82,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 72,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 5,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 20,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "locker_room",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "走向佩德里，用加泰语打招呼：「嘿，从青年队上来的新人报到。能教我怎么适应一线队的节奏吗？」",
+          "result": {
+            "type": "deterministic",
+            "description": "佩德里抬起头，露出友善的微笑。他拍了拍你旁边的座位，开始聊起自己刚升入一线队时的经历。这个来自加那利群岛的天才似乎很愿意当你的引路人。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "默默在自己的储物柜前换好训练装备，戴上耳机，在脑海中回放教练布置的战术。",
+          "result": {
+            "type": "deterministic",
+            "description": "音乐隔绝了更衣室的喧嚣，你闭上眼睛回想着青年队教练反复强调的跑位路线。当助理教练来叫你出去训练时，你已经准备好了。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "在训练场上主动加练——用标志碟摆出障碍，反复练习变向过人和内切射门。",
+          "result": {
+            "type": "deterministic",
+            "description": "其他队友三三两两地走过，有人好奇地多看了你几眼。助理教练在场边观察了一会儿，在笔记本上写了几行字。你的勤奋给教练组留下了第一印象。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.盘带",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.射门",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "npc_overrides": [
+        {
+          "id": "agent_jorge",
+          "personality": "在西班牙足坛有深厚人脉的老牌经纪人，与巴萨管理层关系密切。你是他从拉玛西亚就开始跟踪的天才，他对你有着长远规划。"
+        },
+        {
+          "id": "girlfriend_sofia",
+          "personality": "巴塞罗那本地女孩，在哥特区经营一家小型设计工作室。你们在兰布拉大道的一次偶遇中相识，她的独立和对艺术的热爱吸引了你。"
+        }
+      ]
+    },
+    {
+      "id": "premier_striker",
+      "name": "英超青训前锋",
+      "bio": "布莱顿青训体系培养的强力前锋，以出色的身体素质和门前嗅觉闻名。在英超联赛U21比赛中已经证明了自己的进球能力，现在是时候在一线队展示实力了。",
+      "personality": "硬朗直接，不怕身体对抗。有着英式前锋的实用主义精神——进球是唯一的目标。性格开朗，更衣室里的开心果，但在球场上是一头猛兽。",
+      "long_term_goal": "成为英超顶级射手，帮助布莱顿创造历史，最终转会英超BIG6俱乐部。",
+      "portrait_desc": "二十岁，身高1米85，体格强壮有力。短寸头，下巴线条分明，有着英格兰人典型的浅色皮肤和蓝灰色眼睛。左臂有一个狮子纹身——致敬英格兰三狮军团。",
+      "opening_text": "八月的布莱顿，海风从英吉利海峡吹来，带着咸涩的味道。美国运通社区球场外，新赛季的横幅已经挂起。你刚从青年队被提拔进一线队，教练对你说：'赛季前热身赛还有三场，你有三次机会证明自己值得一个大名单席位。'更衣室里，几个老将正在讨论新赛季的目标。你打开自己的储物柜——19号球衣静静地挂在那里。",
+      "attributes": {
+        "速度": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 48,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 42,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 72,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 78,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 0,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 15,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "locker_room",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "找到队长，主动自我介绍：「我是从青年队上来的，前锋位置。需要我做什么就说。」",
+          "result": {
+            "type": "deterministic",
+            "description": "队长上下打量了你一眼，用力握了握你的手：'在这里，不管你多有天赋，先学会跑。跑到对手怕你为止。'一句简单的话，但你记住了。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "赛前在球场里慢跑两圈，感受草坪的质感，想象进球后的庆祝动作。",
+          "result": {
+            "type": "deterministic",
+            "description": "海风吹过空旷的球场，看台上只有几个工作人员在做赛前准备。你闭上眼睛，想象着进球后滑跪庆祝的画面——终有一天这里会为你沸腾。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "去健身房做一组爆发力训练，确保自己在身体对抗中不落下风。",
+          "result": {
+            "type": "deterministic",
+            "description": "杠铃片碰撞的声音在健身房回荡。力量教练走过来看了看你的训练重量，满意地点了点头：'英超是世界上身体对抗最激烈的联赛，你的底子不错。'",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.体能",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.防守",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "npc_overrides": [
+        {
+          "id": "agent_jorge",
+          "personality": "在英国足坛有广泛人脉的经纪人，代理过多名英超球员。务实高效，擅长帮年轻球员争取表现机会和合理薪资。"
+        },
+        {
+          "id": "girlfriend_sofia",
+          "personality": "在伦敦读大学的女孩，周末常常来布莱顿看你比赛。你们是高中同学，从青涩的校园恋情走到了职业足球的聚光灯下。"
+        }
+      ]
+    },
+    {
+      "id": "serie_a_midfielder",
+      "name": "意甲中场新星",
+      "bio": "亚特兰大青训出品的全能中场，以出色的比赛阅读能力和精准的长传闻名。加斯佩里尼的高强度战术体系锻造了你的意识和体能。",
+      "personality": "沉稳内敛，场上指挥若定。有着超越年龄的成熟和冷静，但偶尔也会被意甲的身体对抗和战术复杂性所困扰。对足球有着近乎痴迷的钻研精神，经常在家看比赛录像到深夜。",
+      "long_term_goal": "成为意甲最出色的中场组织者，帮助亚特兰大在欧战中走得更远，最终登上国米或尤文的舞台。",
+      "portrait_desc": "二十岁，身高1米82，体格匀称。深棕色头发向后梳理，面部轮廓分明，有着意大利人特有的深邃五官。眼神冷静专注，嘴角常带着若有所思的微笑。",
+      "opening_text": "八月的贝尔加莫，阿尔卑斯山的余脉在远处若隐若现。格维奥·弗罗西尼训练中心的草坪上，加斯佩里尼正在用他标志性的大嗓门指挥着战术演练。你从青年队升入一线队已经两周了，但每天的训练强度仍然让你感到震惊——这就是亚特兰大的风格，永远在极限的边缘奔跑。今天下午有一场队内对抗赛，教练说会仔细观察每个人的表现。",
+      "attributes": {
+        "速度": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 48,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 52,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 68,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 80,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 72,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 0,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 18,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "training_ground",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "在对抗赛中尝试一脚40米的长传转移，展示你的视野和传球精度。",
+          "result": {
+            "type": "deterministic",
+            "description": "球划出一道完美的弧线，越过半个球场精准地落在边锋脚下。加斯佩里尼停下来看了一眼，虽然没说什么，但你注意到他在战术本上画了个圈。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.传球",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "专注于防守端的跑位和拦截，展示你对加斯佩里尼战术体系的理解。",
+          "result": {
+            "type": "deterministic",
+            "description": "你连续三次精准预判到对方的传球线路完成拦截。加斯佩里尼大喊了一声：'就是这样！'——在他的体系里，防守意识和进攻同样重要。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.防守",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "训练结束后留下来，向助理教练请教加斯佩里尼体系中中场的具体职责。",
+          "result": {
+            "type": "deterministic",
+            "description": "助理教练拿出iPad给你看了上赛季几场关键比赛的中场跑位热图。'加斯佩里尼要求的不是位置，是角色。你需要同时是组织者和破坏者。'你拿出笔记本记了满满一页。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        }
+      ],
+      "npc_overrides": []
+    },
+    {
+      "id": "bundesliga_forward",
+      "name": "德甲闪电前锋",
+      "bio": "多特蒙德青训培养的速度型前锋，在威斯特法伦南看台(黄色之墙)的注视下成长。你的爆发力和冲刺速度是武器，但还需要在技术和意识方面提升才能在一线队立足。",
+      "personality": "热情奔放，充满能量。有着德国球员的纪律性和职业素养，但同时也有着拉丁血统带来的激情和创造力(你的母亲是巴西人)。在球场上永远全力冲刺，永不放弃。",
+      "long_term_goal": "成为多特蒙德的主力前锋，在黄色之墙前进球庆祝，随队重返欧冠巅峰。",
+      "portrait_desc": "十九岁，身高1米80，肌肉线条分明。深棕色皮肤(巴西-德国混血)，头发剃成时尚的渐变短发。跑动时步伐轻盈有力，像一头猎豹。",
+      "opening_text": "八月的多特蒙德，威斯特法伦球场的黄色外墙在阳光下闪闪发光。你在青年队的表现引起了一线队教练组的注意，今天是你第一次参加一线队的正式训练。南看台——那面传说中的'黄色之墙'——此刻空无一人，但你几乎能听到81000名球迷的怒吼声在耳边回荡。训练场上，几个你在电视上看过无数次的面孔正在做热身。",
+      "attributes": {
+        "速度": {
+          "value": 72,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 42,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 79,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 0,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 15,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "training_ground",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "在冲刺训练中全力以赴，用速度碾压所有人——让教练看看你最大的武器。",
+          "result": {
+            "type": "deterministic",
+            "description": "你在30米冲刺测试中跑出了全队最快的成绩。几个队友互相对视——这个小子的速度是认真的。体能教练在记录板上画了一个大大的感叹号。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.速度",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "主动和前锋竞争者交流，了解一线队的进攻套路和教练的偏好。",
+          "result": {
+            "type": "deterministic",
+            "description": "老将前锋分享了一些宝贵经验：'教练喜欢快速反击，你的速度是最好的武器。但记住，反越位时机比速度更重要。'这句话让你若有所思。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "训练结束后在球门前加练射门——左脚、右脚、头球，反复练习直到天黑。",
+          "result": {
+            "type": "deterministic",
+            "description": "门将在扑了你二十几脚射门后摊开双手：'哥们，我手套都湿透了，你还练？'你笑了笑，继续摆球。守门员教练在一旁看了一会儿，默默点了点头。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.射门",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        }
+      ],
+      "npc_overrides": []
+    },
+    {
+      "id": "ligue1_playmaker",
+      "name": "法甲前腰天才",
+      "bio": "摩纳哥青训学院的前腰/攻击型中场，被誉为'下一个齐达内'(虽然你自己觉得这个标签压力太大)。你的球感和创造力是天生的，但法甲的身体对抗和战术纪律对你来说仍是挑战。",
+      "personality": "艺术家气质，崇尚华丽的足球。有时候会过于追求完美的传球而忽略简单有效的选择。性格有些内向，不太善于应对媒体和公众关注。对足球有着超越竞技的理解——在你眼中，足球是一种表达。",
+      "long_term_goal": "在摩纳哥证明自己，然后转会至巴黎或顶级联赛的豪门，用华丽的球风征服世界。",
+      "portrait_desc": "十九岁，身高1米76，身材灵巧柔韧。深色卷发蓬松自然，有着北非裔法国人特有的棕色皮肤和深邃的大眼睛。球场上的一举一动都带着一种天生的优雅。",
+      "opening_text": "八月的摩纳哥，蔚蓝海岸的阳光洒在路易二世球场的草坪上。你能看到远处停泊在港湾里的游艇在阳光下闪烁。从摩纳哥青训学院走出来的你，今天正式成为一线队的一员。摩纳哥——这座足球人才工厂已经输出了姆巴佩、贝尔纳多·席尔瓦等无数巨星，而你渴望成为下一个从这里起飞的名字。训练场上，教练正在安排今天的战术演练。",
+      "attributes": {
+        "速度": {
+          "value": 58,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 52,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 68,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 30,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 62,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 85,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 72,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 3,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 18,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "training_ground",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "在传球训练中展示你的招牌技能——不看人传球(no-look pass)，让队友们见识你的视野。",
+          "result": {
+            "type": "deterministic",
+            "description": "一记穿越三人防线的不看人直塞，精准地送到前锋脚下。队友们发出'哦！'的惊叹声。但教练走过来淡淡地说：'很漂亮，但下次先试试简单的。'你明白他的意思——先赢得信任。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.传球",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "观察教练的战术体系，找到自己在阵型中的最佳位置和角色。",
+          "result": {
+            "type": "deterministic",
+            "description": "你在战术训练中仔细观察了球队的进攻模式——从后场出球到前场渗透的每一个节点。你发现了一个经常被忽略的接球空间，这可能是你的突破口。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "训练结束后找队里的法国国脚聊天，请教在法甲生存的秘诀。",
+          "result": {
+            "type": "deterministic",
+            "description": "国脚笑了笑：'法甲看起来是技术联赛，但别被骗了。这里的后卫比你想象的更凶。你得学会在被铲之前就把球送出去。'说完他又补了一句：'但你的天赋是真的。'",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 1
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      ],
+      "npc_overrides": [
+        {
+          "id": "agent_jorge",
+          "personality": "在法国足坛深耕多年的经纪人，与巴黎圣日耳曼和多家英超俱乐部关系密切。他看好你的天赋，正在为你规划一条从摩纳哥跳板到顶级豪门的路线。"
+        }
+      ]
+    },
+    {
+      "id": "portuguese_gem",
+      "name": "葡超原石",
+      "bio": "本菲卡B队的边锋/攻击型中场，从巴西来到里斯本追寻足球梦想。葡超是欧洲顶级联赛的跳板——无数南美天才从这里走向世界。你的起点比五大联赛低，但成长空间可能更大。",
+      "personality": "桑巴足球的灵魂——快乐、即兴、充满想象力。在球场上永远带着微笑，把足球当作游戏而非工作。但远离家乡的孤独和B队的竞争压力有时会让你感到迷茫。适应欧洲足球的节奏和文化是你最大的挑战。",
+      "long_term_goal": "从本菲卡B队升入一线队，在葡超证明自己后转会五大联赛，最终代表巴西国家队参加世界杯。",
+      "portrait_desc": "十八岁，身高1米75，身材灵活有弹性。深棕色皮肤，一头浓密的黑色卷发束成小辫。笑容灿烂温暖，露出整齐的白牙。脚踝上纹着一个小小的巴西国旗。",
+      "opening_text": "八月的里斯本，塔古斯河上的晚霞把贝伦塔染成了金色。你从巴西米纳斯吉拉斯州的小城来到这座古老的欧洲城市已经三个月了，语言障碍正在慢慢消退，但乡愁仍然会在深夜偷袭你。本菲卡B队的比赛即将在下周开始，教练说如果你在季前赛中表现够好，有机会被一线队教练注意到。今天的训练结束后，你独自留在球场上练习任意球。",
+      "attributes": {
+        "速度": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "射门": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "传球": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "盘带": {
+          "value": 62,
+          "min": 0,
+          "max": 100
+        },
+        "防守": {
+          "value": 32,
+          "min": 0,
+          "max": 100
+        },
+        "体能": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "意识": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "天赋潜力": {
+          "value": 88,
+          "min": 0,
+          "max": 100
+        },
+        "竞技状态": {
+          "value": 68,
+          "min": 0,
+          "max": 100
+        },
+        "疲劳值": {
+          "value": 0,
+          "min": 0,
+          "max": 100
+        },
+        "舆论值": {
+          "value": 0,
+          "min": -100,
+          "max": 100
+        },
+        "球场声望": {
+          "value": 8,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "training_ground",
+      "opening_choices": [
+        {
+          "id": "open_0",
+          "text": "在训练赛中使出一个华丽的彩虹过人——这是你在巴西街头足球学会的绝活。",
+          "result": {
+            "type": "deterministic",
+            "description": "球从对手头顶飞过，你轻盈地绕过他接住球。队友们用葡萄牙语喊着'olé!'。但教练皱了皱眉——在欧洲，华丽的技巧需要实际效果来证明价值。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.盘带",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.球场声望",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_1",
+          "text": "赛后主动找葡萄牙籍队友练习葡语，同时请教欧洲足球的战术纪律。",
+          "result": {
+            "type": "deterministic",
+            "description": "队友耐心地纠正你的发音，然后认真地说：'在巴西你可以自由发挥，但在这里，教练要你在哪里你就得在哪里。战术纪律是第一位的。如果你能在纪律中保持创造力——那你就是天才。'",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.意识",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "open_2",
+          "text": "给远在巴西的父亲打一个视频电话，告诉他你在这里的进展。",
+          "result": {
+            "type": "deterministic",
+            "description": "父亲的脸出现在手机屏幕上，他穿着你的旧球衣，背景是你从小踢球的那块尘土飞扬的街头球场。'不管发生什么，我们都为你骄傲。'他的声音有些沙哑。挂断电话后，你感到一股力量在胸中涌动。",
+            "state_changes": []
+          },
+          "state_changes": [
+            {
+              "target": "player.竞技状态",
+              "op": "add",
+              "value": 3
+            },
+            {
+              "target": "player.relationships.father",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        }
+      ],
+      "npc_overrides": [
+        {
+          "id": "agent_jorge",
+          "personality": "在巴西和葡萄牙之间搭桥的经纪人，专门帮助南美年轻球员登陆欧洲。他在本菲卡、波尔图和里斯本竞技都有关系。你是他最新也是最看好的'项目'。"
+        },
+        {
+          "id": "father",
+          "personality": "远在巴西米纳斯吉拉斯州的父亲，曾是当地业余联赛的前锋。他把一辈子的积蓄拿出来支持你来欧洲追梦。每场比赛他都会通过网络直播观看，即使时差让他不得不在凌晨三点起床。"
+        },
+        {
+          "id": "mother",
+          "personality": "住在巴西老家的母亲，每周日会给你寄来一盒自制的巴西小吃。她不太会用手机但每天都会发一条语音消息：'吃好穿暖，妈妈为你祈祷。'"
+        }
+      ]
+    }
+  ],
+  "allow_custom_character": true,
+  "world_properties": [
+    {
+      "id": "current_season",
+      "name": "当前赛季",
+      "value": "2024-25",
+      "type": "string"
+    },
+    {
+      "id": "league_matchday",
+      "name": "联赛轮次",
+      "value": 0,
+      "type": "number",
+      "min": 0,
+      "max": 38
+    },
+    {
+      "id": "transfer_window_status",
+      "name": "转会窗状态",
+      "value": "夏窗开启",
+      "type": "string"
+    },
+    {
+      "id": "team_chemistry",
+      "name": "球队化学反应",
+      "value": 60,
+      "type": "number",
+      "min": 0,
+      "max": 100
+    }
+  ],
+  "persistent_states": [
+    {
+      "id": "preseason",
+      "name": "季前集训期",
+      "description": "赛季开始前的准备阶段。训练强度较高，有热身赛安排。教练在观察每个人的状态来决定赛季首发阵容。",
+      "initially_active": true,
+      "expires_at": "2024-08-17T00:00:00"
+    },
+    {
+      "id": "league_active",
+      "name": "联赛进行中",
+      "description": "联赛赛季正式开始。每周有1-2场比赛，训练和比赛交替进行。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "transfer_window_open",
+      "name": "转会窗口开放",
+      "description": "转会市场活跃期间，经纪人可能带来报价，管理层可能买入新援或讨论续约。",
+      "initially_active": true,
+      "expires_at": "2024-09-01T00:00:00"
+    },
+    {
+      "id": "injury_recovery",
+      "name": "伤病恢复期",
+      "description": "因伤无法参加比赛和正常训练。场景应围绕康复、理疗和心理调适展开。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "hot_streak",
+      "name": "火热状态",
+      "description": "连续多场比赛表现出色，信心爆棚。媒体开始大肆报道，球迷期待值飙升。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "cold_streak",
+      "name": "低迷状态",
+      "description": "连续多场表现不佳，自信心受挫。教练可能减少你的出场时间，媒体开始质疑。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "national_team_duty",
+      "name": "国家队征召",
+      "description": "被国家队征召参加国际比赛日。需要离开俱乐部前往国家队训练营。",
+      "initially_active": false,
+      "expires_at": null
+    }
+  ],
+  "cyclic_events": [
+    {
+      "id": "match_day",
+      "description": "比赛日到来。联赛、杯赛或欧战，每场比赛都是证明自己的机会。请参考'比赛表现随机波动'和'伤病风险'的骰子结果。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "2024-08-18T15:00",
+      "condition": "",
+      "expires_at": null
+    },
+    {
+      "id": "training_session",
+      "description": "日常训练。训练内容包括战术演练、体能训练、技术练习和队内对抗赛。请参考'训练质量波动'的骰子结果。",
+      "frequency_value": 1,
+      "frequency_unit": "day",
+      "first_trigger": "2024-08-02T09:00",
+      "condition": "",
+      "expires_at": null
+    },
+    {
+      "id": "press_conference",
+      "description": "赛前/赛后新闻发布会。球员可能被安排接受媒体采访，回答关于比赛、状态和转会的问题。",
+      "frequency_value": 7,
+      "frequency_unit": "day",
+      "first_trigger": "2024-08-16T14:00",
+      "condition": "",
+      "expires_at": null
+    },
+    {
+      "id": "agent_checkin",
+      "description": "经纪人定期联络。豪尔赫打来电话汇报商业合作进展、其他俱乐部的兴趣、或合同相关事宜。",
+      "frequency_value": 5,
+      "frequency_unit": "day",
+      "first_trigger": "2024-08-05T18:00",
+      "condition": "",
+      "expires_at": null
+    }
+  ],
+  "one_time_events": [
+    {
+      "id": "event_season_opener",
+      "description": "2024-25赛季联赛揭幕战。新赛季的第一场正式比赛，全队上下都充满期待与紧张。",
+      "trigger_time": "2024-08-18T15:00"
+    },
+    {
+      "id": "event_ucl_matchday1",
+      "description": "欧冠联赛阶段首轮比赛。欧冠之夜的氛围与联赛完全不同——更紧张、更刺激。",
+      "trigger_time": "2024-09-17T21:00"
+    },
+    {
+      "id": "event_transfer_window_close_summer",
+      "description": "夏季转会窗口关闭。截止日前的最后疯狂——经纪人的电话响个不停，传闻满天飞。",
+      "trigger_time": "2024-08-31T23:59"
+    },
+    {
+      "id": "event_christmas_fixtures",
+      "description": "圣诞赛程开始。英超的圣诞魔鬼赛程——一周三赛，对体能和心理都是巨大考验。",
+      "trigger_time": "2024-12-21T15:00"
+    },
+    {
+      "id": "event_transfer_window_open_winter",
+      "description": "冬季转会窗口开启。为期一个月的冬窗，可能有新援加入或队友离开。",
+      "trigger_time": "2025-01-01T00:00"
+    },
+    {
+      "id": "event_transfer_window_close_winter",
+      "description": "冬季转会窗口关闭。冬窗截止日，最后一刻的交易往往最戏剧化。",
+      "trigger_time": "2025-02-03T23:59"
+    },
+    {
+      "id": "event_ballon_dor_ceremony",
+      "description": "金球奖颁奖典礼之夜。巴黎沙特莱剧院，红毯、闪光灯、晚礼服——足球世界最glamorous的一夜。",
+      "trigger_time": "2025-10-27T20:00"
+    },
+    {
+      "id": "event_season_end",
+      "description": "赛季最后一轮比赛。这个赛季的故事即将画上句号——冠军、欧战资格、保级，一切在今天揭晓。",
+      "trigger_time": "2025-05-25T17:00"
+    }
+  ],
+  "story_tree": {
+    "trees": [
+      {
+        "id": "career_rise",
+        "name": "球星之路",
+        "icon": "star",
+        "description": "从无名新人到足坛巨星的成长轨迹。",
+        "nodes": [
+          {
+            "id": "cr_debut",
+            "name": "一线队首秀",
+            "type": "auto",
+            "requires": [],
+            "on_complete_unlock": [
+              "cr_starter"
+            ],
+            "status": "available",
+            "effects": {
+              "notify": "【球星之路】一线队首秀完成！"
+            }
+          },
+          {
+            "id": "cr_starter",
+            "name": "站稳首发",
+            "type": "timed",
+            "requires": [
+              "cr_debut"
+            ],
+            "on_complete_unlock": [
+              "cr_national_team"
+            ],
+            "status": "locked",
+            "duration_turns": 8,
+            "effects": {
+              "notify": "【球星之路】你成为了球队首发！"
+            }
+          },
+          {
+            "id": "cr_national_team",
+            "name": "国家队征召",
+            "type": "auto",
+            "requires": [
+              "cr_starter"
+            ],
+            "on_complete_unlock": [
+              "cr_superstar"
+            ],
+            "status": "locked",
+            "effects": {
+              "notify": "【球星之路】国家队征召！"
+            }
+          },
+          {
+            "id": "cr_superstar",
+            "name": "巨星之路",
+            "type": "auto",
+            "requires": [
+              "cr_national_team"
+            ],
+            "on_complete_unlock": [],
+            "status": "locked",
+            "effects": {
+              "notify": "【球星之路】你已跻身世界顶级球员行列！"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "dynamic_events": [
+    {
+      "id": "de_chemistry_boost",
+      "name": "化学反应提升",
+      "description": "球队配合越来越默契",
+      "weight": 10,
+      "cooldown": 8,
+      "conditions": [
+        {
+          "path": "world_properties.球队化学反应",
+          "op": ">=",
+          "value": 60
+        }
+      ],
+      "effects": [
+        {
+          "type": "state_change",
+          "target": "world_properties.球队化学反应",
+          "op": "add",
+          "value": 5
+        },
+        {
+          "type": "narrative_callback",
+          "text": "连胜让球队上下信心爆棚，更衣室气氛前所未有地融洽。训练场上的默契配合让教练组露出满意的微笑。",
+          "priority": "medium"
+        }
+      ],
+      "chain_events": []
+    },
+    {
+      "id": "de_chemistry_drop",
+      "name": "更衣室裂痕",
+      "description": "连败导致更衣室出现裂痕",
+      "weight": 10,
+      "cooldown": 8,
+      "conditions": [
+        {
+          "path": "world_properties.球队化学反应",
+          "op": "<=",
+          "value": 40
+        }
+      ],
+      "effects": [
+        {
+          "type": "state_change",
+          "target": "world_properties.球队化学反应",
+          "op": "add",
+          "value": -5
+        },
+        {
+          "type": "narrative_callback",
+          "text": "更衣室气氛变得紧张，队友之间开始出现不满和指责。教练需要想办法稳住军心。",
+          "priority": "high"
+        }
+      ],
+      "chain_events": []
+    },
+    {
+      "id": "de_transfer_rumor",
+      "name": "转会传闻升温",
+      "description": "媒体开始炒作你的转会传闻",
+      "weight": 6,
+      "cooldown": 15,
+      "conditions": [
+        {
+          "path": "player.球场声望",
+          "op": ">=",
+          "value": 50
+        }
+      ],
+      "effects": [
+        {
+          "type": "state_change",
+          "target": "world_properties.媒体关注度",
+          "op": "add",
+          "value": 8
+        },
+        {
+          "type": "narrative_callback",
+          "text": "今天的报纸头条赫然写着你可能转会的消息。经纪人豪尔赫的电话响个不停，其他俱乐部开始试探报价。更衣室里队友们投来复杂的目光。",
+          "priority": "high"
+        }
+      ],
+      "chain_events": []
+    },
+    {
+      "id": "de_hot_form",
+      "name": "火热状态",
+      "description": "连续出色表现触发火热状态",
+      "weight": 8,
+      "cooldown": 12,
+      "conditions": [
+        {
+          "path": "player.竞技状态",
+          "op": ">=",
+          "value": 85
+        }
+      ],
+      "effects": [
+        {
+          "type": "activate_state",
+          "state_id": "hot_streak"
+        },
+        {
+          "type": "narrative_callback",
+          "text": "你正处于职业生涯最好的状态——每次触球都充满自信，射门如有神助。教练在战术中越来越依赖你，队友们也习惯性地在关键时刻把球交给你。",
+          "priority": "medium"
+        }
+      ],
+      "chain_events": []
+    },
+    {
+      "id": "de_cold_form",
+      "name": "状态低迷",
+      "description": "连续低迷表现触发冰冷状态",
+      "weight": 8,
+      "cooldown": 12,
+      "conditions": [
+        {
+          "path": "player.竞技状态",
+          "op": "<=",
+          "value": 35
+        }
+      ],
+      "effects": [
+        {
+          "type": "activate_state",
+          "state_id": "cold_streak"
+        },
+        {
+          "type": "narrative_callback",
+          "text": "连续几场比赛的低迷让你开始怀疑自己。教练的目光中多了几分犹豫，替补席上有人已经跃跃欲试。你需要尽快找回状态。",
+          "priority": "high"
+        }
+      ],
+      "chain_events": []
+    },
+    {
+      "id": "de_injury_chain",
+      "name": "伤病连锁",
+      "description": "未完全康复就复出导致旧伤复发",
+      "weight": 4,
+      "cooldown": 20,
+      "conditions": [
+        {
+          "path": "player.体能",
+          "op": "<=",
+          "value": 30
+        }
+      ],
+      "effects": [
+        {
+          "type": "state_change",
+          "target": "player.体能",
+          "op": "add",
+          "value": -10
+        },
+        {
+          "type": "narrative_callback",
+          "text": "你感到那个熟悉的疼痛又回来了——之前的伤还没有完全恢复。队医严肃地告诉你：'如果不认真休息，这可能变成一个长期问题。'",
+          "priority": "high"
+        }
+      ],
+      "chain_events": []
+    }
+  ],
+  "lorebook": [
+    {
+      "id": "lore_match_narrative",
+      "keys": [
+        "比赛叙事",
+        "比赛描写",
+        "match_narrative"
+      ],
+      "secondary_keys": [
+        "战术",
+        "进球",
+        "助攻",
+        "防守",
+        "换人",
+        "裁判",
+        "VAR"
+      ],
+      "content": "【足球比赛叙事指南】\n描写足球比赛时应包含以下元素：\n1. 战术层面：传控/防守反击/高位逼抢/433/442/352等阵型和战术体系的具体运用\n2. 数据播报：进球、助攻、射门次数、传球成功率、控球率。AI应生成具体但合理的数据\n3. 关键时刻：进球细节(射门方式/助攻方式/门将反应)、失误、换人、红黄牌、VAR判罚\n4. 球场氛围：主场球迷的助威歌/Tifo/烟火、客场的嘘声、德比战的火药味\n5. 身体语言：庆祝动作(滑跪/飞机翼/心形手势)、沮丧表情、与裁判争论、队友拥抱\n6. 教练互动：场边战术指挥、换人决策、中场休息战术调整\n比赛应有起伏——开局、拉锯、高潮、结局。不要每场比赛都是逆转绝杀，多数比赛是常规节奏。\n使用set_variable更新赛季统计：games_played+1, season_goals+本场进球, season_assists+本场助攻, career_goals+本场进球, career_assists+本场助攻, career_appearances+1。\n足球规则：上下半场各45分钟+伤停补时，最多5次换人(3个换人窗口)，越位/手球/犯规判罚需准确。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "AI比赛叙事指南",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_dynamic_roles",
+      "keys": [
+        "教练",
+        "队友",
+        "总经理",
+        "记者",
+        "训练",
+        "更衣室"
+      ],
+      "secondary_keys": [
+        "coach",
+        "teammate",
+        "manager",
+        "reporter",
+        "locker_room"
+      ],
+      "content": "【动态角色扮演指南】\n以下角色不是固定NPC，AI应根据球队lorebook数据和剧情上下文动态扮演：\n\n1. 主教练：参考球队lorebook中的教练姓名和执教风格。教练决定战术、出场时间、首发阵容。性格应与其执教风格一致——传控教练更注重技术，防反教练更强调纪律。教练会在训练中指导、比赛中换人、赛后点评。\n\n2. 队友：参考球队lorebook中的首发和替补球员名单。同位置竞争者应有适度的竞争张力。老将队友应有导师气质。AI应维持队友性格的一致性。\n\n3. 总经理/管理层/主席：影响转会决策和合同谈判。在转会窗口期尤为活跃。\n\n4. 赛后记者：赛后必有简短的混合采访区提问。问题围绕本场表现、战术、近况。\n\n5. 对手球员：比赛中的对位球员应参考对方球队lorebook中的数据。对位球星应有名有姓有特点，不要用'对方球员'泛称。\n\n6. 国家队教练：国际比赛日时，根据球员国籍参考相应国家队lorebook。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "动态角色扮演指南",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_season_flow",
+      "keys": [
+        "赛季节奏",
+        "season_flow",
+        "赛季时间线"
+      ],
+      "secondary_keys": [
+        "赛程",
+        "转会窗",
+        "国际比赛日"
+      ],
+      "content": "【赛季节奏指南】\n6-7月：休赛期/季前集训/热身赛。球员回归训练，新签约球员报到。\n8月：新赛季开始，联赛首轮。夏季转会窗关闭(9月1日)。\n9月：欧冠/欧联开打，国家队比赛日。联赛与欧战双线作战开始。\n10-12月：联赛+欧战密集赛程。圣诞前夕英超魔鬼赛程，德甲冬歇期。\n1月：冬季转会窗(1月1日-2月初)。德甲冬歇期结束。\n2-5月：联赛冲刺+欧冠淘汰赛+国内杯赛。赛季高潮。\n5月底-6月：赛季结束。世界杯年/欧洲杯年有国家队赛事。\n疲劳管理：赛季中后段球员疲劳积累，伤病风险增高。圣诞赛程是体能关键期。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "赛季节奏指南",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_transfer_market",
+      "keys": [
+        "转会",
+        "转会市场",
+        "合同",
+        "签约",
+        "违约金"
+      ],
+      "secondary_keys": [
+        "自由转会",
+        "租借",
+        "买断",
+        "经纪人费"
+      ],
+      "content": "【转会市场运作机制】\n转会窗口：夏窗(6月-9月1日)和冬窗(1月)。窗外不能签约新球员。\n转会类型：买断(支付转会费)/租借(临时转会)/自由转会(合同到期)/交换交易。\n违约金条款：合同中约定的固定解约金额，触发后球员可自由与新东家谈判。\n谈判流程：俱乐部间谈转会费→球员谈个人条款(薪资/奖金/合同年限)→体检→官宣。\n经纪人佣金：通常为转会费的5-10%或年薪的一部分。\n身价影响因素：年龄(20-28岁黄金期)、合同剩余年限、近期表现、市场供需、俱乐部意愿。\nFIFA新规：经纪人佣金上限、服务费透明化。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "转会市场运作",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_ballon_dor",
+      "keys": [
+        "金球奖",
+        "Ballon d'Or",
+        "世界足球先生",
+        "FIFA最佳"
+      ],
+      "secondary_keys": [
+        "个人荣誉",
+        "颁奖",
+        "梅西",
+        "C罗"
+      ],
+      "content": "【金球奖/世界足球先生】\n金球奖(Ballon d'Or)：由《法国足球》杂志主办，国际足球记者投票。每年10月公布。\n评选标准：个人表现+团队荣誉+赛季影响力。\n历史记录：梅西8次、C罗5次。其他获奖者包括莫德里奇、本泽马、梅西(2023)。\nFIFA最佳球员：由FIFA主办，教练+队长+球迷投票。与金球奖是不同奖项。\n晋升超级巨星的严格标准：必须同时满足——世界杯冠军+金球奖，或多次欧冠+多次金球奖+联赛大满贯。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "金球奖与个人荣誉",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_ucl_format",
+      "keys": [
+        "欧冠",
+        "Champions League",
+        "UCL",
+        "欧洲冠军联赛"
+      ],
+      "secondary_keys": [
+        "欧冠改制",
+        "瑞士制",
+        "淘汰赛"
+      ],
+      "content": "【欧冠赛制(2024-25新赛制)】\n联赛阶段(取代小组赛)：36支球队组成一个大联赛，每队打8场(4主4客不同对手)。\n前8名直接进入16强，第9-24名进入附加赛(两回合淘汰)决出另外8个16强席位。\n淘汰赛：16强→8强→半决赛→决赛，均为两回合制(决赛单场)。\n决赛：2025年5月31日，慕尼黑安联球场。\n欧冠之夜的特殊氛围：赛前的欧冠主题曲、星光球场、更高强度的对抗和战术博弈。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "欧冠赛制说明",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_world_cup",
+      "keys": [
+        "世界杯",
+        "World Cup",
+        "FIFA",
+        "国家队"
+      ],
+      "secondary_keys": [
+        "预选赛",
+        "决赛圈",
+        "国际比赛"
+      ],
+      "content": "【世界杯赛制】\n2026年世界杯：美国/加拿大/墨西哥联合举办，扩军至48队。\n预选赛：各大洲分区进行，欧洲区通过欧国联和附加赛决出名额。\n世界杯是足球的最高舞台——四年一度的国家荣耀之战。\n对球员的影响：入选国家队=名望飙升，世界杯表现直接影响身价和转会市场。\n国家队比赛日：每年9月、10月、11月、3月有国际比赛窗口，球员需离开俱乐部参加国家队。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 60,
+      "scan_depth": 3,
+      "comment": "世界杯与国际赛事",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_five_leagues",
+      "keys": [
+        "五大联赛",
+        "英超",
+        "西甲",
+        "意甲",
+        "德甲",
+        "法甲"
+      ],
+      "secondary_keys": [
+        "联赛",
+        "Premier League",
+        "La Liga",
+        "Serie A",
+        "Bundesliga",
+        "Ligue 1"
+      ],
+      "content": "【欧洲五大联赛概况 2024-25】\n英超(Premier League)：最商业化、身体对抗最激烈、最具竞争力的联赛。20队。电视转播收入全球第一。\n西甲(La Liga)：技术与战术并重。巴萨和皇马的双雄争霸是核心叙事。20队。\n意甲(Serie A)：战术大师的殿堂。防守体系闻名但近年进攻风格革新。20队。\n德甲(Bundesliga)：攻势足球、高节奏对抗。拜仁传统垄断但近年多特等队崛起。18队。全球最高上座率。\n法甲(Ligue 1)：年轻人才培养皿。摩纳哥/里昂/巴黎是人才输出大户。18队(2024-25缩编)。\n葡超(Liga Portugal)：五大联赛外最重要的人才跳板。本菲卡/波尔图/里斯本竞技三强。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 55,
+      "scan_depth": 3,
+      "comment": "五大联赛概况",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_var_rules",
+      "keys": [
+        "VAR",
+        "视频助理裁判",
+        "video",
+        "判罚"
+      ],
+      "secondary_keys": [
+        "越位",
+        "点球",
+        "红牌",
+        "进球"
+      ],
+      "content": "【VAR视频助理裁判】\nVAR介入范围：进球/无进球(越位/犯规)、点球/无点球、直红牌、身份认错。\n流程：场上裁判做出判罚→VAR检查→如有明显错误则建议裁判到场边看回放→裁判做最终决定。\n半自动越位技术：使用AI追踪球员身体部位，精确判定越位。2024-25全面启用。\n争议：VAR打断比赛流畅性、判罚尺度不一致、球迷等待判罚时的焦虑。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 3,
+      "comment": "VAR规则",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_injury_types",
+      "keys": [
+        "伤病",
+        "受伤",
+        "韧带",
+        "肌肉拉伤",
+        "骨折"
+      ],
+      "secondary_keys": [
+        "ACL",
+        "十字韧带",
+        "腿筋",
+        "康复",
+        "赛季报销"
+      ],
+      "content": "【球员伤病类型】\n十字韧带撕裂(ACL)：膝盖严重伤病，恢复期6-12个月，可能影响爆发力。需手术+漫长康复。\n腿筋拉伤：大腿后侧肌肉损伤，分1-3级。轻度1-2周，中度3-6周，重度2-3个月。容易反复。\n踝关节扭伤：脚踝韧带损伤，1-6周恢复。跑动和变向受影响。\n肌肉疲劳：赛季后期常见，需要适当轮休。强行出战加重伤病风险。\n骨折：应力性骨折(跖骨)恢复期2-3个月。完全骨折更久。\n脑震荡：近年越来越受关注，需要严格的恢复协议。\n康复要素：专业医疗团队+科学训练+球员年龄(年轻恢复快)+心理状态。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 55,
+      "scan_depth": 3,
+      "comment": "伤病类型与康复",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_football_business",
+      "keys": [
+        "代言",
+        "赞助",
+        "商业",
+        "品牌",
+        "社交媒体"
+      ],
+      "secondary_keys": [
+        "Nike",
+        "Adidas",
+        "Puma",
+        "Instagram"
+      ],
+      "content": "【足球商业与代言】\n球鞋合同：Nike、Adidas、Puma、New Balance争夺球星代言。顶级球星球鞋合同可达千万欧/年。\n个人品牌：球星的Instagram/TikTok粉丝数直接影响商业价值。一条赞助帖可价值数十万欧。\n赞助类型：球鞋/服装/手表/汽车/游戏/香水/加密货币等。\n肖像权：球员的肖像权是重要收入来源，合同中需明确分成。\n商业活动风险：过多商业活动影响训练/休息→教练/球迷不满。\n球员的场外形象直接影响商业价值。正面形象=更多代言；丑闻=品牌撤回。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 3,
+      "comment": "足球商业运营",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_derby_culture",
+      "keys": [
+        "德比",
+        "国家德比",
+        "同城德比",
+        "宿敌"
+      ],
+      "secondary_keys": [
+        "el clasico",
+        "米兰德比",
+        "曼彻斯特德比",
+        "北伦敦德比"
+      ],
+      "content": "【德比文化】\nEl Clasico(国家德比)：巴萨vs皇马。超越足球的政治和文化对抗(加泰vs马德里)。\n米兰德比：AC米兰vs国际米兰。圣西罗球场的蓝黑vs红黑，意大利足球的象征。\n曼彻斯特德比：曼联vs曼城。英格兰足球的经典对决，新旧金钱的碰撞。\n北伦敦德比：阿森纳vs热刺。伦敦北部的世仇，球迷间最激烈的对立之一。\n鲁尔德比：多特vs沙尔克04。德国足球最火爆的德比(沙尔克降级后热度减弱)。\n德比战特点：加倍的身体对抗、极端的球迷氛围、红黄牌高发、结果影响远超三分。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 3,
+      "comment": "德比文化",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_ffp",
+      "keys": [
+        "FFP",
+        "财务公平",
+        "财务可持续",
+        "工资帽"
+      ],
+      "secondary_keys": [
+        "财务",
+        "违规",
+        "处罚"
+      ],
+      "content": "【财务公平法案(FFP)→财务可持续规则】\nUEFA新规(2022起)：从FFP转变为财务可持续规则。\n支出比例限制：俱乐部球员薪资+转会摊销不得超过收入的70%。\n违规处罚：罚款、限制注册球员、减少欧战奖金、禁止参加欧战。\n对球员的影响：工资帽限制薪资增长，俱乐部可能因财务限制拒绝续约或出售球员。\n典型案例：曼城被指控违反FFP、巴萨的财务杠杆操作。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 3,
+      "comment": "财务公平法案",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_agent_rules",
+      "keys": [
+        "经纪人",
+        "中间人",
+        "代理人"
+      ],
+      "secondary_keys": [
+        "佣金",
+        "FIFA新规",
+        "合同谈判"
+      ],
+      "content": "【经纪人/中间人规则】\nFIFA新规(2023起)：经纪人佣金上限——转会交易中最高10%(超500万欧为6%)，球员合同中最高6%。\n经纪人角色：代表球员谈判合同/转会，寻找商业合作，管理公共形象，规划职业生涯。\n利益冲突风险：经纪人同时代理多名同位置球员、与俱乐部管理层的私下交易。\n著名经纪人(AI可动态扮演)：门德斯(Gestifute)、拉伊奥拉继承人(Rafaela Pimenta)、Stellar Group等。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 3,
+      "comment": "经纪人规则",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_barcelona",
+      "keys": [
+        "巴萨",
+        "Barcelona",
+        "巴塞罗那",
+        "FCB"
+      ],
+      "secondary_keys": [
+        "诺坎普",
+        "拉玛西亚",
+        "加泰",
+        "哈维"
+      ],
+      "content": "【巴塞罗那 2024-25】\n教练: 汉斯-迪特·弗利克(Flick，首赛季)\n主场: 蒙锥克奥林匹克体育场(诺坎普翻新中)\n打法: 高位逼抢+传控，弗利克融合拜仁的强度和巴萨DNA\n首发阵容:\n- GK 特尔施特根 #1\n- RB 孔德 #2\n- CB 阿劳霍 #4\n- CB 库巴尔西 #24 (17岁天才中卫)\n- LB 巴尔德 #3\n- CM 佩德里 #8 (西班牙中场核心)\n- CDM 卡萨多 #17\n- RW 拉明·亚马尔 #19 (17岁天才! 欧洲杯最佳新人)\n- CAM 达尼·奥尔莫 #20\n- LW 拉菲尼亚 #11\n- ST 莱万多夫斯基 #9\n关键替补: 费兰·托雷斯, 安苏·法蒂, 京多安\n特点: 弗利克带来拜仁式的高位压迫，与巴萨传控DNA融合。亚马尔和库巴尔西代表了拉玛西亚最新的天才产出。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 巴塞罗那",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_real_madrid",
+      "keys": [
+        "皇马",
+        "Real Madrid",
+        "皇家马德里",
+        "RMA"
+      ],
+      "secondary_keys": [
+        "伯纳乌",
+        "银河战舰",
+        "弗洛伦蒂诺"
+      ],
+      "content": "【皇家马德里 2024-25】\n教练: 卡洛·安切洛蒂(稳重老帅，战术灵活)\n主场: 圣地亚哥·伯纳乌球场(翻新后全新体验)\n打法: 灵活多变，攻守兼备，关键时刻靠个人能力解决问题\n首发阵容:\n- GK 库尔图瓦 #1\n- RB 卡瓦哈尔 #2\n- CB 吕迪格 #22\n- CB 米利唐 #3\n- LB 门迪 #23\n- CM 巴尔韦德 #8\n- CM 贝林厄姆 #5 (23岁英格兰天才，攻击型中场核心)\n- CM 琼阿梅尼 #6\n- RW 罗德里戈 #11\n- LW 维尼修斯 #7 (巴西闪电，盘带+速度，金球奖候选)\n- ST 姆巴佩 #9 (2024夏天自由加盟! 法国核心，速度怪兽)\n关键替补: 莫德里奇(39岁传奇), 卡马文加, 恩德里克\n特点: 姆巴佩的加盟组成银河战舰3.0——维尼修斯+姆巴佩+贝林厄姆的三叉戟可能是足坛最恐怖的攻击组合。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 皇家马德里",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_man_city",
+      "keys": [
+        "曼城",
+        "Manchester City",
+        "Man City",
+        "MCFC"
+      ],
+      "secondary_keys": [
+        "瓜迪奥拉",
+        "伊蒂哈德",
+        "阿布扎比"
+      ],
+      "content": "【曼彻斯特城 2024-25】\n教练: 佩普·瓜迪奥拉(传控大师，近十年最成功的教练)\n主场: 伊蒂哈德球场\n打法: 极致传控+位置轮转+高位压迫\n首发阵容:\n- GK 埃德森 #31\n- RB 沃克 #2\n- CB 迪亚斯 #3\n- CB 阿坎吉 #25\n- LB 格瓦迪奥尔 #24\n- CDM 罗德里 #16 (2024金球奖得主! 世界最佳防守中场)\n- CM 德布劳内 #17 (比利时天王，传球大师，33岁)\n- CM 贝尔纳多·席尔瓦 #20\n- RW 萨维奥 #26\n- ST 哈兰德 #9 (挪威巨人，进球机器，196cm/94kg，联赛金靴常客)\n- LW 福登 #47\n关键替补: 格里利什, 多库, 阿尔瓦雷斯\n特点: 瓜迪奥拉王朝能否延续？四连冠后面临挑战。罗德里伤病是最大隐患。德布劳内年龄增长但仍是世界级。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 曼城",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_liverpool",
+      "keys": [
+        "利物浦",
+        "Liverpool",
+        "LFC",
+        "利物"
+      ],
+      "secondary_keys": [
+        "安菲尔德",
+        "YNWA",
+        "克洛普"
+      ],
+      "content": "【利物浦 2024-25】\n教练: 阿尔内·斯洛特(接替克洛普，荷兰少帅)\n主场: 安菲尔德球场(You'll Never Walk Alone)\n打法: 从克洛普的重金属足球转向更注重控球的风格\n首发阵容:\n- GK 阿利松 #1\n- RB 阿诺德 #66 (传球型右后卫，助攻机器)\n- CB 科纳特 #5\n- CB 范戴克 #4 (荷兰巨塔，防线核心)\n- LB 罗伯逊 #26\n- CM 麦卡利斯特 #10\n- CDM 格拉芬贝赫 #38\n- CM 索博斯洛伊 #8\n- RW 萨拉赫 #11 (埃及法老，32岁但仍是顶级射手，合同最后一年!)\n- ST 迪亚斯 #7\n- LW 加克波 #18\n关键替补: 若塔, 恩多耶, 埃利奥特\n特点: 后克洛普时代的转型期。萨拉赫合同年——他的去留是本赛季最大悬念之一。斯洛特需要证明自己配得上接班克洛普。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 利物浦",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_arsenal",
+      "keys": [
+        "阿森纳",
+        "Arsenal",
+        "枪手",
+        "AFC"
+      ],
+      "secondary_keys": [
+        "酋长球场",
+        "阿尔特塔",
+        "温格"
+      ],
+      "content": "【阿森纳 2024-25】\n教练: 米克尔·阿尔特塔(瓜迪奥拉门徒，年轻锐意进取)\n主场: 酋长球场\n打法: 攻守平衡，高强度逼抢+精准反击\n首发阵容:\n- GK 拉亚 #22\n- RB 怀特 #4\n- CB 萨利巴 #2 (法国国脚，顶级中卫)\n- CB 加布里埃尔 #6\n- LB 津琴科 #35\n- CM 赖斯 #41 (攻守全能中场)\n- CM 厄德高 #8 (挪威队长，创造力核心)\n- CM 托马斯 #5\n- RW 萨卡 #7 (英格兰之星，右路杀器，22岁)\n- ST 哈弗茨 #29\n- LW 马丁内利 #11\n关键替补: 特罗萨德, 热苏斯, 蒂尔尼\n特点: 连续两年联赛亚军，距离冠军只差最后一步。阿尔特塔的体系越来越成熟，萨卡是英格兰最好的年轻球员之一。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 阿森纳",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_bayern",
+      "keys": [
+        "拜仁",
+        "Bayern",
+        "拜仁慕尼黑",
+        "FCB Munich"
+      ],
+      "secondary_keys": [
+        "安联球场",
+        "慕尼黑",
+        "德国杯"
+      ],
+      "content": "【拜仁慕尼黑 2024-25】\n教练: 文森特·孔帕尼(前曼城队长，执教新人)\n主场: 安联球场\n打法: 控球型打法+高位压迫+利用边路宽度\n首发阵容:\n- GK 诺伊尔 #1 (38岁传奇门将)\n- RB 基米希 #6 (多面手)\n- CB 于帕梅卡诺 #2\n- CB 金民在 #3\n- LB 阿方索·戴维斯 #19\n- CM 帕夫洛维奇 #44\n- CM 穆西亚拉 #42 (21岁德国天才! 盘带+创造力)\n- CM 格雷茨卡 #8\n- RW 奥利斯 #17\n- ST 凯恩 #9 (英格兰队长，全能前锋，进球效率恐怖)\n- LW 萨内 #10\n关键替补: 穆勒(35岁传奇), 格纳布里, 马兹拉维\n特点: 后图赫尔时代的重建。凯恩第一个完整赛季在拜仁。穆西亚拉是德国足球的未来之星。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 拜仁慕尼黑",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_psg",
+      "keys": [
+        "巴黎",
+        "PSG",
+        "巴黎圣日耳曼",
+        "Paris"
+      ],
+      "secondary_keys": [
+        "王子公园",
+        "卡塔尔",
+        "法甲"
+      ],
+      "content": "【巴黎圣日耳曼 2024-25】\n教练: 路易斯·恩里克(前巴萨主帅，战术偏执狂)\n主场: 王子公园球场\n打法: 高控球率+内切射门+灵活无锋阵\n首发阵容:\n- GK 多纳鲁马 #99\n- RB 哈基米 #2 (摩洛哥飞翼)\n- CB 马尔基尼奥斯 #5\n- CB 斯基尼亚尔 #37\n- LB 门德斯 #23\n- CM 维蒂尼亚 #33\n- CM 扎伊尔-埃梅里 #23\n- CM 法比安·鲁伊斯 #8\n- RW 登贝莱 #10\n- ST 阿森西奥 #11\n- LW 巴尔科拉 #29\n关键替补: 冈萨洛·拉莫斯, 李刚仁, 科洛·穆阿尼\n特点: 后姆巴佩时代的巴黎。路易斯·恩里克坚持自己的控球哲学，不依赖超级巨星。目标仍是欧冠冠军。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 巴黎圣日耳曼",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_inter",
+      "keys": [
+        "国米",
+        "Inter",
+        "国际米兰",
+        "Inter Milan"
+      ],
+      "secondary_keys": [
+        "梅阿查",
+        "圣西罗",
+        "蓝黑"
+      ],
+      "content": "【国际米兰 2024-25】\n教练: 西蒙尼·因扎吉(战术大师，3-5-2体系)\n主场: 梅阿查/圣西罗球场\n打法: 经典3-5-2/3后卫体系，攻守转换高效\n首发阵容:\n- GK 索默 #1\n- CB 帕瓦尔 #28\n- CB 阿切尔比 #15\n- CB 巴斯托尼 #95\n- RWB 邓弗里斯 #2\n- CM 巴雷拉 #23 (意大利国脚，跑不死)\n- CM 恰尔汗奥卢 #20\n- CM 姆希塔良 #22\n- LWB 迪马尔科 #32\n- ST 劳塔罗·马丁内斯 #10 (阿根廷射手，队长)\n- ST 图拉姆 #9 (法国前锋)\n特点: 2023-24意甲冠军。因扎吉的体系稳定高效，第二颗星的荣耀让全队士气高涨。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 国际米兰",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_juventus",
+      "keys": [
+        "尤文",
+        "Juventus",
+        "尤文图斯",
+        "Juve"
+      ],
+      "secondary_keys": [
+        "安联球场都灵",
+        "老妇人",
+        "斑马军团"
+      ],
+      "content": "【尤文图斯 2024-25】\n教练: 蒂亚戈·莫塔(前博洛尼亚功勋教练)\n主场: 安联球场(都灵)\n打法: 控球+灵活轮转+注重防守组织\n首发阵容:\n- GK 迪格雷戈里奥 #1\n- RB 卡马比亚索 #22\n- CB 加蒂 #4\n- CB 布雷默 #3\n- LB 卡巴尔 #17\n- CM 洛卡特利 #5\n- CM 道格拉斯·路易斯 #26\n- CM 科普迈纳斯 #8\n- RW 孔塞桑 #7\n- ST 弗拉霍维奇 #9 (塞尔维亚射手)\n- LW 亚尔丁 #40\n特点: 莫塔带来新气象，大量引援重建。年轻化阵容有活力但缺乏经验。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 尤文图斯",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_atletico",
+      "keys": [
+        "马竞",
+        "Atletico",
+        "马德里竞技",
+        "ATM"
+      ],
+      "secondary_keys": [
+        "万达大都会",
+        "西蒙尼",
+        "床单军团"
+      ],
+      "content": "【马德里竞技 2024-25】\n教练: 迭戈·西蒙尼(铁血主帅，12年执教)\n主场: 万达大都会球场\n打法: 铁血防守+高效反击+强韧意志\n首发阵容:\n- GK 奥布拉克 #13\n- 防线: 莫利纳, 希门尼斯, 维切尔, 加兰\n- 中场: 德保罗, 科克, 洛尔卡\n- 前锋: 格里兹曼 #7 (法国核心，全能前锋), 阿尔瓦雷斯 #19 (从曼城加盟), 索尔洛特\n特点: 西蒙尼的铁血DNA不变。格里兹曼是精神领袖和战术核心。阿尔瓦雷斯的到来增添进攻火力。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 马竞",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_dortmund",
+      "keys": [
+        "多特",
+        "Dortmund",
+        "多特蒙德",
+        "BVB"
+      ],
+      "secondary_keys": [
+        "威斯特法伦",
+        "黄色之墙",
+        "南看台"
+      ],
+      "content": "【多特蒙德 2024-25】\n教练: 努里·沙欣(俱乐部传奇球员转型教练)\n主场: 威斯特法伦球场(Signal Iduna Park，81000座，黄色之墙南看台全球最大站席看台)\n打法: 快速反击+利用边路速度+青训人才培养\n首发阵容:\n- GK 科贝尔 #1\n- 防线: 里尔松, 安东, 施罗特贝克, 本塞拜尼\n- 中场: 詹恩, 格罗斯, 布兰特 #10\n- 前锋: 阿德耶米 (速度型边锋), 吉特恩斯 #43 (17岁新星!), 贝尼纳西\n关键替补: 马伦, 萨比策\n特点: 2024欧冠亚军，沙欣首次执教挑战巨大。黄色之墙的氛围全球无敌。年轻球员发展的理想平台。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 多特蒙德",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_napoli",
+      "keys": [
+        "那不勒斯",
+        "Napoli",
+        "那不勒",
+        "SSC"
+      ],
+      "secondary_keys": [
+        "马拉多纳球场",
+        "意甲"
+      ],
+      "content": "【那不勒斯 2024-25】\n教练: 安东尼奥·孔蒂(战术纪律铁帅，回归意大利)\n主场: 迭戈·阿曼多·马拉多纳球场\n打法: 3后卫体系+攻守平衡+纪律严明\n首发阵容:\n- GK 梅雷特 #1\n- 防线三中卫: 迪洛伦佐, 拉赫马尼, 布翁乔尔诺\n- 中场: 安古伊萨, 洛博特卡, 麦克托米奈 (从曼联加盟)\n- 前锋: 波利塔诺, 卢卡库 #11 (比利时坦克), 克瓦拉茨赫利亚 #77\n特点: 2023意甲冠军后的动荡赛季后，孔蒂带来铁血纪律。卢卡库是他的战术核心。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 那不勒斯",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_milan",
+      "keys": [
+        "AC米兰",
+        "Milan",
+        "AC",
+        "红黑军团"
+      ],
+      "secondary_keys": [
+        "圣西罗",
+        "米兰城"
+      ],
+      "content": "【AC米兰 2024-25】\n教练: 保罗·丰塞卡\n主场: 圣西罗/梅阿查球场\n打法: 4-2-3-1/进攻足球\n首发阵容:\n- GK 迈尼昂 #16\n- 防线: 埃莫森, 托莫里, 帕夫洛维奇, 特奥·埃尔南德斯 #19\n- 中场: 丰法纳, 赖因德斯 #14 (荷兰新星)\n- 前腰: 普利西奇 #11\n- 前锋: 莫拉塔 #7 (西班牙国脚), 莱奥 #10 (葡萄牙快马)\n特点: 莱奥是意甲速度最快的球员之一。特奥·埃尔南德斯是世界最好的进攻型左后卫。赖因德斯崛起迅速。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: AC米兰",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_brighton",
+      "keys": [
+        "布莱顿",
+        "Brighton",
+        "海鸥"
+      ],
+      "secondary_keys": [
+        "美国运通",
+        "英超",
+        "AMEX球场"
+      ],
+      "content": "【布莱顿 2024-25】\n教练: 法比安·许尔策勒(31岁! 英超最年轻主帅之一)\n主场: 美国运通社区球场\n打法: 数据驱动+高位逼抢+青训+精准转会\n首发阵容:\n- GK 维尔贝克 (轮换)\n- 防线: 范赫克, 邓克(队长), 伊戈尔, 埃斯图皮尼安\n- 中场: 巴雷拉 (不是国米的), 格罗斯, 阿德因格拉\n- 前锋: 三笘薰 #22 (日本国脚, 盘带型边锋), 若昂·佩德罗 #9, 法蒂\n特点: ' Moneyball 俱乐部'——以精准数据分析著称的转会策略。培养年轻球员再高价卖出(如卡伊塞多、麦卡利斯特)。对年轻球员来说是出场机会多且成长环境好的平台。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 布莱顿",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_atalanta",
+      "keys": [
+        "亚特兰大",
+        "Atalanta",
+        "女神",
+        "贝尔加莫"
+      ],
+      "secondary_keys": [
+        "加斯佩里尼",
+        "意甲"
+      ],
+      "content": "【亚特兰大 2024-25】\n教练: 吉安·皮耶罗·加斯佩里尼(战术偏执狂，人盯人体系大师)\n主场: 格维奥·弗罗西尼球场\n打法: 极致人盯人防守+快速转换+全员压迫\n首发阵容:\n- GK 卡尔内塞基 #29\n- 三中卫: 科斯西奇, 德米拉尔, 科拉西纳茨\n- 边翼卫: 赞帕科斯塔, 鲁盖尼\n- 中场: 德龙, 埃丁生·帕萨利奇, 科普迈纳斯→离队\n- 前锋: 卢克曼 #10 (尼日利亚之星), 德凯特拉雷 (从米兰租借)\n特点: 2024欧联杯冠军! 加斯佩里尼的体系对年轻球员要求极高——必须全场不停跑动，防守时人盯人，进攻时快速转换。训练强度全意甲第一。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 亚特兰大",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_monaco",
+      "keys": [
+        "摩纳哥",
+        "Monaco",
+        "ASM"
+      ],
+      "secondary_keys": [
+        "路易二世",
+        "法甲",
+        "人才工厂"
+      ],
+      "content": "【摩纳哥 2024-25】\n教练: 阿迪·许特勒\n主场: 路易二世球场\n打法: 进攻足球+培养年轻人才+快速反击\n首发阵容:\n- GK 科恩 #40\n- 防线: 范德梅伦, 凯雷尔, 萨利苏, 亨里克斯\n- 中场: 卡马拉, 扎赫穆特, 戈洛温 #17\n- 前锋: 阿克列希 (年轻法国前锋), 本·塞吉尔, 米纳米诺\n特点: 足球人才工厂——姆巴佩、贝尔纳多·席尔瓦、法比尼奥等巨星都从这里走出。对年轻球员来说是证明自己、跳板五大联赛豪门的绝佳平台。蔚蓝海岸的优越生活条件。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 摩纳哥",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_team_benfica",
+      "keys": [
+        "本菲卡",
+        "Benfica",
+        "SLB",
+        "雄鹰"
+      ],
+      "secondary_keys": [
+        "光明球场",
+        "葡超",
+        "里斯本"
+      ],
+      "content": "【本菲卡 2024-25】\n教练: 布鲁诺·拉格\n主场: 光明球场(65000座)\n打法: 进攻足球+青训培养+出口贸易型俱乐部\n首发阵容:\n- GK 特鲁宾 #1 (乌克兰国门)\n- 防线: 巴恩巴, 奥塔门迪(阿根廷老将), 阿劳若, 阿尔瓦罗·卡拉斯科\n- 中场: 弗洛伦蒂诺, 科科什 #8, 阿乌尔斯\n- 前锋: 迪马利亚 #11 (阿根廷老将，回归!), 帕夫利迪斯 #9, 阿克图尔科鲁\n关键替补: 多名年轻球员来自本菲卡B队\n特点: 欧洲最著名的球员跳板俱乐部。从这里走出的巨星：C罗、菲利克斯、恩佐·费尔南德斯、贡萨洛·拉莫斯等。B队是年轻球员证明自己的舞台——表现出色就能被一线队征召或高价转会五大联赛。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 25,
+      "scan_depth": 3,
+      "comment": "球队数据: 本菲卡",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_mbappe",
+      "keys": [
+        "姆巴佩",
+        "Mbappe",
+        "Mbappé",
+        "法国前锋"
+      ],
+      "secondary_keys": [
+        "皇马前锋",
+        "速度",
+        "法国队长"
+      ],
+      "content": "【基利安·姆巴佩】\n俱乐部: 皇家马德里 #9\n国家队: 法国队长\n位置: ST/LW\n年龄: 25岁\n能力: 速度99/射门92/盘带90/传球78/意识85\n风格: 极致速度+强大终结能力+反越位大师。左脚为主，擅长高速突破后的冷静射门。\n性格: 自信果断，有领袖气质。从小被拿来和梅西、C罗比较——他也接受这种比较。\n特点: 2024夏天以自由身从巴黎转会皇马，是当今足坛最贵身价的球员之一(~1.8亿欧)。世界杯冠军(2018)+亚军(2022决赛帽子戏法)。被认为是梅罗之后最有可能统治足坛的人。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 姆巴佩",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_haaland",
+      "keys": [
+        "哈兰德",
+        "Haaland",
+        "挪威前锋"
+      ],
+      "secondary_keys": [
+        "曼城前锋",
+        "进球机器",
+        "维京人"
+      ],
+      "content": "【厄尔林·哈兰德】\n俱乐部: 曼彻斯特城 #9\n国家队: 挪威\n位置: ST\n年龄: 24岁\n能力: 速度88/射门95/盘带72/传球60/意识80/身体对抗95\n风格: 纯正9号——门前嗅觉惊人，空中对抗统治级，左右脚均衡。196cm/94kg的体格是后卫的噩梦。\n性格: 外冷内热，比赛中面无表情但进球欲望极强。赛场下有点冷幽默。\n特点: 英超首赛季36球打破纪录。进球效率恐怖——生涯进球率接近1球/场。金球奖有力竞争者。和姆巴佩的'新双骄'叙事是当今足坛核心话题。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 哈兰德",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_vinicius",
+      "keys": [
+        "维尼修斯",
+        "Vinicius",
+        "维尼",
+        "巴西7号"
+      ],
+      "secondary_keys": [
+        "皇马边锋",
+        "盘带",
+        "巴西"
+      ],
+      "content": "【维尼修斯·朱尼尔】\n俱乐部: 皇家马德里 #7\n国家队: 巴西\n位置: LW\n年龄: 24岁\n能力: 速度95/射门82/盘带94/传球75/意识78\n风格: 巴西桑巴风格——华丽的盘带、变向和速度的完美结合。左路突破几乎无解。\n性格: 张扬自信，不惧对抗和挑衅。曾多次成为种族歧视的受害者但始终坚强面对。\n特点: 2024欧冠决赛进球功臣。金球奖有力争夺者。与姆巴佩的左路位置竞争是皇马最大的'甜蜜烦恼'。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 维尼修斯",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_bellingham",
+      "keys": [
+        "贝林厄姆",
+        "Bellingham",
+        "英格兰中场"
+      ],
+      "secondary_keys": [
+        "皇马中场",
+        "全能"
+      ],
+      "content": "【裘德·贝林厄姆】\n俱乐部: 皇家马德里 #5\n国家队: 英格兰\n位置: CAM/CM\n年龄: 21岁\n能力: 速度78/射门82/传球84/盘带82/防守70/体能88/意识85\n风格: 现代全能型中场——能进球、能助攻、能防守。高大强壮但脚下技术细腻。\n性格: 超越年龄的成熟和领导力。17岁就在多特蒙德打上主力，从不怯场。\n特点: 2023-24西甲首赛季即斩获联赛冠军和欧冠冠军。年少成名但稳步成长的典范。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 贝林厄姆",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_salah",
+      "keys": [
+        "萨拉赫",
+        "Salah",
+        "埃及法老"
+      ],
+      "secondary_keys": [
+        "利物浦右翼",
+        "进球"
+      ],
+      "content": "【穆罕默德·萨拉赫】\n俱乐部: 利物浦 #11\n国家队: 埃及\n位置: RW\n年龄: 32岁\n能力: 速度88/射门90/盘带86/传球78/意识84\n风格: 内切射门大师——从右路内切到中路的左脚弧线球是他的招牌。进球效率极高。\n性格: 低调谦逊，训练刻苦。在中东和非洲拥有巨大的文化影响力。\n特点: 2024-25赛季是合同年——他的去留是利物浦和转会市场最大的悬念之一。职业晚期但仍保持顶级水准。英超历史进球榜前列。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 萨拉赫",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_debruyne",
+      "keys": [
+        "德布劳内",
+        "De Bruyne",
+        "KDB"
+      ],
+      "secondary_keys": [
+        "曼城中场",
+        "传球大师",
+        "比利时"
+      ],
+      "content": "【凯文·德布劳内】\n俱乐部: 曼彻斯特城 #17\n国家队: 比利时\n位置: CAM/CM\n年龄: 33岁\n能力: 速度72/射门84/传球96/盘带82/意识93\n风格: 可能是当今世界最好的传球手。视野、长传精度和关键传球创造力无人能及。\n性格: 完美主义者，训练中对自己和队友要求极高。看似冷漠但对足球有极度的热爱。\n特点: 职业晚期受伤病困扰，但健康时仍是改变比赛的存在。曾多次当选英超赛季最佳球员。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 德布劳内",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_yamal",
+      "keys": [
+        "亚马尔",
+        "Yamal",
+        "拉明"
+      ],
+      "secondary_keys": [
+        "巴萨边锋",
+        "天才少年",
+        "西班牙"
+      ],
+      "content": "【拉明·亚马尔】\n俱乐部: 巴塞罗那 #19\n国家队: 西班牙\n位置: RW\n年龄: 17岁\n能力: 速度85/射门72/盘带88/传球80/意识78\n风格: 右路技术型边锋，内切射门和传中能力出色。年仅17岁的比赛阅读能力令人惊叹。\n性格: 年少但冷静，大场面不怯场。2024欧洲杯半决赛远射破门震惊世界——当时他才16岁。\n特点: 拉玛西亚最新也可能是最伟大的产品。16岁就成为西甲/欧冠/国家队的常规出场球员。被认为是梅西的接班人。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 亚马尔",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_pedri",
+      "keys": [
+        "佩德里",
+        "Pedri",
+        "西班牙中场"
+      ],
+      "secondary_keys": [
+        "巴萨中场",
+        "传控"
+      ],
+      "content": "【佩德里·冈萨雷斯】\n俱乐部: 巴塞罗那 #8\n国家队: 西班牙\n位置: CM/CAM\n年龄: 22岁\n能力: 速度72/射门68/传球88/盘带86/意识90\n风格: 巴萨DNA的完美体现——控球如呼吸，传球如手术刀。在小空间内的转身和出球堪比伊涅斯塔。\n性格: 安静内敛，在球场上用脚说话。来自加那利群岛的天才，生活简朴低调。\n特点: 2024欧洲杯冠军+赛事最佳球员。伤病是他最大的敌人——膝伤曾让他长期缺阵。健康的佩德里是世界最好的中场之一。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 佩德里",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_saka",
+      "keys": [
+        "萨卡",
+        "Saka",
+        "英格兰右翼"
+      ],
+      "secondary_keys": [
+        "阿森纳边锋",
+        "枪手"
+      ],
+      "content": "【布卡约·萨卡】\n俱乐部: 阿森纳 #7\n国家队: 英格兰\n位置: RW\n年龄: 23岁\n能力: 速度86/射门80/盘带86/传球82/意识82\n风格: 全能型边锋——能突能传能射。两脚均衡，既能内切也能外线突破下底传中。\n性格: 阳光开朗，更衣室里受到所有人的喜爱。从阿森纳青训成长为球队核心的典范。\n特点: 阿森纳复兴的象征。从2021欧洲杯决赛罚失点球的少年成长为英格兰最好的球员之一。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 萨卡",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_star_musiala",
+      "keys": [
+        "穆西亚拉",
+        "Musiala",
+        "德国天才"
+      ],
+      "secondary_keys": [
+        "拜仁中场",
+        "盘带"
+      ],
+      "content": "【贾马尔·穆西亚拉】\n俱乐部: 拜仁慕尼黑 #42\n国家队: 德国\n位置: CAM/CM\n年龄: 21岁\n能力: 速度80/射门78/传球82/盘带92/意识82\n风格: 盘带之王——在狭小空间内的运球能力可能是当今足坛最好的。身体柔韧性极强，重心低，变向迅速。\n性格: 低调友善，笑容腼腆。英德混血(在英格兰长大后选择代表德国)。\n特点: 德国足球的未来之星。盘带数据联赛领先，是拜仁最有创造力的球员。2024欧洲杯在家门口表现出色。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 35,
+      "scan_depth": 3,
+      "comment": "球星: 穆西亚拉",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    }
+  ]
+}

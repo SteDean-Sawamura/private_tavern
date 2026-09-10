@@ -1,0 +1,400 @@
+{
+  "script_id": "example_school",
+  "script_name": "光明小学",
+  "version": "1.0",
+  "start_time": "2025-09-01T07:00:00",
+  "world_background": "现实世界观，S市，光明小学，幸福小区。你是小明，刚随父母从别的城市转学到这里，准备进入四年级二班。这个示例模板已经预置了固定开局选项、随机项、角色属性、持续状态、循环事件和一次性剧情节点，新手作者可以通过修改这些内容快速体验各种概念。",
+  "settings": {
+    "dice_check": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "fixed_opening": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "allow_player_control_switch": false,
+    "vector_memory_enabled": true
+  },
+  "opening": {
+    "text": "今天是开学的第一天，你背着书包站在光明小学的校门口。\n阳光洒在操场上，到处是欢声笑语。你感到既兴奋又有些紧张。\n你的新生活即将在这里展开，你会遇到什么样的老师和同学呢？",
+    "choices": [
+      {
+        "id": "open_0",
+        "text": "深呼吸一口气，大步走进校园，寻找四年级二班的教室。",
+        "result": {
+          "type": "deterministic",
+          "description": "你顺利找到了教室，并选了一个靠窗的位置坐下。",
+          "state_changes": [
+            {
+              "target": "player.mood",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        }
+      },
+      {
+        "id": "open_1",
+        "text": "在校门口观察一会儿，看看有没有看起来比较友善的同学可以搭讪。",
+        "result": {
+          "type": "conditional",
+          "description": "你成功结识了同桌林雨。",
+          "state_changes": [
+            {
+              "target": "player.relationships.linyu",
+              "op": "add",
+              "value": 5
+            }
+          ],
+          "conditions": [
+            {
+              "check": "dice < 50",
+              "description": "你只是礼貌地打了个招呼。",
+              "state_changes": []
+            }
+          ]
+        }
+      },
+      {
+        "id": "open_2",
+        "text": "先去布告栏看看学校的平面图，确保自己不会迷路。",
+        "result": {
+          "type": "conditional",
+          "description": "你对学校环境有了初步了解。",
+          "state_changes": [],
+          "conditions": [
+            {
+              "check": "dice > 50",
+              "description": "你对学校环境有了初步了解。",
+              "state_changes": [
+                {
+                  "target": "player.intelligence",
+                  "op": "add",
+                  "value": 2
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "random_items": [
+    {
+      "id": "study_fluctuation",
+      "description": "模拟学生每天学习状态的起伏。",
+      "trigger": "当玩家进行学习、考试或完成作业时。",
+      "trigger_type": "conditional",
+      "dice": {
+        "count": 1,
+        "faces": 10,
+        "modifier": -5
+      },
+      "ranges": [
+        {
+          "min": -4,
+          "max": -2,
+          "label": "状态低迷",
+          "description": "学习效率低下，注意力难以集中，学业压力增大。"
+        },
+        {
+          "min": -1,
+          "max": 1,
+          "label": "状态一般",
+          "description": "学习状态平平，没有特别的波动。"
+        },
+        {
+          "min": 2,
+          "max": 3,
+          "label": "状态不错",
+          "description": "头脑清晰，学习效率较高，能较好地吸收知识。"
+        },
+        {
+          "min": 4,
+          "max": 5,
+          "label": "状态极佳",
+          "description": "灵感迸发，学习效率极高，有可能获得额外的领悟。"
+        }
+      ]
+    },
+    {
+      "id": "weather",
+      "description": "决定当时的天气，可能影响心情或某些户外事件。",
+      "trigger": "永远生效。",
+      "trigger_type": "always",
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 80,
+          "label": "晴朗",
+          "state_changes": []
+        },
+        {
+          "min": 81,
+          "max": 95,
+          "label": "多云",
+          "state_changes": []
+        },
+        {
+          "min": 96,
+          "max": 99,
+          "label": "阴雨",
+          "state_changes": []
+        },
+        {
+          "min": 100,
+          "max": 100,
+          "label": "极端天气（暴雨/大雪）",
+          "state_changes": []
+        }
+      ]
+    },
+    {
+      "id": "school_commute_event",
+      "description": "决定周期性\u201c上学路上的随机事件\u201d的具体内容。",
+      "trigger": "当\u201c上学路上的随机事件\u201d周期性事件触发时。",
+      "trigger_type": "event_linked",
+      "linked_event_id": "commute_random_event",
+      "dice": {
+        "count": 1,
+        "faces": 20,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 10,
+          "label": "平安无事",
+          "state_changes": []
+        },
+        {
+          "min": 11,
+          "max": 13,
+          "label": "捡到小钱",
+          "state_changes": [
+            {
+              "target": "player.pocket_money",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "min": 14,
+          "max": 16,
+          "label": "小感冒",
+          "state_changes": [
+            {
+              "target": "player.health",
+              "op": "add",
+              "value": -5
+            }
+          ]
+        },
+        {
+          "min": 17,
+          "max": 18,
+          "label": "忘记带作业",
+          "state_changes": []
+        },
+        {
+          "min": 19,
+          "max": 20,
+          "label": "遇到流浪猫",
+          "state_changes": [
+            {
+              "target": "player.mood",
+              "op": "add",
+              "value": 10
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "s_city",
+      "name": "S市",
+      "description": "故事发生的城市，是一个繁华的现代都市。",
+      "initially_visible": true
+    },
+    {
+      "id": "xingfu_community",
+      "name": "幸福小区",
+      "description": "小明居住的小区，环境安静，邻里关系和睦。",
+      "initially_visible": true
+    },
+    {
+      "id": "guangming_school",
+      "name": "光明小学",
+      "description": "主角就读的小学，校风淳朴，教学质量在区内领先。",
+      "initially_visible": true
+    },
+    {
+      "id": "class_4_2",
+      "name": "四年级二班",
+      "description": "小明所在的班级，共有40名学生。",
+      "initially_visible": true
+    },
+    {
+      "id": "old_music_room",
+      "name": "旧校舍音乐教室",
+      "description": "传闻旧校舍的音乐教室在深夜会传出琴声。这是一个隐藏设定，初始不可见。",
+      "initially_visible": false
+    }
+  ],
+  "player_character": {
+    "id": "xiaoming",
+    "bio": "四年级新转学生，刚来到S市光明小学，就读四年级二班。",
+    "initial_location": "幸福小区3楼家中，准备出门去光明小学。",
+    "long_term_goal": "在新城市平安长大，交到好朋友，找到自己真正喜欢的事情。",
+    "attributes": {
+      "health": {
+        "value": 80,
+        "min": 0,
+        "max": 100,
+        "rule": "0代表重病或重伤，100代表状态极佳。"
+      },
+      "mood": {
+        "value": 70,
+        "min": 0,
+        "max": 100,
+        "rule": "用来抽象\u201c这一回合大致顺不顺心\u201d。"
+      },
+      "study_progress": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "50代表普通水平，可随着剧情提高或降低。"
+      }
+    },
+    "relationships": {
+      "mom": {
+        "value": 80,
+        "min": 0,
+        "max": 100,
+        "rule": "数值越高越亲近、信任。"
+      },
+      "teacher_wang": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "初始为中立，会随在校表现改变。"
+      },
+      "linyu": {
+        "value": 60,
+        "min": 0,
+        "max": 100,
+        "rule": "略微偏好，适合作为\u201c朋友线\u201d练习。"
+      }
+    }
+  },
+  "npcs": [
+    {
+      "id": "mom",
+      "name": "妈妈",
+      "bio": "小明的母亲，在S市从事文职工作，为了孩子转学搬家。",
+      "personality": "温柔但有点焦虑，既希望孩子快乐也在意成绩。适合作为家庭戏的冲突来源或缓冲。",
+      "capabilities": "情绪安慰、零花钱、学习建议等。在事件里可以用来合理解释数值变化。",
+      "attitude_toward_player": 80
+    },
+    {
+      "id": "linyu",
+      "name": "林雨",
+      "bio": "小明的新同桌，从小在本市长大，性格开朗，喜欢分享八卦。用来带出学校环境和班级氛围的关键角色。",
+      "personality": "开朗，喜欢分享八卦。",
+      "capabilities": "带出学校环境和班级氛围。",
+      "attitude_toward_player": 60
+    },
+    {
+      "id": "teacher_wang",
+      "name": "班主任",
+      "bio": "四年级二班班主任，严厉中带着体贴，重视学生的长期成长。学校剧情中的\u201c权威角色\u201d。",
+      "personality": "严厉中带着体贴，重视学生的长期成长。",
+      "capabilities": "关注学习态度、课堂纪律和同学之间的相处方式。可以在事件中用来决定处罚/表扬的合理性。",
+      "attitude_toward_player": 50
+    }
+  ],
+  "world_properties": [
+    {
+      "id": "class_atmosphere",
+      "name": "班级氛围",
+      "value": "整体融洽，偶尔有小矛盾。",
+      "rule": "可以用来解释群体事件的倾向。"
+    },
+    {
+      "id": "school_info",
+      "name": "光明小学简介",
+      "value": "S市新区的一所普通小学，这个班的学生性格各不相同。",
+      "rule": "主线大部分时间发生的地点。"
+    },
+    {
+      "id": "community_info",
+      "name": "幸福小区简介",
+      "value": "小明新家所在的小区，附近有小卖部和小公园。",
+      "rule": "家庭戏和社区事件的主要舞台。"
+    }
+  ],
+  "persistent_states": [
+    {
+      "id": "family_support",
+      "description": "无论在学校发生什么，家人都会在关键时刻提供情绪和生活上的支持。",
+      "expires_at": null
+    },
+    {
+      "id": "newcomer_curiosity",
+      "description": "前两周小明对新学校的一切都很好奇，普通失败不会让心情掉得太狠。",
+      "expires_at": "2025-09-15T00:00:00"
+    }
+  ],
+  "cyclic_events": [
+    {
+      "id": "commute_random_event",
+      "description": "生活中总会有一些小惊喜或小意外。请参考\u201c上学路上的随机事件触发\u201d项的结果。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "2025-09-01T07:30:00",
+      "expires_at": null
+    },
+    {
+      "id": "weekly_class_meeting",
+      "description": "每周一次班会，用来总结一周的表现，也可以触发批评或表扬剧情。",
+      "frequency_value": 1,
+      "frequency_unit": "week",
+      "first_trigger": "2025-09-04T15:30:00",
+      "expires_at": null
+    },
+    {
+      "id": "monthly_family_gathering",
+      "description": "每月一次的家庭小聚，适合调节家庭关系、讨论学校近况。",
+      "frequency_value": 1,
+      "frequency_unit": "month",
+      "first_trigger": "2025-09-10T18:00:00",
+      "expires_at": null
+    }
+  ],
+  "one_time_events": [
+    {
+      "id": "first_day_class",
+      "description": "第一次走进光明小学四年级二班，与老师和同学正式见面。",
+      "trigger_time": "2025-09-01T08:30:00"
+    },
+    {
+      "id": "midterm_exam",
+      "description": "一次综合考试，用来检验前期选择对学习和心情的长期影响。",
+      "trigger_time": "2025-10-20T09:00:00"
+    },
+    {
+      "id": "parent_meeting",
+      "description": "家长会集中反馈小明的适应情况，是检查\u201c学习进度\u201d和\u201c人际关系\u201d的好节点。",
+      "trigger_time": "2025-09-20T19:00:00"
+    }
+  ]
+}

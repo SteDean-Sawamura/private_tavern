@@ -1,0 +1,181 @@
+{
+  "script_id": "new_script",
+  "script_name": "荣耀之途",
+  "version": "1.0",
+  "start_time": "1324-05-12T08:00:00",
+  "world_background": "在这片被称为艾尔德兰的大陆上，封建王国林立，骑士精神是最高荣耀。你身处铁冠王国，一个曾经辉煌但如今因王位继承纷争而动荡的国度。古老的誓言与忠诚受到挑战，黑暗势力在边境蠢蠢欲动。\n\n王国急需真正的骑士挺身而出，探寻失落的圣物，解开历史的诅咒，恢复秩序。冒险者聚集在各地的旅店和城堡，每个人都在追寻自己的命运，而你的选择将决定王国的未来。",
+  "settings": {
+    "dice_check": false
+  },
+  "opening": {
+    "text": "你推开石桥旅店厚重的木门，清晨的阳光洒在陈旧的地板上，大堂里只有酒保在懒洋洋地擦着杯子。他抬头看了看你，认出这是那位常来打听雇佣消息的年轻侍从。墙上贴着一张皱巴巴的告示，铁林城堡的领主正在招募勇敢的人手，去调查东边森林出现的异常。你的手按在剑柄上，心跳微微加快，感到机会或许终于来临了。",
+    "choices": [
+      {
+        "id": "ch_inquire_job",
+        "text": "走近告示，仔细阅读雇佣详情"
+      },
+      {
+        "id": "ch_talk_bartender",
+        "text": "先和酒保聊聊，打听近期传闻"
+      },
+      {
+        "id": "ch_rest_first",
+        "text": "在旅店先吃顿早饭，恢复体力"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "id": "loc_stonebridge_inn",
+      "name": "石桥旅店",
+      "description": "位于王国中部十字路口的繁忙旅店，冒险者和商人在这里交换情报、歇脚饮酒。壁炉里的火噼啪作响，空气里弥漫着麦酒和烤肉的气味。"
+    },
+    {
+      "id": "loc_ironwood_castle",
+      "name": "铁林城堡",
+      "description": "领主达里安爵士的坚固城堡，周围是茂密的黑橡树林。城堡里回荡着铁匠的锤声和骑士训练的口号声，是地方军事与权力的中心。"
+    },
+    {
+      "id": "loc_fallen_abbey",
+      "name": "沉沦修道院",
+      "description": "一座被遗弃的古老修道院，残垣断壁间长满藤蔓。传说有圣物遗落于此，但夜晚常有诡异的低语，冒险者大多绕道而行。"
+    },
+    {
+      "id": "loc_market_square",
+      "name": "市集广场",
+      "description": "石桥镇中心的露天集市，摊位鳞次栉比，从武器护甲到稀奇草药应有尽有。丐帮和吟游诗人混迹于人群，流言蜚语随风飘荡。"
+    },
+    {
+      "id": "loc_whispering_woods",
+      "name": "低语森林",
+      "description": "一片古老而迷雾缭绕的森林，树枝扭曲如枯手。据说是精灵和古老魔法最后的庇护所，同时也是强盗与野兽的藏身之处。"
+    }
+  ],
+  "player_character": {
+    "id": "pc_knight_squire",
+    "bio": "一位年轻而未经受封的侍从，出身于没落贵族家庭。你从小梦想成为真正的骑士，但缺少机遇和领主的认可。如今你决定离开家乡，用自己的剑与智慧赢取荣誉。",
+    "initial_location": "loc_stonebridge_inn",
+    "long_term_goal": "获得骑士册封，并找到传说中的“永恒之盾”，以平息王国的纷争。",
+    "attributes": {
+      "strength": {
+        "value": 40,
+        "min": 0,
+        "max": 100,
+        "rule": "影响近战伤害、负重和力量需求判定"
+      },
+      "agility": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "影响闪避、命中、潜行和远程武器"
+      },
+      "endurance": {
+        "value": 45,
+        "min": 0,
+        "max": 100,
+        "rule": "影响生命值、疲劳抗性和旅行速度"
+      },
+      "charisma": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "影响交涉、说服和NPC好感变化"
+      },
+      "lore": {
+        "value": 35,
+        "min": 0,
+        "max": 100,
+        "rule": "影响历史、魔法和圣物知识的检定"
+      },
+      "honor": {
+        "value": 60,
+        "min": 0,
+        "max": 100,
+        "rule": "反映骑士美德，影响声望和某些NPC的态度"
+      }
+    },
+    "relationships": {
+      "npc_hal_grimm": 65,
+      "npc_ser_darian": 50,
+      "npc_lyra_windwalker": 30,
+      "npc_brother_malak": 40,
+      "npc_corin_sharp": 45
+    }
+  },
+  "npcs": [
+    {
+      "id": "npc_hal_grimm",
+      "name": "哈尔·格里姆",
+      "bio": "石桥旅店的酒保，曾是商队护卫，膝盖中箭后退役。他见多识广，消息灵通，但嘴上刻薄。",
+      "personality": "外表粗鲁，实则古道热肠，爱泼冷水但关键时刻会伸出援手。",
+      "title": "旅店老板",
+      "attitude_toward_player": 65,
+      "capabilities": "情报、交涉、酒类鉴定",
+      "default_location": "loc_stonebridge_inn"
+    },
+    {
+      "id": "npc_ser_darian",
+      "name": "达里安爵士",
+      "bio": "铁林城堡的领主，一位严苛而正直的中年骑士。因王位纷争而疲惫，正秘密招募人手调查低语森林的异象。",
+      "personality": "严肃、重荣誉，对没落贵族出身的年轻人抱有审慎的同情。",
+      "title": "铁林堡领主",
+      "attitude_toward_player": 50,
+      "capabilities": "指挥、剑术、贵族礼仪、军事策略",
+      "default_location": "loc_ironwood_castle"
+    },
+    {
+      "id": "npc_lyra_windwalker",
+      "name": "莱拉·风行者",
+      "bio": "游荡于低语森林的独行游侠，精通草药和野兽习性，对领地内的阴谋保持警惕。她认为这次森林异常并非偶然。",
+      "personality": "孤僻、敏锐，对陌生人充满戒心，但会对帮助森林生物的人敞开心扉。",
+      "title": "流浪游侠",
+      "attitude_toward_player": 30,
+      "capabilities": "追踪、草药、弓箭、野外生存",
+      "default_location": "loc_whispering_woods"
+    },
+    {
+      "id": "npc_brother_malak",
+      "name": "修士马拉克",
+      "bio": "沉沦修道院仅存的看守人，年迈的学者兼抄写员。他痴迷于古老预言，认为“永恒之盾”的线索藏在修道院废墟中。",
+      "personality": "虔诚、偏执，喜欢自言自语，对年轻冒险者的闯入既警惕又期待。",
+      "title": "修道院守护者",
+      "attitude_toward_player": 40,
+      "capabilities": "古文字、历史、祈祷、圣物鉴定",
+      "default_location": "loc_fallen_abbey"
+    },
+    {
+      "id": "npc_corin_sharp",
+      "name": "科林·夏普",
+      "bio": "市集广场的信息贩子，绰号“顺风耳”。表面是卖旧货的小贩，实则掌握大量地下情报，甚至知道某些贵族的秘密。",
+      "personality": "圆滑、唯利是图，但偶尔会出于好奇帮助有潜力的新人。",
+      "title": "情报贩子",
+      "attitude_toward_player": 45,
+      "capabilities": "情报、隐秘、讨价还价、街头智慧",
+      "default_location": "loc_market_square"
+    }
+  ],
+  "world_properties": [
+    {
+      "id": "wp_realm_stability",
+      "name": "王国稳定度",
+      "value": 30,
+      "rule": "反映铁冠王国内部的和平与秩序，越低则纷争和动荡越剧烈"
+    },
+    {
+      "id": "wp_dark_incursion",
+      "name": "黑暗侵蚀度",
+      "value": 25,
+      "rule": "衡量边境黑暗势力的活跃程度，升高会触发怪物和阴谋事件"
+    },
+    {
+      "id": "wp_player_renown",
+      "name": "玩家声望",
+      "value": 10,
+      "rule": "你在艾尔德兰的名望，影响NPC接纳程度和获得的报酬"
+    }
+  ],
+  "variables": [],
+  "persistent_states": [],
+  "cyclic_events": [],
+  "one_time_events": []
+}

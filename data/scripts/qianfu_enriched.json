@@ -1,0 +1,4421 @@
+{
+  "script_id": "qianfu",
+  "script_name": "潜伏：深海暗战",
+  "version": "1.0",
+  "start_time": "1945-09-01T08:00",
+  "world_background": "1945年抗战胜利后，国内局势波诡云谲。表面上重庆谈判签署了“双十协定”，但国民党军统（后改保密局）正加速部署内战情报网。天津作为北方枢纽，成为各方角力的隐秘战场。原军统特务余则成被共产党策反，以“深海”代号潜伏于天津站内部，在站长吴敬中、同僚马奎与陆桥山等人之间周旋，依靠察言观色与办公室政治智慧传递关键情报。",
+  "settings": {
+    "dice_check": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "check_rule": "default",
+    "fixed_opening": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "allow_player_control_switch": false,
+    "lorebook_token_budget": 0,
+    "lorebook_max_recursion": 2,
+    "summary_word_threshold": 3000,
+    "reasoning_lookback": 2,
+    "vector_summarize": true
+  },
+  "opening": {
+    "text": "1945年9月，抗战胜利的消息传遍大江南北。你——余则成，刚完成刺杀汪伪特务头子李海丰的任务，被军统局长戴笠亲自嘉奖。然而在那次行动中，共产党地下工作者左蓝的牺牲深深震撼了你，你接受了组织的策反，成为了代号“深海”的潜伏者。\n\n如今，你被调往保密局天津站报到。站在天津站办公楼前，你深吸一口气，推开了那扇厚重的木门。走廊里弥漫着香烟和油墨的气味，几双目光不经意地扫过你——这里的每一个人，都可能是你的同事，也可能是你最危险的敌人。",
+    "choices": [
+      {
+        "id": "open_0",
+        "text": "先去站长办公室报到，给吴敬中留下良好的第一印象。",
+        "result": {
+          "type": "deterministic",
+          "description": "你整理好仪容，敲开了站长办公室的门。吴敬中放下手中的茶杯，上下打量着你。",
+          "state_changes": []
+        }
+      },
+      {
+        "id": "open_1",
+        "text": "先在走廊里观察一圈，摸清站内各科室的布局和人员。",
+        "result": {
+          "type": "conditional",
+          "description": "你不动声色地在走廊里踱步，将各科室的门牌和人员进出情况默默记在心里。",
+          "state_changes": [],
+          "threshold": 50,
+          "success": {
+            "description": ""
+          },
+          "failure": {
+            "description": ""
+          }
+        }
+      },
+      {
+        "id": "open_2",
+        "text": "去机要室附近转转，试探能否接触到核心情报区域。",
+        "result": {
+          "type": "conditional",
+          "description": "你大致了解了机要室的位置和门禁情况。",
+          "state_changes": [],
+          "threshold": 50,
+          "success": {
+            "description": ""
+          },
+          "failure": {
+            "description": ""
+          }
+        }
+      }
+    ]
+  },
+  "random_items": [
+    {
+      "id": "suspicion_fluctuation",
+      "description": "天津站内部的猜忌氛围波动，影响余则成被怀疑的风险。",
+      "trigger": "每次余则成接触机密信息或与可疑人物接触时。",
+      "trigger_type": "conditional",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 10,
+        "modifier": -5
+      },
+      "ranges": [
+        {
+          "min": -4,
+          "max": -2,
+          "label": "风平浪静",
+          "description": "站内忙于日常事务，无人注意你的行踪。"
+        },
+        {
+          "min": -1,
+          "max": 1,
+          "label": "暗流涌动",
+          "description": "有人在闲聊中提到了内鬼的传言，气氛微妙。"
+        },
+        {
+          "min": 2,
+          "max": 3,
+          "label": "草木皆兵",
+          "description": "站内突然加强了安保检查，每个人都显得紧张。"
+        },
+        {
+          "min": 4,
+          "max": 5,
+          "label": "风声鹤唢",
+          "description": "有人举报站内有共产党潜伏，全站进入排查状态。",
+          "state_changes": [
+            {
+              "target": "player.composure",
+              "op": "add",
+              "value": -5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "street_encounter",
+      "description": "在天津街头活动时可能遇到的人或事。",
+      "trigger": "当玩家在非站内地点活动时。",
+      "trigger_type": "conditional",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 20,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 10,
+          "label": "平安无事",
+          "description": "",
+          "state_changes": []
+        },
+        {
+          "min": 11,
+          "max": 13,
+          "label": "偶遇线人",
+          "description": "一个面生的人递过来一张纸条就匆匆走了。",
+          "state_changes": [
+            {
+              "target": "player.intelligence_analysis",
+              "op": "add",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "min": 14,
+          "max": 16,
+          "label": "遭遇盘查",
+          "description": "军警在街头设卡检查证件。",
+          "state_changes": []
+        },
+        {
+          "min": 17,
+          "max": 18,
+          "label": "发现跟踪",
+          "description": "你注意到身后有人在跟踪你。",
+          "state_changes": [
+            {
+              "target": "player.composure",
+              "op": "add",
+              "value": -3
+            }
+          ]
+        },
+        {
+          "min": 19,
+          "max": 20,
+          "label": "意外收获",
+          "description": "无意中听到了有价值的情报碎片。",
+          "state_changes": [
+            {
+              "target": "player.intelligence_analysis",
+              "op": "add",
+              "value": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "office_politics",
+      "description": "站内办公室政治的日常变化。",
+      "trigger": "永远生效。",
+      "trigger_type": "always",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 40,
+          "label": "平静",
+          "description": "站内一切如常。"
+        },
+        {
+          "min": 41,
+          "max": 65,
+          "label": "暗中较劲",
+          "description": "马奎和陆桥山又在争夺功劳。"
+        },
+        {
+          "min": 66,
+          "max": 85,
+          "label": "站长施压",
+          "description": "吴敬中对近期工作不满意，训斥了下属。"
+        },
+        {
+          "min": 86,
+          "max": 95,
+          "label": "人事变动",
+          "description": "有传言说上级要调整天津站的人事安排。"
+        },
+        {
+          "min": 96,
+          "max": 100,
+          "label": "重大任务",
+          "description": "南京方面下达了紧急任务，全站进入紧张状态。"
+        }
+      ]
+    },
+    {
+      "id": "radio_interference",
+      "description": "秘密电台通讯时可能遇到的干扰或风险。",
+      "trigger": "当玩家尝试使用电台联络时。",
+      "trigger_type": "conditional",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 10,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 5,
+          "label": "通讯顺畅",
+          "description": "信号清晰，情报成功传出。"
+        },
+        {
+          "min": 6,
+          "max": 7,
+          "label": "信号不稳",
+          "description": "信号断断续续，只传出了部分内容。"
+        },
+        {
+          "min": 8,
+          "max": 9,
+          "label": "疑似被监听",
+          "description": "通讯中出现异常杂音，可能被电讯科监听到。",
+          "state_changes": [
+            {
+              "target": "player.composure",
+              "op": "add",
+              "value": -5
+            }
+          ]
+        },
+        {
+          "min": 10,
+          "max": 10,
+          "label": "测向车逼近",
+          "description": "保密局的无线电测向车在附近活动！必须立刻中断通讯转移位置。",
+          "state_changes": [
+            {
+              "target": "player.composure",
+              "op": "add",
+              "value": -10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cuiping_blunder",
+      "description": "翠平在社交场合可能闹出的意外状况。",
+      "trigger": "当翠平参与社交活动或在公开场合出现时。",
+      "trigger_type": "conditional",
+      "duration_turns": 0,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 8,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 4,
+          "label": "相安无事",
+          "description": "翠平今天表现正常，没有引起注意。"
+        },
+        {
+          "min": 5,
+          "max": 6,
+          "label": "小出洋相",
+          "description": "翠平在打牌时说了几句粗话，太太们面面相觑。"
+        },
+        {
+          "min": 7,
+          "max": 7,
+          "label": "举止可疑",
+          "description": "翠平的某个动作或用语暴露了她的农村出身，有人开始窃窃私语。",
+          "state_changes": [
+            {
+              "target": "player.disguise",
+              "op": "add",
+              "value": -3
+            }
+          ]
+        },
+        {
+          "min": 8,
+          "max": 8,
+          "label": "险些暴露",
+          "description": "翠平差点在人前展示了她的枪法或格斗技巧，你及时阻止了她。",
+          "state_changes": [
+            {
+              "target": "player.composure",
+              "op": "add",
+              "value": -8
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "id": "makui_suspicion_level",
+      "name": "马奎怀疑度",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "makui_framed",
+      "name": "马奎被栽赃",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "intel_frozen",
+      "name": "情报冻结",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "courier_line_active",
+      "name": "交通线激活",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "courier_line_compromised",
+      "name": "交通线暴露",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "key_intel_delivered",
+      "name": "关键情报已送",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "promoted_deputy",
+      "name": "升任副站长",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "sheng_xiang_exposed",
+      "name": "盛乡身份暴露",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "emei_crisis_resolved",
+      "name": "峨眉峰危机解除",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "cuiping_identity_risk",
+      "name": "翠平身份风险",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "final_mission_active",
+      "name": "最终任务激活",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "id": "disinfo_planted",
+      "name": "假情报已投放",
+      "type": "number",
+      "default": 0
+    }
+  ],
+  "triggers": [
+    {
+      "id": "t_z2r6e4",
+      "event": "after_ai",
+      "action": "set_var",
+      "condition": "cuiping_identity_risk >= 2",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "t_n2nz3q",
+      "event": "after_ai",
+      "action": "set_var",
+      "condition": "deep_sea_trust < 20",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "t_5ft6qb",
+      "event": "after_ai",
+      "action": "set_var",
+      "condition": "station_internal_faction > 70",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "t_vrgg3i",
+      "event": "after_ai",
+      "action": "set_var",
+      "condition": "hidden_front_morale < 15",
+      "params": {},
+      "enabled": true
+    }
+  ],
+  "regex_scripts": [],
+  "locations": [
+    {
+      "id": "lime_townhouse",
+      "name": "石灰镇洋房",
+      "description": "余则成在天津的秘密居所，一栋带小院的两层灰砖洋房，客厅暗格藏有电台备件，二楼书房窗口可观察街口动静。",
+      "initially_visible": false,
+      "connections": [
+        "loc_tianjin_station",
+        "south_market"
+      ]
+    },
+    {
+      "id": "haimen_dock",
+      "name": "海门码头仓库区",
+      "description": "海河畔的货运仓库群，昼夜吞吐着南来北往的货物与各色人物，潮湿的空气里混合着鱼腥和机油味，交接情报时起重机轰鸣是最佳掩护。",
+      "initially_visible": false,
+      "connections": [
+        "loc_tianjin_station",
+        "huang_restaurant",
+        "train_station",
+        "safe_house"
+      ]
+    },
+    {
+      "id": "confidential_room",
+      "name": "天津站机要室",
+      "description": "防空地下室改建的无窗房间，铁门厚重，档案柜里锁着党国机密与新拟定的“除奸”名单，只有站长和机要主任能独自进入。",
+      "initially_visible": false,
+      "connections": [
+        "loc_tianjin_station"
+      ]
+    },
+    {
+      "id": "south_market",
+      "name": "南市茶馆",
+      "description": "天津南市的三层大茶馆，说书人惊堂木与鸟笼子乱晃，二楼雅间看似通透实则隔音，是各方势力眼线最稠密的社交场。",
+      "initially_visible": true,
+      "connections": [
+        "lime_townhouse",
+        "huang_restaurant",
+        "pharmacy",
+        "french_concession"
+      ]
+    },
+    {
+      "id": "huang_restaurant",
+      "name": "黄记小馆",
+      "description": "街角不起眼的本帮菜馆，老板老黄是地下交通员，灶台下的地道直通码头排水渠，辣子鸡丁的油烟总能盖住密谈的声气。",
+      "initially_visible": false,
+      "connections": [
+        "haimen_dock",
+        "south_market"
+      ]
+    },
+    {
+      "id": "loc_tianjin_station",
+      "name": "保密局天津站",
+      "description": "原国民党军统局在天津的秘密据点，抗战胜利后改隶国防部保密局，表面是普通机关办公楼，实为特务活动与情报枢纽。站内设有机要室、电讯室、审讯室及站长办公室，暗藏发报机、微型胶卷和监听设备。1945年至1949年，这里是余则成以“深海”为代号潜伏的核心舞台，吴敬中、马奎、陆桥山等人构成复杂的办公室政治网络，策划了对李海丰的暗杀、军调部情报刺探、“峨眉峰”身份排查等行动。走廊里随时听得到脚步与窃窃私语，空气中弥漫着香烟与阴谋的气息，每一扇门后都可能藏着事关天津城防乃至华北战局的机密。",
+      "initially_visible": true,
+      "connections": [
+        "french_concession",
+        "train_station"
+      ]
+    },
+    {
+      "id": "pharmacy",
+      "name": "仁和堂药铺",
+      "description": "南市深巷里一间老式中药铺，药柜里几百个小抽屉排列整齐，弥漫着草药苦香。秋掌柜在此坐堂行医，柜台后暗格中藏有密写药水和联络密码本。后院枯井通往地下密室。",
+      "initially_visible": false,
+      "connections": [
+        "south_market",
+        "huang_restaurant"
+      ]
+    },
+    {
+      "id": "french_concession",
+      "name": "原法租界区",
+      "description": "天津原法租界一带，梧桐树荫下是洋楼咖啡馆和舞厅。战后这里成为各国情报人员出没之地，谢若林等掮客在此穿梭，表面繁华的背后是情报交易的暗流。",
+      "initially_visible": true,
+      "connections": [
+        "south_market",
+        "loc_tianjin_station",
+        "train_station"
+      ]
+    },
+    {
+      "id": "train_station",
+      "name": "天津火车站",
+      "description": "天津的交通枢纽，每日吞吐着南来北往的旅客与军队。站台上军警密布，验票口是保密局监控要地。也是地下党转移人员、传递文件的重要节点。",
+      "initially_visible": true,
+      "connections": [
+        "french_concession",
+        "loc_tianjin_station",
+        "haimen_dock"
+      ]
+    },
+    {
+      "id": "mu_mansion",
+      "name": "穆家公馆",
+      "description": "汉奸穆连成的豪华宅邸，西式洋楼占地数亩，花园里有假山鱼池。穆连成逃日后宅子被吴敬中霸占为私人会所，成为天津站上层应酬场所。穆晚秋仍住在偏院。",
+      "initially_visible": false,
+      "connections": [
+        "french_concession",
+        "south_market"
+      ]
+    },
+    {
+      "id": "military_adjustment",
+      "name": "军调处天津执行小组",
+      "description": "国共美三方军事调处执行部的天津分支办事处，设在原英租界一栋办公楼内。左蓝以军调代表身份在此公开工作，各方暗中角力，表面维持停战协定。",
+      "initially_visible": false,
+      "connections": [
+        "french_concession",
+        "loc_tianjin_station"
+      ]
+    },
+    {
+      "id": "safe_house",
+      "name": "地下党安全屋",
+      "description": "隐藏在河东区棚户中的一间小平房，外表破败，内设简易电台和密写工具。紧急时刻地下组织在此启用备用联络，窗户上晒的衣物颜色是安全信号。",
+      "initially_visible": false,
+      "connections": [
+        "haimen_dock",
+        "train_station"
+      ]
+    }
+  ],
+  "player_character": {
+    "id": "player",
+    "bio": "原国民党军统特务，代号“深海”。抗战期间奉命刺杀汪伪汉奸李海丰，行动成功后被共产党地下组织策反，从此以军统身份为掩护，秘密为组织传递情报。外表沉稳寡言，内心深藏信仰。",
+    "personality": "沉稳冷静，心思缜密，善于察言观色。表面上是恪尽职守的国民党特务，实则对共产主义理想抱有坚定信念。在危险中保持克制，在利益面前不为所动。",
+    "portrait_desc": "三十出头的男子，国字脸，短发，着深色中山装，眉宇间透着精明与克制。",
+    "long_term_goal": "在保密局天津站长期潜伏，传递关键军事情报给组织，同时保护身边的同志不被暴露，为解放事业贡献力量。",
+    "attributes": {
+      "伪装技巧": {
+        "value": 75,
+        "min": 0,
+        "max": 100,
+        "rule": "在军统内部维持身份掩护的能力。",
+        "display_name": "伪装技巧"
+      },
+      "心理素质": {
+        "value": 70,
+        "min": 0,
+        "max": 100,
+        "rule": "面对审讯、盘查和突发状况时的镇定程度。",
+        "display_name": "心理素质"
+      },
+      "情报分析": {
+        "value": 65,
+        "min": 0,
+        "max": 100,
+        "rule": "对情报价值的判断力和信息拼图的能力。",
+        "display_name": "情报分析"
+      },
+      "人际手腕": {
+        "value": 60,
+        "min": 0,
+        "max": 100,
+        "rule": "在办公室政治中周旋、拉拢和化解矛盾的能力。",
+        "display_name": "人际手腕"
+      },
+      "体能": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "追击、搏斗和逃脱时的身体素质。",
+        "display_name": "体能"
+      }
+    },
+    "relationships": {
+      "npc_mei_jie": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "与梅姐的关系"
+      },
+      "npc_mu_wanqiu": {
+        "value": 70,
+        "min": 0,
+        "max": 100,
+        "rule": "与穆晚秋的关系"
+      },
+      "npc_wang_zhanjin": {
+        "value": 20,
+        "min": 0,
+        "max": 100,
+        "rule": "与王占金的关系"
+      },
+      "npc_dai_li": {
+        "value": 30,
+        "min": 0,
+        "max": 100,
+        "rule": "与戴笠的关系"
+      },
+      "npc_sheng_xiang": {
+        "value": 45,
+        "min": 0,
+        "max": 100,
+        "rule": "与盛乡的关系"
+      },
+      "npc_hong_mishu": {
+        "value": 40,
+        "min": 0,
+        "max": 100,
+        "rule": "与洪秘书的关系"
+      },
+      "npc_ma_tai_tai": {
+        "value": 40,
+        "min": 0,
+        "max": 100,
+        "rule": "与马太太的关系"
+      },
+      "npc_long_er": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "与龙二的关系"
+      },
+      "npc_wu_jingzhong": {
+        "value": 60,
+        "min": 0,
+        "max": 100,
+        "rule": "与吴敬中的关系"
+      },
+      "npc_ma_kui": {
+        "value": 35,
+        "min": 0,
+        "max": 100,
+        "rule": "与马奎的关系"
+      },
+      "npc_lu_qiaoshan": {
+        "value": 55,
+        "min": 0,
+        "max": 100,
+        "rule": "与陆桥山的关系"
+      },
+      "npc_li_ya": {
+        "value": 25,
+        "min": 0,
+        "max": 100,
+        "rule": "与李涯的关系"
+      },
+      "npc_cui_ping": {
+        "value": 75,
+        "min": 0,
+        "max": 100,
+        "rule": "与翠平的关系"
+      },
+      "npc_zuo_lan": {
+        "value": 80,
+        "min": 0,
+        "max": 100,
+        "rule": "与左蓝的关系"
+      },
+      "npc_xie_ruolin": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "与谢若林的关系"
+      },
+      "npc_qiu_zhangui": {
+        "value": 70,
+        "min": 0,
+        "max": 100,
+        "rule": "与秋掌柜的关系"
+      },
+      "npc_liao_sanmin": {
+        "value": 65,
+        "min": 0,
+        "max": 100,
+        "rule": "与廖三民的关系"
+      },
+      "npc_lao_huang": {
+        "value": 60,
+        "min": 0,
+        "max": 100,
+        "rule": "与老黄的关系"
+      }
+    },
+    "initial_location": "loc_tianjin_station",
+    "initial_inventory": []
+  },
+  "npcs": [
+    {
+      "id": "npc_mei_jie",
+      "name": "梅姐",
+      "bio": "天津站站长吴敬中的夫人，出身乡下，随丈夫在天津过着官太太生活。善于笼络人心，常协助丈夫敛财，对翠平颇为照顾，利用太太社交圈为吴敬中打探消息。",
+      "personality": "精明世故，表面随和热情，内心计较利益，擅长太太外交",
+      "capabilities": "社交手腕、察言观色、协助敛财、打探官场风向",
+      "title": "站长夫人",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 1,
+          "role": "站长夫人"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 55,
+      "talkativeness": 70,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "lime_townhouse",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "lime_townhouse",
+          "activity": "在家梳洗、安排家务"
+        },
+        {
+          "time_range": "10:00-16:00",
+          "location": "south_market",
+          "activity": "与其他太太们喝茶、打牌、交换情报"
+        },
+        {
+          "time_range": "16:00-06:00",
+          "location": "lime_townhouse",
+          "activity": "在家等候吴敬中，操持晚饭"
+        }
+      ]
+    },
+    {
+      "id": "npc_mu_wanqiu",
+      "name": "穆晚秋",
+      "bio": "汉奸穆连成的侄女，受过新式教育的女学生，天真浪漫，攻读文学，弹得一手好钢琴。钟情于余则成，后嫁给情报掮客谢若林，婚后逐渐看透世态炎凉，郁郁寡欢。",
+      "personality": "多愁善感，单纯执着，后期忧郁敏感，内心渴望自由",
+      "capabilities": "文学素养、钢琴演奏、基本社交，熟悉上层生活方式",
+      "title": "穆家小姐",
+      "organizations": [],
+      "related_lore": [],
+      "attitude_toward_player": 70,
+      "talkativeness": 35,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "south_market",
+      "schedule": [
+        {
+          "time_range": "06:00-12:00",
+          "location": "south_market",
+          "activity": "在家读书、练琴"
+        },
+        {
+          "time_range": "12:00-18:00",
+          "location": "south_market",
+          "activity": "偶尔外出散步或参加文学沙龙"
+        },
+        {
+          "time_range": "18:00-06:00",
+          "location": "south_market",
+          "activity": "在家独处，弹琴写日记"
+        }
+      ]
+    },
+    {
+      "id": "npc_wang_zhanjin",
+      "name": "王占金",
+      "bio": "翠平老家的地主，土改中被清算，流落至天津以捡破烂为生。意外认出翠平的游击队长身份，成为威胁潜伏计划的定时炸弹。",
+      "personality": "落魄圆滑，见风使舵，为求生存不惜出卖他人，却又胆小怕事",
+      "capabilities": "识别熟人、街头生存、讨价还价",
+      "title": "破落地主",
+      "organizations": [],
+      "related_lore": [],
+      "attitude_toward_player": 20,
+      "talkativeness": 60,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "south_market",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "south_market",
+          "activity": "在街头捡拾废品"
+        },
+        {
+          "time_range": "10:00-16:00",
+          "location": "haimen_dock",
+          "activity": "在码头附近捡废铁、讨零工"
+        },
+        {
+          "time_range": "16:00-06:00",
+          "location": "south_market",
+          "activity": "在茶馆外蹭热闹，寻找旧相识"
+        }
+      ]
+    },
+    {
+      "id": "npc_dai_li",
+      "name": "戴笠",
+      "bio": "国民政府军事委员会调查统计局（军统）局长，掌握全国特务系统，心狠手辣，深得蒋介石信任。在抗战后期遥控指挥锄奸行动，亲自嘉奖刺杀李海丰的余则成，并派其赴天津站潜伏。",
+      "personality": "阴鸷多疑，精明强干，对党国忠诚，对手下控制欲极强",
+      "capabilities": "情报网络掌控、权术运作、战略决策、暗杀指令",
+      "title": "军统局局长",
+      "organizations": [
+        {
+          "org_id": "org_national_security_bureau",
+          "rank": 1,
+          "role": "局长"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 30,
+      "talkativeness": 25,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "06:00-22:00",
+          "location": "loc_tianjin_station",
+          "activity": "在南京或重庆遥控指挥，偶尔巡视天津站"
+        },
+        {
+          "time_range": "22:00-06:00",
+          "location": "",
+          "activity": "不在天津"
+        }
+      ]
+    },
+    {
+      "id": "npc_sheng_xiang",
+      "name": "盛乡",
+      "bio": "保密局天津站档案股股长，负责管理人事档案与机密文件。表面老实本分，做事谨慎，实则为在逃的抢劫犯吉世光，以化名隐匿于特务机关，时刻担心身份暴露。",
+      "personality": "谨慎怕事，见机行事，心机深沉，善于伪装与自保",
+      "capabilities": "档案管理、文书处理、情报检索、化名潜伏",
+      "title": "档案股长",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 3,
+          "role": "档案股长"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 45,
+      "talkativeness": 30,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "07:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "整理档案、处理文件归档"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "huang_restaurant",
+          "activity": "外出吃饭"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "继续档案工作，偷偷销毁与自己过去有关的记录"
+        }
+      ]
+    },
+    {
+      "id": "npc_hong_mishu",
+      "name": "洪秘书",
+      "bio": "保密局天津站站长吴敬中的秘书，负责处理日常公文和私人杂务。胆小贪色，与马奎的妻子长期私通，后被利用泄露站内动向，是办公室风流债的典型。",
+      "personality": "懦弱好色，善于逢迎，缺乏主见，极易被人裹挟",
+      "capabilities": "文书起草、秘密瞒报、传递私密消息、揣摩上意",
+      "title": "站长秘书",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 3,
+          "role": "秘书"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 40,
+      "talkativeness": 55,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "07:30-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "在站长办公室整理公文、跑腿"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "south_market",
+          "activity": "外出办私事或赴约"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "继续处理日常事务"
+        }
+      ]
+    },
+    {
+      "id": "npc_ma_tai_tai",
+      "name": "马太太",
+      "bio": "保密局天津站行动队队长马奎的妻子，因丈夫忙于特务行动而备受冷落，与洪秘书暗通款曲。马奎死后受到牵连，生活陷入困顿。",
+      "personality": "虚荣寂寞，不甘冷落，情感用事，在漩涡中身不由己",
+      "capabilities": "太太社交、枕边风、获取丈夫行踪动态",
+      "title": "马队长夫人",
+      "organizations": [],
+      "related_lore": [],
+      "attitude_toward_player": 40,
+      "talkativeness": 65,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "lime_townhouse",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "lime_townhouse",
+          "activity": "在家照顾家事"
+        },
+        {
+          "time_range": "10:00-16:00",
+          "location": "south_market",
+          "activity": "与梅姐等太太喝茶、打听消息"
+        },
+        {
+          "time_range": "16:00-06:00",
+          "location": "lime_townhouse",
+          "activity": "在家等马奎，独自烦闷"
+        }
+      ]
+    },
+    {
+      "id": "npc_long_er",
+      "name": "龙二",
+      "bio": "海河青帮分舵舵主，对外自称木器商人。实际掌控码头装卸、南市茶馆与戏园，经营“海面鬼市”走私与情报买卖。与余则成私下交易，用帮会眼线换取保护，在灰色地带左右逢源。",
+      "personality": "重利讲义气，圆滑狠辣，信守江湖规矩，对合作者留三分余地",
+      "capabilities": "帮会管理、走私渠道运营、情报收集、码头势力震慑",
+      "title": "青帮舵主",
+      "organizations": [
+        {
+          "org_id": "org_qinggang_haihe",
+          "rank": 1,
+          "role": "舵主"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 55,
+      "talkativeness": 75,
+      "known": true,
+      "met": true,
+      "portrait_desc": "",
+      "default_location": "haimen_dock",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "haimen_dock",
+          "activity": "在码头区巡视地盘，收取保护费"
+        },
+        {
+          "time_range": "10:00-18:00",
+          "location": "south_market",
+          "activity": "在茶馆赌场消磨时间，结交三教九流"
+        },
+        {
+          "time_range": "18:00-06:00",
+          "location": "haimen_dock",
+          "activity": "监督走私货物的装卸"
+        }
+      ]
+    },
+    {
+      "id": "npc_wu_jingzhong",
+      "name": "吴敬中",
+      "bio": "保密局天津站站长，青浦特训班出身，精通特务手段。表面忠于党国，实则以权谋私，大肆搜刮民财。利用站内派系内斗巩固地位，故意悬置副站长职位坐观群狗相争。对余则成有师生之谊，却也时刻提防。",
+      "personality": "老谋深算，贪婪却不失精明，善于驾驭下属，城府极深",
+      "capabilities": "特务管理、权术运作、审讯技巧、敛财洗钱、察言观色",
+      "title": "天津站站长",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 1,
+          "role": "站长"
+        }
+      ],
+      "related_lore": [
+        "吴敬中"
+      ],
+      "attitude_toward_player": 60,
+      "talkativeness": 45,
+      "known": true,
+      "met": true,
+      "portrait_desc": "五十出头，微胖，圆脸，戴金丝眼镜，穿藏青色呢子大衣，手指夹着雪茄，笑容中藏着精明",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "08:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "在站长办公室处理公务、召见下属"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "south_market",
+          "activity": "在茶馆会客或与商人密谈"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "听取各科汇报，暗中整理私账"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "mu_mansion",
+          "activity": "赴宴应酬或回宅处理私事"
+        }
+      ]
+    },
+    {
+      "id": "npc_ma_kui",
+      "name": "马奎",
+      "bio": "保密局天津站行动队队长，手段凶悍，曾奉命枪杀地下党员吕宗方。凭直觉怀疑站内有共产党潜伏，暗中调查余则成等人。与陆桥山争夺副站长之位，在办公室政治中逐渐落入下风。",
+      "personality": "鲁莽暴躁，嗅觉敏锐，心狠手辣，缺乏政治智慧",
+      "capabilities": "暗杀行动、跟踪监视、审讯逼供、枪械搏斗",
+      "title": "行动队队长",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 2,
+          "role": "行动队队长"
+        }
+      ],
+      "related_lore": [
+        "马奎"
+      ],
+      "attitude_toward_player": 35,
+      "talkativeness": 50,
+      "known": true,
+      "met": true,
+      "portrait_desc": "四十岁左右，身材魁梧，方脸短发，穿黑色皮夹克，腰间总别着手枪",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "07:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "在行动队办公室布置任务、审问嫌犯"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "huang_restaurant",
+          "activity": "吃饭时暗中观察周围"
+        },
+        {
+          "time_range": "14:00-20:00",
+          "location": "loc_tianjin_station",
+          "activity": "带队外出行动或在站内监视同事"
+        },
+        {
+          "time_range": "20:00-07:00",
+          "location": "lime_townhouse",
+          "activity": "回家，但常半夜突袭检查"
+        }
+      ]
+    },
+    {
+      "id": "npc_lu_qiaoshan",
+      "name": "陆桥山",
+      "bio": "保密局天津站情报处长，野心勃勃，热衷办公室政治。暗中与海河青帮勾结走私获利，一心排挤马奎以谋副站长之位。善用阴谋手段陷害对手，却终被李涯设计调离。",
+      "personality": "圆滑阴险，野心外露，善于笼络人心，背后捅刀",
+      "capabilities": "情报分析、人脉经营、阴谋策划、走私渠道运营",
+      "title": "情报处长",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 2,
+          "role": "情报处长"
+        }
+      ],
+      "related_lore": [
+        "陆桥山"
+      ],
+      "attitude_toward_player": 55,
+      "talkativeness": 65,
+      "known": true,
+      "met": true,
+      "portrait_desc": "三十五六岁，面容白净，梳着油亮的背头，着灰色西装，笑容可掬却不达眼底",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "08:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "情报处办公，安排线人工作"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "south_market",
+          "activity": "在茶馆拉拢同事或密会线人"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "撰写报告，暗中收集马奎把柄"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "haimen_dock",
+          "activity": "偶尔去码头处理走私事务"
+        }
+      ]
+    },
+    {
+      "id": "npc_li_ya",
+      "name": "李涯",
+      "bio": "曾化名冯剑潜伏延安保小数年的军统精英，代号'佛龛'。调回天津站后接替马奎任行动队长，心思缜密、执着狠辣，多次追查余则成真实身份。是余则成在站内最危险的对手。",
+      "personality": "冷峻偏执，极度敬业，不近人情，对破案有近乎病态的执着",
+      "capabilities": "反间谍、潜伏侦察、逻辑推理、伪装渗透、格斗",
+      "title": "行动队队长(后期)",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 2,
+          "role": "行动队队长"
+        }
+      ],
+      "related_lore": [
+        "李涯"
+      ],
+      "attitude_toward_player": 25,
+      "talkativeness": 20,
+      "known": false,
+      "met": false,
+      "portrait_desc": "瘦削面容，目光锐利如鹰，穿深色中山装，总是独来独往，办公桌上堆满案卷",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "06:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "独自研究案卷，梳理嫌疑人关系"
+        },
+        {
+          "time_range": "12:00-13:00",
+          "location": "loc_tianjin_station",
+          "activity": "在办公室吃简餐，不与人交际"
+        },
+        {
+          "time_range": "13:00-22:00",
+          "location": "loc_tianjin_station",
+          "activity": "外出盯梢或在站内布置陷阱"
+        },
+        {
+          "time_range": "22:00-06:00",
+          "location": "loc_tianjin_station",
+          "activity": "常通宵加班研究案情"
+        }
+      ]
+    },
+    {
+      "id": "npc_cui_ping",
+      "name": "翠平",
+      "bio": "原太行山游击队队长陈桃花，受组织派遣冒充余则成的妻子。脾气火爆，不懂城市生活规矩，初来乍到闹出不少笑话。在余则成和梅姐的调教下逐渐适应，与余则成日久生情。",
+      "personality": "泼辣直率，嫉恶如仇，朴实善良，有时冲动鲁莽",
+      "capabilities": "枪法精准、近身格斗、野外生存、伪装学习(进步中)",
+      "title": "余则成之妻(掩护身份)",
+      "organizations": [
+        {
+          "org_id": "org_cpc_tianjin_underground",
+          "rank": 3,
+          "role": "潜伏配合人员"
+        }
+      ],
+      "related_lore": [
+        "翠平"
+      ],
+      "attitude_toward_player": 75,
+      "talkativeness": 75,
+      "known": true,
+      "met": true,
+      "portrait_desc": "二十五六岁的年轻女子，面容清秀但举止粗放，穿旗袍总不自在，眼神中透着倔强",
+      "default_location": "lime_townhouse",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "lime_townhouse",
+          "activity": "在家操持家务，常与佣人吵架"
+        },
+        {
+          "time_range": "10:00-15:00",
+          "location": "south_market",
+          "activity": "出门买菜或被梅姐拉去喝茶打牌"
+        },
+        {
+          "time_range": "15:00-22:00",
+          "location": "lime_townhouse",
+          "activity": "在家等余则成回来，练习太太礼仪"
+        }
+      ]
+    },
+    {
+      "id": "npc_zuo_lan",
+      "name": "左蓝",
+      "bio": "中共地下党员，余则成曾经的恋人。美丽勇敢有文化，是引导余则成走上革命道路的关键人物。后以军调代表身份出现在天津，与余则成虽近在咫尺却只能扮演敌对阵营。",
+      "personality": "坚毅温柔，理想主义，富有牺牲精神，深明大义",
+      "capabilities": "地下工作、宣传鼓动、情报传递、社交掩护",
+      "title": "军调处代表",
+      "organizations": [
+        {
+          "org_id": "org_cpc_tianjin_underground",
+          "rank": 2,
+          "role": "军调代表(公开)"
+        }
+      ],
+      "related_lore": [
+        "左蓝"
+      ],
+      "attitude_toward_player": 80,
+      "talkativeness": 40,
+      "known": true,
+      "met": true,
+      "portrait_desc": "知性美丽的年轻女性，短发齐肩，穿蓝色列宁装，目光坚定而温暖",
+      "default_location": "military_adjustment",
+      "schedule": [
+        {
+          "time_range": "08:00-12:00",
+          "location": "military_adjustment",
+          "activity": "在军调处办公"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "south_market",
+          "activity": "在公开场合活动"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "military_adjustment",
+          "activity": "处理军调事务，暗中联络同志"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "french_concession",
+          "activity": "在住所整理材料"
+        }
+      ]
+    },
+    {
+      "id": "npc_xie_ruolin",
+      "name": "谢若林",
+      "bio": "党通局情报贩子，唯利是图的投机分子。后娶穆晚秋为妻，与李涯合作收买叛徒倒卖情报。其名言'嘴上全是主义，心里全是生意'是其人生写照。",
+      "personality": "市侩精明，见利忘义，油嘴滑舌，无原则无底线",
+      "capabilities": "情报买卖、人脉广泛、察言观色、讨价还价",
+      "title": "情报掮客",
+      "organizations": [
+        {
+          "org_id": "org_national_security_bureau",
+          "rank": 4,
+          "role": "外围线人"
+        }
+      ],
+      "related_lore": [
+        "谢若林"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 80,
+      "known": false,
+      "met": false,
+      "portrait_desc": "三十出头，油头粉面，穿花哨西装，嘴角总挂着讨好的笑",
+      "default_location": "french_concession",
+      "schedule": [
+        {
+          "time_range": "09:00-12:00",
+          "location": "french_concession",
+          "activity": "在咖啡馆约见各路线人"
+        },
+        {
+          "time_range": "12:00-15:00",
+          "location": "south_market",
+          "activity": "在茶馆打听消息，兜售情报"
+        },
+        {
+          "time_range": "15:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "偶尔去站里交货领赏"
+        },
+        {
+          "time_range": "18:00-23:00",
+          "location": "french_concession",
+          "activity": "出入舞厅、酒吧应酬"
+        }
+      ]
+    },
+    {
+      "id": "npc_qiu_zhangui",
+      "name": "秋掌柜",
+      "bio": "中共天津地下情报站重要联络人，公开身份为仁和堂药铺掌柜。负责为余则成传达上级指示、安排翠平前来等事宜。为人沉稳可靠，坚守原则。",
+      "personality": "沉稳老练，不苟言笑，极度谨慎，对组织忠诚至死",
+      "capabilities": "秘密联络、暗号传递、安全屋管理、反跟踪",
+      "title": "药铺掌柜(掩护)",
+      "organizations": [
+        {
+          "org_id": "org_cpc_tianjin_underground",
+          "rank": 2,
+          "role": "联络站负责人"
+        }
+      ],
+      "related_lore": [
+        "秋掌柜"
+      ],
+      "attitude_toward_player": 70,
+      "talkativeness": 25,
+      "known": true,
+      "met": true,
+      "portrait_desc": "五十余岁，清瘦面容，着灰布长衫，戴老花镜，一派老实药铺掌柜模样",
+      "default_location": "pharmacy",
+      "schedule": [
+        {
+          "time_range": "07:00-12:00",
+          "location": "pharmacy",
+          "activity": "在药铺看诊抓药"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "pharmacy",
+          "activity": "关门午休，实则检查暗格情报"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "pharmacy",
+          "activity": "继续营业，等待联络暗号"
+        },
+        {
+          "time_range": "18:00-20:00",
+          "location": "huang_restaurant",
+          "activity": "偶尔去黄记小馆接头"
+        }
+      ]
+    },
+    {
+      "id": "npc_liao_sanmin",
+      "name": "廖三民",
+      "bio": "中共隐蔽在天津站执法队的地下党员，年轻热血，对革命充满信念。身份暴露时毅然抱住李涯从楼上跳下同归于尽，用生命保护了余则成等同志的安全。",
+      "personality": "热血忠诚，年轻冲动，正义感强，临危不惧",
+      "capabilities": "武装行动、跟踪反跟踪、格斗、紧急处置",
+      "title": "执法队队员",
+      "organizations": [
+        {
+          "org_id": "org_tianjin_secret_station",
+          "rank": 3,
+          "role": "执法队员(表面)"
+        },
+        {
+          "org_id": "org_cpc_tianjin_underground",
+          "rank": 3,
+          "role": "潜伏党员"
+        }
+      ],
+      "related_lore": [
+        "廖三民"
+      ],
+      "attitude_toward_player": 65,
+      "talkativeness": 35,
+      "known": true,
+      "met": true,
+      "portrait_desc": "二十出头，面容刚毅，眼神中有年轻人的锐气，穿制服时显得干练",
+      "default_location": "loc_tianjin_station",
+      "schedule": [
+        {
+          "time_range": "07:00-12:00",
+          "location": "loc_tianjin_station",
+          "activity": "在执法队执勤"
+        },
+        {
+          "time_range": "12:00-14:00",
+          "location": "south_market",
+          "activity": "外出吃饭放风"
+        },
+        {
+          "time_range": "14:00-18:00",
+          "location": "loc_tianjin_station",
+          "activity": "值班巡逻或执行任务"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "haimen_dock",
+          "activity": "偶尔秘密联络地下组织"
+        }
+      ]
+    },
+    {
+      "id": "npc_lao_huang",
+      "name": "老黄",
+      "bio": "黄记小馆老板，实为中共地下交通员。只认暗号不认脸，负责接收余则成的情报并通过灶台下地道转送。为人低调沉默，多年如一日维护这条秘密交通线。",
+      "personality": "沉默寡言，警惕性极高，面无表情下藏着坚定信念",
+      "capabilities": "秘密交通、暗号识别、地道维护、反侦察",
+      "title": "小馆老板(掩护)",
+      "organizations": [
+        {
+          "org_id": "org_cpc_tianjin_underground",
+          "rank": 3,
+          "role": "交通员"
+        }
+      ],
+      "related_lore": [],
+      "attitude_toward_player": 60,
+      "talkativeness": 15,
+      "known": true,
+      "met": true,
+      "portrait_desc": "四十多岁，黝黑精瘦，围着油腻围裙，手上满是刀疤和烫痕",
+      "default_location": "huang_restaurant",
+      "schedule": [
+        {
+          "time_range": "05:00-11:00",
+          "location": "huang_restaurant",
+          "activity": "采购食材、准备午市"
+        },
+        {
+          "time_range": "11:00-14:00",
+          "location": "huang_restaurant",
+          "activity": "午市营业，暗中观察来客"
+        },
+        {
+          "time_range": "14:00-17:00",
+          "location": "huang_restaurant",
+          "activity": "打扫整理，检查地道"
+        },
+        {
+          "time_range": "17:00-22:00",
+          "location": "huang_restaurant",
+          "activity": "晚市营业，等待接头暗号"
+        }
+      ]
+    }
+  ],
+  "player_presets": [
+    {
+      "id": "station_clerk",
+      "name": "周文彬",
+      "bio": "天津站文书科科员，黄埔军校文职出身，负责整理站内公文与会议记录。表面循规蹈矩，实则暗中被中共地下组织发展为情报员，利用文书工作之便窃取机密。",
+      "personality": "谨小慎微，做事细致，寡言少语，内心有坚定信仰",
+      "long_term_goal": "利用文书科的便利，为组织窃取天津站核心行动计划与人事档案",
+      "portrait_desc": "三十岁出头，戴圆框眼镜，着灰色中山装，总是夹着文件夹，像个不起眼的小文员",
+      "opening_text": "1945年9月，你坐在天津站文书科那张堆满卷宗的旧桌前，钢笔沙沙作响。你叫周文彬，在这里当了两年文员——整理公文、誊抄会议纪要、归档密电。没人注意你，正如没人注意一把椅子。但三个月前，组织通过秋掌柜找到了你，从此你多了一个身份：每份经手的文件，你都在心里多读一遍。",
+      "attributes": {},
+      "initial_location": "loc_tianjin_station"
+    },
+    {
+      "id": "underground_courier",
+      "name": "方达",
+      "bio": "中共天津地下组织交通员，以人力车夫为掩护，负责在各联络点之间传递情报和转移人员。对天津的大街小巷了如指掌。",
+      "personality": "机警灵活，沉默寡言，记忆力超群，对组织绝对忠诚",
+      "long_term_goal": "维护天津地下交通线的安全运转，在白色恐怖中保护每一份情报和每一个同志",
+      "portrait_desc": "二十七八岁，皮肤黝黑，穿粗布短褂，拉着一辆半旧人力车，看上去就是个普通车夫",
+      "opening_text": "你把人力车停在南市茶馆门口，假装等客。秋掌柜的口信今早到了：有一批紧急情报需要从黄记小馆转送到火车站的接头人手上。你叫方达，干这行三年了——白天拉车，晚上跑路。天津的每条胡同、每个暗巷你都记在脑子里，比地图还清楚。",
+      "attributes": {},
+      "initial_location": "south_market"
+    },
+    {
+      "id": "action_team_agent",
+      "name": "沈啸风",
+      "bio": "保密局天津站行动队骨干特务，马奎的亲信。擅长跟踪、格斗和暗杀，但在复杂的办公室政治中逐渐迷失方向，开始质疑自己所做之事的意义。",
+      "personality": "冷硬果断，服从命令，内心矛盾日增，有时表现出对无辜者的同情",
+      "long_term_goal": "在保密局的肃杀环境中寻找自己的立场，决定是继续执行命令还是听从良知",
+      "portrait_desc": "三十出头，身材精悍，面容冷峻，穿黑色皮夹克，腰间别着勃朗宁手枪",
+      "opening_text": "你擦干净勃朗宁手枪，把它别回腰间。行动队的弟兄们在走廊里低声交谈，马队长刚布置了新任务——盯梢一个疑似共产党联络员的药铺掌柜。你叫沈啸风，加入行动队四年了。四年间你见过太多血，有些是该流的，有些……你不太确定。",
+      "attributes": {},
+      "initial_location": "loc_tianjin_station"
+    },
+    {
+      "id": "wifes_perspective",
+      "name": "吴若兰",
+      "bio": "站长吴敬中的远房侄女，从上海来天津投奔叔父。受过西式教育，在站内帮忙处理对外联络事务，同时是太太社交圈的新成员。",
+      "personality": "聪慧好奇，天真中带着敏锐，对特务世界既恐惧又着迷",
+      "long_term_goal": "在叔父的庇护下站稳脚跟，却逐渐发现天津站背后的黑暗真相，必须做出选择",
+      "portrait_desc": "二十三四岁，烫卷发，穿碎花旗袍，举止洋派，眼神中充满好奇",
+      "opening_text": "穆家公馆的花园里飘着桂花香，你端着咖啡站在阳台上，看着远处海河上的帆影。叔父吴敬中上周把你从上海接来天津，说是帮忙处理一些对外文书。你叫吴若兰，毕业于圣约翰大学——但这座城市的暗流，远比课本上写的复杂得多。",
+      "attributes": {},
+      "initial_location": "mu_mansion"
+    },
+    {
+      "id": "dock_worker",
+      "name": "孙铁柱",
+      "bio": "海门码头装卸工，工人运动的积极分子，被地下组织发展为外围成员。利用码头工人的身份掩护，负责监视货物进出和走私活动。",
+      "personality": "粗犷豪爽，正义感强，文化不高但脑子灵活，讲义气",
+      "long_term_goal": "帮助地下组织掌控码头情报通道，揭露青帮与保密局的走私勾当",
+      "portrait_desc": "二十八九岁，膀大腰圆，穿汗衫短裤，肩上总搭着一条毛巾",
+      "opening_text": "太阳晒得码头的青石板发烫，你扛着一袋面粉从跳板上走下来，汗水顺着脖子往下淌。你叫孙铁柱，在海门码头扛了五年大包。三个月前老黄悄悄找到你，说组织需要你帮忙盯着码头上来来往往的'特殊货物'。从那以后，你扛货的眼睛就多了一份留意。",
+      "attributes": {},
+      "initial_location": "haimen_dock"
+    },
+    {
+      "id": "journalist_cover",
+      "name": "林子墨",
+      "bio": "《大公报》天津版记者，以新闻采访为掩护在各方势力间周旋。实际上与地下组织有秘密联系，利用记者身份刺探保密局动态。",
+      "personality": "机敏健谈，好奇心强，善于从闲聊中提取情报，有新闻理想",
+      "long_term_goal": "在新闻自由日益收窄的环境下，为组织提供公开渠道的情报，同时记录这个时代的真相",
+      "portrait_desc": "三十岁，戴鸭舌帽，挎着相机，口袋里塞着采访本，一副典型记者打扮",
+      "opening_text": "你在法租界的咖啡馆里翻着今天的报纸，一边在采访本上写写画画。昨天你以采访军调处为名，见到了一个重要的人。你叫林子墨，大公报的记者——至少名片上是这么印的。但你的真正读者，不在报摊上。",
+      "attributes": {},
+      "initial_location": "french_concession"
+    },
+    {
+      "id": "radio_operator",
+      "name": "陈鹤鸣",
+      "bio": "保密局天津站电讯科报务员，精通密码学和无线电技术。在日复一日的电报收发中，偶然截获了一组不属于任何已知频段的神秘信号。",
+      "personality": "内向沉稳，技术至上，对密码有近乎痴迷的热爱，不善交际",
+      "long_term_goal": "追踪那组神秘信号的来源，在真相面前做出自己的选择",
+      "portrait_desc": "二十六七岁，面色苍白（常年在地下室工作），戴厚眼镜，手指修长灵活",
+      "opening_text": "电讯室里只有发报机的嗒嗒声和日光灯的嗡鸣。你叫陈鹤鸣，在这间没有窗户的地下室里工作了一年半。昨晚值夜班时，你在38.7兆赫的频段上截获了一组奇怪的信号——它不属于本局任何已登记的电台，却使用了一种你从未见过的加密方式。",
+      "attributes": {},
+      "initial_location": "loc_tianjin_station"
+    },
+    {
+      "id": "merchant_informant",
+      "name": "钱宝昌",
+      "bio": "天津商会的布匹商人，表面上是与各方都有生意来往的精明商人。暗中是保密局的编外线人，但同时也在私下给地下组织传递消息，两头下注。",
+      "personality": "八面玲珑，唯利是图又留有底线，精于算计，善于在危险中找机会",
+      "long_term_goal": "在乱世中保全家业和性命，但局势恶化将迫使他最终选边站",
+      "portrait_desc": "四十出头，微胖，穿体面的长衫马褂，手腕上戴着金表，笑容满面",
+      "opening_text": "你在法租界的利顺德饭店包厢里签完最后一张合同，对面的日本遣返商人鞠了一躬离开。你叫钱宝昌，天津布匹行的老板。这年头做生意，光会算账不行，还得会看风向。保密局那边要你留意码头的动静，地下党的人上个月也来找过你。两头的人情债，迟早要还清一笔。",
+      "attributes": {},
+      "initial_location": "french_concession"
+    },
+    {
+      "id": "military_adjuster",
+      "name": "程立行",
+      "bio": "军调处天津执行小组的国方代表助理，少校军衔。表面执行停战监督，实则奉命监视共方代表动向。在与左蓝等共方人员的接触中，内心信念开始动摇。",
+      "personality": "正派刚直，有军人荣誉感，对内战前景感到迷茫，逐渐反思立场",
+      "long_term_goal": "在国共对抗的漩涡中寻找真正的正义，决定自己要站在哪一边",
+      "portrait_desc": "三十二岁，仪表堂堂，穿笔挺军装，佩少校军衔，面容严肃中带着书卷气",
+      "opening_text": "军调处天津办事处的会议室里，国共美三方代表刚刚结束又一次毫无结果的谈判。你叫程立行，国方代表团的助理。窗外，解放军和国军的部队仍在华北对峙。你奉命监视对面的共方代表，但那个叫左蓝的女人说的话，有些让你夜不能寐。",
+      "attributes": {},
+      "initial_location": "military_adjustment"
+    },
+    {
+      "id": "returning_agent",
+      "name": "韩光远",
+      "bio": "前军统外勤特工，因目睹太多暗杀暴行而心生厌倦。以养伤为由请调天津站后勤岗位，实则暗中与地下组织接触，试图弃暗投明。",
+      "personality": "沧桑疲惫，深藏不露，对暴力感到厌恶，在赎罪与自保间挣扎",
+      "long_term_goal": "在不暴露自身的情况下逐步脱离保密局，为地下组织提供最后一批关键情报后彻底隐退",
+      "portrait_desc": "三十五六岁，面容消瘦，左臂有旧伤，穿着朴素的棉布长衫，眼神深邃而警觉",
+      "opening_text": "你靠在天津站后勤仓库的门框上，看着院子里进进出出的同事们。你叫韩光远，曾经是军统外勤的一把好手。但那只在重庆任务中受伤的左臂，成了你请调后勤的完美借口。没人知道真正让你停下来的不是伤，而是噩梦——那些你亲手送走的人，开始夜夜出现在梦里。",
+      "attributes": {},
+      "initial_location": "loc_tianjin_station"
+    }
+  ],
+  "allow_custom_character": true,
+  "world_properties": [
+    {
+      "id": "national_tension",
+      "name": "国共军事对峙度",
+      "value": "60",
+      "rule": "取值范围0-100，反映内战爆发的紧迫程度。超过80时重庆和谈彻底破裂，低于40时和谈占主导。初始为60，表明山雨欲来的微妙平衡。此值影响情报价值与各方行为的激进程度。"
+    },
+    {
+      "id": "station_internal_faction",
+      "name": "天津站内部派系裂度",
+      "value": "45",
+      "rule": "取值范围0-100，衡量站内马奎（行动派）、陆桥山（情报派）与站长吴敬中之间的权力摩擦。越高越容易发生内斗、泄密与相互监视。余则成可利用此值周旋，但超过70会触发内部排查。"
+    },
+    {
+      "id": "deep_sea_trust",
+      "name": "深海信任度",
+      "value": "50",
+      "rule": "取值范围0-100，表示余则成在军统天津站内获得的综合信任。初始50为不冷不热的新人状态。低于20会遭到隔离审查，高于80可接触核心机密。完成任务、提供有价值情报可提升，引起怀疑则下降。"
+    },
+    {
+      "id": "hidden_front_morale",
+      "name": "地下组织活跃度",
+      "value": "35",
+      "rule": "取值范围0-100，表征共产党在天津的地下网络活跃程度。过低会导致情报出口不畅，过高容易暴露。余则成传递情报的行为会随此值波动：过高时敌人反间谍活动加剧。"
+    }
+  ],
+  "persistent_states": [
+    {
+      "id": "surface_peace",
+      "name": "双十协定的幻觉",
+      "description": "重庆谈判营造的短暂和平表象，天津各界耽于庆祝，实际上保密局正秘密推进潜伏计划。此状态下，公开场合的反共言行有所收敛，但私下密谋更加猖獗。",
+      "initially_active": true,
+      "expires_at": "1945-11-01T00:00"
+    },
+    {
+      "id": "witch_hunt_mood",
+      "name": "除奸阴云",
+      "description": "军统内部传达‘肃清内鬼’密令，人人自危的氛围笼罩天津站。此状态下，角色间互相举报的概率上升，余则成的暗号传递与秘密联络必须更加谨慎，但也可借机除掉对手。",
+      "initially_active": true,
+      "expires_at": null
+    },
+    {
+      "id": "dockyard_martial_law",
+      "name": "码头突击戒严",
+      "description": "因查缉走私，陆桥山暗中推动对海门码头仓库区的周期性封锁。此状态下，经由仓库区传递情报的成功率显著降低，但从南市茶馆或石灰镇洋房切入另辟蹊径可获得更高价值线索。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "concealed_ledger_fever",
+      "name": "密账之诱",
+      "description": "有传言称站长吴敬中在机要室或密道中藏匿私人账册与秘密裁决令，谁拿到谁就能控制天津站。此状态激活后，站内角色会私下探查密道，增加余则成暴露地下通道秘密的契机。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "emei_hunt",
+      "name": "峨眉峰大排查",
+      "description": "南京密令下达，全站进入峨眉峰代号排查状态。所有人员档案重新审核，出入站区需登记，私人通讯被监听。此状态下情报传递极度危险。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "cuiping_emergency",
+      "name": "翠平身份危机",
+      "description": "翠平的游击队出身面临暴露风险。王占金或其他知情者可能随时告发。此状态下必须优先处理翠平的安全问题。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "civil_war_outbreak",
+      "name": "全面内战爆发",
+      "description": "国共全面内战爆发，天津成为华北战场的后方枢纽。军事情报价值飙升，保密局加强反共行动，地下组织面临前所未有的压力。",
+      "initially_active": false,
+      "expires_at": null
+    },
+    {
+      "id": "tianjin_siege",
+      "name": "平津战役",
+      "description": "解放军兵临城下，天津进入战时状态。保密局开始销毁文件、转移资产、处决在押政治犯。这是潜伏者最后也是最危险的时刻。",
+      "initially_active": false,
+      "expires_at": null
+    }
+  ],
+  "cyclic_events": [
+    {
+      "id": "station_morning_meeting",
+      "description": "天津站每日晨会，站长吴敬中主持，通报近期任务和人事动态。",
+      "frequency_value": 1,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-01T08:30:00",
+      "expires_at": null
+    },
+    {
+      "id": "intel_drop_window",
+      "description": "组织安排的定期情报交接窗口，通常在黄记小馆或码头。",
+      "frequency_value": 5,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-03T20:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "madam_tea_party",
+      "description": "梅姐组织的太太聚会，翠平需要出席应酬。",
+      "frequency_value": 1,
+      "frequency_unit": "week",
+      "first_trigger": "1945-09-05T14:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "security_patrol",
+      "description": "天津站定期内部安全巡查，检查文件保密和人员动向。",
+      "frequency_value": 2,
+      "frequency_unit": "week",
+      "first_trigger": "1945-09-02T10:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "luqiaoshan_smuggling",
+      "description": "陆桥山借查缉走私之名在海门码头活动，实际上在暗中转运私货。这是观察其把柄的机会，但也可能撞上他的人。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-04T22:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "liya_patrol",
+      "description": "李涯到任后每隔两天进行一次不定时的站内巡查，检查各科室的异常行为和文件保管情况。所有人都如临大敌。",
+      "frequency_value": 2,
+      "frequency_unit": "day",
+      "first_trigger": "1945-10-15T09:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "cuiping_social_training",
+      "description": "翠平被安排参加梅姐组织的社交活动，学习太太礼仪。她常因不懂规矩闹出笑话，增加暴露风险。",
+      "frequency_value": 4,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-07T14:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "underground_radio_window",
+      "description": "地下组织约定的秘密电台联络时间窗口，通过预设频段接收上级指示。错过窗口意味着失联。",
+      "frequency_value": 7,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-05T02:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "xie_ruolin_visit",
+      "description": "谢若林不定期到天津站兜售情报或打听消息，他的出现往往意味着有新的情报在市面上流通。",
+      "frequency_value": 5,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-10T10:00:00",
+      "expires_at": null
+    },
+    {
+      "id": "military_situation_update",
+      "description": "华北战场态势通报，通过站内晨会或南京来电传达。国共军事力量对比的变化直接影响站内气氛和任务优先级。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "1945-09-02T08:00:00",
+      "expires_at": null
+    }
+  ],
+  "one_time_events": [
+    {
+      "id": "first_contact",
+      "description": "余则成首次与天津地下组织接头人在黄记小馆秘密会面，确认联络暗号和情报传递方式。",
+      "trigger_time": "1945-09-03T20:00:00"
+    },
+    {
+      "id": "makui_suspicion",
+      "description": "马奎开始怀疑站内有共产党卧底，暗中调查同事们的背景和行踪。",
+      "trigger_time": "1945-09-15T09:00:00"
+    },
+    {
+      "id": "luqiaoshan_scheme",
+      "description": "陆桥山密谋扳倒马奎、争夺行动队长一职，试图拉拢余则成加入联盟。",
+      "trigger_time": "1945-09-20T14:00:00"
+    },
+    {
+      "id": "emei_peak_investigation",
+      "description": "“峨眉峰”代号身份排查行动启动，站长吴敬中下令彻查站内所有人员。",
+      "trigger_time": "1945-10-10T08:00:00"
+    },
+    {
+      "id": "cuiping_cover_blown",
+      "description": "翠平的游击队出身被王占金认出，余则成必须立刻处理这个致命的安全漏洞。",
+      "trigger_time": "1945-10-25T16:00:00"
+    },
+    {
+      "id": "dai_li_inspection",
+      "description": "戴笠亲临天津视察，全站高度紧张，余则成既要表现忠诚又要保护秘密。",
+      "trigger_time": "1945-11-01T09:00:00"
+    },
+    {
+      "id": "zuo_lan_arrives",
+      "description": "左蓝以军调处共方代表身份抵达天津，余则成在公开场合与旧日恋人重逢，但两人只能以敌对阵营的身份相见。",
+      "trigger_time": "1945-09-25T10:00:00"
+    },
+    {
+      "id": "cuiping_arrival",
+      "description": "组织派遣翠平（陈桃花）到天津冒充余则成的妻子。这个前游击队长对城市生活一窍不通，需要你紧急调教。",
+      "trigger_time": "1945-09-10T15:00:00"
+    },
+    {
+      "id": "mu_liancheng_bribe",
+      "description": "汉奸穆连成企图通过向吴敬中行贿来保全财产，派侄女穆晚秋前来打探口风。此事牵扯到站长的私利。",
+      "trigger_time": "1945-09-18T11:00:00"
+    },
+    {
+      "id": "liya_transfer_in",
+      "description": "曾在延安潜伏多年的李涯（代号'佛龛'）被调至天津站任行动队长，接替马奎。一个远比马奎更危险的对手登场。",
+      "trigger_time": "1945-11-15T09:00:00"
+    },
+    {
+      "id": "xie_ruolin_marriage",
+      "description": "谢若林迎娶穆晚秋，这场婚姻背后是利益交换。天津站上层人物大多出席，是收集情报的良机。",
+      "trigger_time": "1945-12-20T18:00:00"
+    },
+    {
+      "id": "qiu_zhangui_arrested",
+      "description": "秋掌柜的药铺被保密局突袭搜查，秋掌柜被捕。地下组织的联络枢纽面临瘫痪，你必须启用备用方案。",
+      "trigger_time": "1946-01-15T06:00:00"
+    },
+    {
+      "id": "dai_li_death",
+      "description": "军统局长戴笠在南京因飞机失事身亡。军统系统权力真空，天津站内人心惶惶，各人忙于站队自保。",
+      "trigger_time": "1946-03-17T14:00:00"
+    },
+    {
+      "id": "zuo_lan_killed",
+      "description": "左蓝的真实身份被马奎查出，在一次秘密行动中被马奎杀害。你失去了恋人，但不能暴露悲伤。",
+      "trigger_time": "1946-02-14T22:00:00"
+    },
+    {
+      "id": "civil_war_begins",
+      "description": "国共全面内战爆发，和平谈判彻底破裂。天津站接到南京紧急密令：全面加强反共情报工作，不惜一切代价。",
+      "trigger_time": "1946-06-26T08:00:00"
+    },
+    {
+      "id": "liao_sanmin_sacrifice",
+      "description": "廖三民身份暴露，在紧急关头抱住李涯从楼上跳下同归于尽。他用生命保护了你和其他同志的安全。",
+      "trigger_time": "1948-06-15T21:00:00"
+    },
+    {
+      "id": "lu_qiaoshan_return",
+      "description": "被调离天津的陆桥山以国府巡查员身份回来报复，在站内制造新一轮权力风暴。最终被翠平击毙。",
+      "trigger_time": "1948-08-01T10:00:00"
+    },
+    {
+      "id": "tianjin_battle_begins",
+      "description": "解放军发动平津战役，天津被围。保密局开始销毁文件、转移黄金、处决在押政治犯。大势已定。",
+      "trigger_time": "1949-01-14T06:00:00"
+    },
+    {
+      "id": "secret_ledger_discovered",
+      "description": "有人意外发现了吴敬中藏匿私人账册的线索，站内为争夺这个把柄暗流涌动。",
+      "trigger_time": "1946-05-10T16:00:00"
+    },
+    {
+      "id": "us_marines_contact",
+      "description": "美国海军陆战队情报联络官秘密约见天津站代表，试图建立反共情报共享机制。这是一个敏感的外交事件。",
+      "trigger_time": "1945-10-05T15:00:00"
+    }
+  ],
+  "lorebook": [
+    {
+      "id": "station_hidden_cellar",
+      "keys": [
+        "军统天津站",
+        "地下通道"
+      ],
+      "secondary_keys": [],
+      "content": "天津站原址为前清某贝勒的别院，改建时发现书房下方有逃生密道，如今被站长吴敬中用作私人保险库，藏匿财产账册与秘密裁决令，除他之外无人知晓。暗道出口设在隔壁裁缝铺后院的假山水池之下。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "地点秘辛",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "haimen_smuggler_net",
+      "keys": [
+        "海门码头仓库区",
+        "走私"
+      ],
+      "secondary_keys": [
+        "海面鬼市"
+      ],
+      "content": "码头工人中流传“海面鬼市”的说法：每周三黎明前，驳船会载着禁运物资在灯塔背阴处交易。陆桥山背着站长利用仓库区做私货中转，余则成曾借查缉走私名义从这里递出过一份画着“茶叶”符号的密写情报。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "码头暗网",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "cpc_tianjin_network_detail",
+      "keys": [
+        "中共天津地下情报站",
+        "窑台"
+      ],
+      "secondary_keys": [
+        "黄记小馆",
+        "交通线"
+      ],
+      "content": "地下情报站采用单线联系与假身份制度，交通员老黄只认暗号不认脸，传递物通常是密写药水、火柴盒或者画有“茶叶”符号的包装纸。紧急情况下，可启用石灰镇洋房二楼窗口的花盆暗号：君子兰搬离窗台表示处境安全，换成仙人掌则警告接头取消。\n“窑台”在码头工人、中学教员和报馆排字工中都有关系网，但保持极端审慎，每扩大一点外围就先预备好疏散路线。余则成提供的情报通常经老黄交给骑自行车赶来的交通员，再渡海河送抵解放区通讯站，全程不超过四小时。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "地下党运作机制",
+      "related_entries": [
+        "deep_sea_trust",
+        "hidden_front_morale",
+        "haimen_smuggler_net"
+      ],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "qib_indirect_control",
+      "keys": [
+        "海河青帮分舵",
+        "海面鬼市"
+      ],
+      "secondary_keys": [
+        "走私",
+        "陆桥山"
+      ],
+      "content": "海河帮的账簿比天津站的机要档案还细密，每周三黎明前的“鬼市”交易记录一式三份，一份压在水底水泥管里，一份藏在南市茶馆的房梁上，第三份则由账房锁在铁箱里。这股势力实际上通过脚行控制着码头的货物进出，保密局若想全盘掌控码头情报流，非借青帮之手不可。\n但帮会内部也非铁板一块：舵主忌惮马奎的杀伐气，更倾向与陆桥山做长久买卖。余则成曾听陆桥山酒后漏言，说自己手里压着一份鬼市走私清单，关键时刻能要挟舵主交出整个码头的运转密码。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "青帮走私内情",
+      "related_entries": [
+        "haimen_smuggler_net",
+        "station_internal_faction"
+      ],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "余则成",
+      "keys": [
+        "余则成",
+        "峨眉峰"
+      ],
+      "secondary_keys": [],
+      "content": "余则成原为重庆军统外勤，1945年奉命赴南京刺杀汉奸李海丰。期间受恋人左蓝及上司吕宗方影响，被中共策反，代号“峨眉峰”。返回重庆获嘉奖后，被派往军统天津站（后改保密局）潜伏，成为插入国民党情报心脏的一枚铆钉。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "主角的双重身份与潜伏代号由来",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "翠平",
+      "keys": [
+        "翠平",
+        "陈桃花"
+      ],
+      "secondary_keys": [],
+      "content": "翠平原名陈桃花，曾任太行山区游击队长，脾气火爆直率。因接替出事的妹妹，被党组织紧急派往天津冒充余则成的夫人。起初对潜伏生活一窍不通，屡闹笑话，后在余则成和吴太太的调教下逐渐成熟，与余则成产生真情并结为夫妻，育有一女。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "冒牌夫人兼游击队长的成长与牺牲",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "李涯",
+      "keys": [
+        "李涯",
+        "佛龛"
+      ],
+      "secondary_keys": [],
+      "content": "李涯是军统精心培养的特务，曾化名冯剑潜伏延安第二保小任教，代号“佛龛”，潜伏长达数年。调回天津站后接替马奎出任行动队队长，心思缜密、执着狠辣，多次追查余则成夫妇真实身份，是余则成在站内最危险的对手。最终被地下党廖三民抱住坠楼同归于尽。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "来自延安的国民党潜伏特务，余则成的死敌",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "左蓝",
+      "keys": [
+        "左蓝",
+        "军调代表"
+      ],
+      "secondary_keys": [],
+      "content": "左蓝是中共地下党员、余则成的恋人，美丽英勇，有文化有追求。她引导余则成走上革命道路，后以共产党军调代表身份公开出现在天津，与余则成以敌对阵营身份相见却只能演戏。被马奎杀害时仍不知余则成与翠平是假夫妻，其死深深震撼了余则成。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "余则成的革命引路人与永远的爱人",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "吕宗方",
+      "keys": [
+        "吕宗方",
+        "刺杀李海丰"
+      ],
+      "secondary_keys": [],
+      "content": "吕宗方表面是军统情报处余则成的上司，实为中共地下党员。1945年奉派与余则成赴南京刺杀叛徒李海丰，行动前夕被军统下令由马奎枪杀。其遗志由左蓝完成，成功策反余则成。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "双重身份的上司与领路人",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "李海丰",
+      "keys": [
+        "李海丰",
+        "锄奸"
+      ],
+      "secondary_keys": [],
+      "content": "李海丰原为军统密码专家，1945年抗战胜利前夕叛投南京汪伪政权，激怒军统高层。余则成化名劳文池潜入伪政保总署电讯处，在吕宗方被杀后独自完成刺杀，此举使余则成成为军统功臣，也导致他后来遭受追杀、被共产党所救的转折。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "汉奸叛徒，促成余则成命运转折的刺杀目标",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "吴敬中",
+      "keys": [
+        "吴敬中",
+        "密账"
+      ],
+      "secondary_keys": [],
+      "content": "天津站站长吴敬中老谋深算，以青浦特训班师生关系将余则成调至身边，实则利用其为自己疯狂敛财。他受贿、敲诈汉奸穆连成，将秘密账册和金条藏于站内密道或私人保险库，并以副站长之位为饵，坐看马奎、陆桥山、李涯等人内斗，稳固自身地位。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "站长的敛财手段与办公室政治操控",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "陆桥山",
+      "keys": [
+        "陆桥山",
+        "走私"
+      ],
+      "secondary_keys": [],
+      "content": "陆桥山任保密局天津站情报处长，热衷办公室政治，主业是排挤竞争者以谋取副站长之位。暗中与海河青帮勾结，利用码头走私获利，并试图以查缉之名控制帮会。在陷害马奎后，自身亦被李涯设计，调离天津站，后以国府巡查员身份回来报复，最终死在翠平枪下。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "情报处长的走私网络与内部倾轧",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "马奎",
+      "keys": [
+        "马奎",
+        "行动队长"
+      ],
+      "secondary_keys": [],
+      "content": "马奎是保密局天津站行动队队长，作风凶悍，曾执行枪杀吕宗方的密令。他怀疑余则成身份，安放眼线暗中调查，并借打击青帮立威。在内部斗争中被陆桥山陷害为共产党的“峨眉峰”，最终死于非命，其妻子亦受到牵连。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "鲁莽的怀疑者与办公室政治的牺牲品",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "秋掌柜",
+      "keys": [
+        "秋掌柜",
+        "药铺接头"
+      ],
+      "secondary_keys": [],
+      "content": "秋掌柜是中共天津地下情报站的重要联络人，公开身份为药铺掌柜，负责为余则成传达指示、安排翠平到来等事宜。后被保密局逮捕，受尽酷刑仍严守秘密，未出卖同志，展现了地下党的坚贞。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "宁死不屈的药店联络员",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "谢若林",
+      "keys": [
+        "谢若林",
+        "情报掮客"
+      ],
+      "secondary_keys": [],
+      "content": "谢若林是就职于党通局的情报贩子，唯利是图，后娶穆晚秋为妻。他与李涯合作，收买叛徒、倒卖情报，试图挖出中共潜伏特工，直接威胁余则成安全。其名言‘嘴上全是主义，心里全是生意’尽显投机本质。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "金钱至上的情报掮客与婚姻交易",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "穆连成",
+      "keys": [
+        "穆连成",
+        "汉奸"
+      ],
+      "secondary_keys": [],
+      "content": "穆连成是抗战期间与日伪过从甚密的大汉奸。抗战胜利后为求自保，企图通过向吴敬中行贿（献出酒厂）和将其侄女晚秋嫁给余则成来保全财产，最终携带大量资产与日本情妇逃往日本。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "试图用金钱和联姻脱罪的旧汉奸",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "廖三民",
+      "keys": [
+        "廖三民",
+        "李涯之死"
+      ],
+      "secondary_keys": [],
+      "content": "廖三民是中共隐蔽在天津执法队的地下党员，身份暴露时，为掩护重要情报和战友，毅然抱住死敌李涯从楼上跳下，同归于尽。这一壮举除掉了余则成最大的内部威胁，也付出了生命的代价。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "与敌偕亡的潜伏英雄",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "副站长",
+      "keys": [
+        "副站长",
+        "办公室政治"
+      ],
+      "secondary_keys": [],
+      "content": "自内战以来，天津站内部吴敬中故意悬置副站长职位，使之成为部下争斗的目标。马奎、陆桥山、李涯为此互相陷害倾轧，余则成虽不主动参与，最终却被吴敬中提拔为副站长，继续充当其敛财的白手套，同时获得了更高的情报密级和更大的潜伏风险。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 100,
+      "scan_depth": 3,
+      "comment": "天津站权力斗争的焦点与余则成的晋升",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "军调处",
+      "keys": [
+        "军调处",
+        "军事调处"
+      ],
+      "secondary_keys": [
+        "停战",
+        "三方会谈"
+      ],
+      "content": "军事调处执行部（简称军调处/军调部）是1946年初根据停战协定成立的国共美三方联合机构，负责监督停战、调处军事冲突。天津设有执行小组，国共美各派代表常驻。表面维持和平，实则各方利用其为掩护搜集情报、安插人员。左蓝以共方代表身份在此公开活动。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "三方军事调处机构",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "双十协定",
+      "keys": [
+        "双十协定",
+        "重庆谈判"
+      ],
+      "secondary_keys": [
+        "和平",
+        "停战"
+      ],
+      "content": "1945年10月10日国共在重庆签署的协定，表面上承诺和平建国、避免内战。但国民党在签字的同时已在部署军队向解放区进攻，协定不过是拖延时间的权宜之计。天津站的情报任务正是在这虚假和平的掩护下展开的。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "历史背景：虚假和平",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "密写技术",
+      "keys": [
+        "密写",
+        "密写药水"
+      ],
+      "secondary_keys": [
+        "情报传递",
+        "暗号"
+      ],
+      "content": "地下情报传递的核心技术之一。使用特制药水在普通信纸上书写，肉眼看不见，需用碘酒或加热显影。余则成常用的方式是将密写内容写在包装纸背面，伪装成普通商品包装通过黄记小馆的灶台暗道传出。另外还有微型胶卷、空心硬币等手段。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "谍报技术细节",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "青浦特训班",
+      "keys": [
+        "青浦特训班",
+        "特训班"
+      ],
+      "secondary_keys": [
+        "军统训练",
+        "师生关系"
+      ],
+      "content": "军统在上海青浦设立的特务训练班，培养了大批特工人才。吴敬中是教官出身，余则成是学员，这层师生关系是吴敬中将余则成调至身边的重要纽带。特训班出身的人在军统系统中形成一个隐形的关系网。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "军统人事关系脉络",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "保密局改组",
+      "keys": [
+        "保密局",
+        "军统改组"
+      ],
+      "secondary_keys": [
+        "毛人凤",
+        "国防部"
+      ],
+      "content": "1946年戴笠死后，军统局被改组为国防部保密局，由毛人凤接任局长。改组过程中大量军统旧部被清洗或边缘化，天津站虽保留建制但经费紧缩。吴敬中趁此机会更加肆无忌惮地敛财，以应对不确定的政治前景。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "情报系统改组的影响",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "天津地理",
+      "keys": [
+        "天津",
+        "海河"
+      ],
+      "secondary_keys": [
+        "法租界",
+        "南市",
+        "码头"
+      ],
+      "content": "1945年的天津是华北最大的工商业城市和港口，海河穿城而过。原有英、法、日等多国租界，战后收回。南市是传统商业区，茶馆戏园林立；海门码头是货运枢纽；法租界一带则是西式建筑密集的洋人区。各势力在这座城市中犬牙交错，使其成为谍战的绝佳舞台。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "地理环境背景",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "佛龛行动",
+      "keys": [
+        "佛龛",
+        "延安潜伏"
+      ],
+      "secondary_keys": [
+        "李涯",
+        "冯剑"
+      ],
+      "content": "李涯的潜伏代号为'佛龛'，曾化名冯剑在延安第二保育小学任教师，暗中为军统搜集中共高层情报。其潜伏时间长达数年，积累了丰富的反间谍经验。这段经历使他对共产党的组织方式、暗号系统和行为模式有极深的了解，是余则成最难缠的对手。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 95,
+      "scan_depth": 3,
+      "comment": "李涯的延安潜伏史",
+      "related_entries": [
+        "李涯"
+      ],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "花盆暗号",
+      "keys": [
+        "花盆暗号",
+        "窗台信号"
+      ],
+      "secondary_keys": [
+        "君子兰",
+        "仙人掌",
+        "石灰镇"
+      ],
+      "content": "余则成与地下组织约定的紧急联络暗号：石灰镇洋房二楼窗台上的花盆是信号——摆放君子兰表示一切安全可以接头，换成仙人掌则警告接头取消、有危险。此外，晾衣绳上白色床单表示当日有情报待取，红色围巾表示紧急撤离。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "核心联络暗号体系",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "内战经济",
+      "keys": [
+        "金圆券",
+        "通货膨胀"
+      ],
+      "secondary_keys": [
+        "物价",
+        "法币"
+      ],
+      "content": "内战时期国统区经济急剧恶化，法币疯狂贬值，物价飞涨。天津站的经费日益捉襟见肘，吴敬中更加疯狂地搜刮民财。这种经济崩溃也使得保密局特务们人心涣散，许多人开始为退路做打算，客观上为地下组织的策反工作创造了条件。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "经济崩溃背景",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "审讯手段",
+      "keys": [
+        "审讯",
+        "逼供"
+      ],
+      "secondary_keys": [
+        "老虎凳",
+        "辣椒水"
+      ],
+      "content": "保密局的审讯手段包括但不限于：疲劳审讯（连续数日不让睡觉）、老虎凳、辣椒水灌鼻、电刑等。天津站的审讯室位于地下室，隔音良好。秋掌柜被捕后遭受严刑拷打仍未出卖同志，展现了地下党人的坚贞。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "特务审讯方法",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "电台侦测",
+      "keys": [
+        "电台",
+        "侦测"
+      ],
+      "secondary_keys": [
+        "无线电",
+        "测向"
+      ],
+      "content": "保密局拥有无线电测向设备，可以通过三角定位法追踪秘密电台的位置。地下组织的电台每次发报不能超过十五分钟，必须频繁更换位置和频率。天津站电讯科的监听任务之一就是搜索可疑无线电信号。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "反谍技术",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "单线联系",
+      "keys": [
+        "单线联系",
+        "组织纪律"
+      ],
+      "secondary_keys": [
+        "地下工作",
+        "接头"
+      ],
+      "content": "地下组织实行严格的单线联系制度：每个人只认识自己的上线和下线，不知道平行关系的同志身份。即使被捕，也最多暴露一条线上的两个人。余则成只与秋掌柜（或其替代者）单线联系，不直接接触其他地下组织成员。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "地下组织运作原则",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "平津战役",
+      "keys": [
+        "平津战役",
+        "天津战役"
+      ],
+      "secondary_keys": [
+        "解放",
+        "围城"
+      ],
+      "content": "1949年1月平津战役中，解放军对天津发动总攻，29小时即攻克全城。战前保密局疯狂销毁文件、处决政治犯、转移资产。余则成在最后关头传递的城防部署图，为减少攻城伤亡做出了关键贡献。天津解放标志着潜伏使命的终结。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "历史终局",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "戴笠之死",
+      "keys": [
+        "戴笠之死",
+        "飞机失事"
+      ],
+      "secondary_keys": [
+        "岱山",
+        "空难"
+      ],
+      "content": "1946年3月17日，军统局长戴笠乘专机从北平飞往上海途中，在南京附近岱山坠机身亡。官方说法是天气原因，但坊间传闻纷纭。戴笠之死导致军统系统大地震，各地站点人心惶惶，天津站内也出现权力真空争夺。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "关键历史事件",
+      "related_entries": [
+        "保密局改组"
+      ],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "深海身份",
+      "keys": [
+        "深海",
+        "代号"
+      ],
+      "secondary_keys": [
+        "潜伏",
+        "策反"
+      ],
+      "content": "\"深海\"是余则成在中共地下情报系统中的代号，取意\"深入敌人心脏、如海一般沉静\"。此代号仅有极少数高层知晓，地下组织日常联络时不使用代号，而是通过暗号系统确认身份。\"深海\"的存在是保密局天津站最大的安全漏洞。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 95,
+      "scan_depth": 3,
+      "comment": "主角代号的含义与保密层级",
+      "related_entries": [
+        "余则成"
+      ],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "太太外交",
+      "keys": [
+        "太太外交",
+        "太太圈"
+      ],
+      "secondary_keys": [
+        "梅姐",
+        "打牌",
+        "喝茶"
+      ],
+      "content": "天津站特务们的太太们形成了一个独特的社交圈，以打牌、喝茶、逛街为日常。梅姐（吴太太）是圈中核心，借社交之名打探各家动态，为吴敬中收集站内人员私下言行。翠平被迫融入这个圈子，她的游击队做派常惹人侧目。太太们之间的闲言碎语有时比正式情报更加致命。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "太太社交圈的情报功能",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "左蓝之死",
+      "keys": [
+        "左蓝",
+        "牺牲",
+        "暗杀",
+        "中毒"
+      ],
+      "secondary_keys": [
+        "余则成",
+        "感情",
+        "暴露"
+      ],
+      "content": "左蓝是中共地下党员，也是余则成的初恋与革命引路人。她在天津执行任务期间身份暴露，被军统特务追杀。余则成试图营救但未能成功，左蓝最终牺牲。她的死对余则成产生了极其深远的影响——既坚定了他的革命信念，也让他内心深处埋下了永远无法愈合的伤痕。此后余则成在面对危险时，常以左蓝为精神支柱。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 60,
+      "scan_depth": 3,
+      "comment": "左蓝牺牲经过与影响",
+      "related_entries": [
+        "左蓝",
+        "余则成"
+      ]
+    },
+    {
+      "id": "马奎覆灭",
+      "keys": [
+        "马奎",
+        "处决",
+        "叛徒",
+        "暴露"
+      ],
+      "secondary_keys": [
+        "峨眉峰",
+        "调查",
+        "李涯"
+      ],
+      "content": "马奎是天津站行动队长，能力出众但为人粗暴。他在追查'峨眉峰'身份时最为积极，因为他本人就曾是中共叛徒——他害怕自己的旧底被翻出。马奎通过分析电报格式和接头暗号等线索一度接近真相，但余则成巧妙设计将嫌疑转移。最终马奎因其他问题（贪腐或被构陷）落马，被清除出天津站。他的覆灭是站内权力格局剧变的转折点。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 55,
+      "scan_depth": 3,
+      "comment": "马奎覆灭经过",
+      "related_entries": [
+        "马奎",
+        "余则成"
+      ]
+    },
+    {
+      "id": "翠平险情",
+      "keys": [
+        "翠平",
+        "暴露",
+        "农村",
+        "习惯",
+        "穿帮"
+      ],
+      "secondary_keys": [
+        "太太",
+        "社交",
+        "身份"
+      ],
+      "content": "翠平原是冀中军区的游击队员，大字不识几个，性格泼辣直爽。她被组织安排假扮余则成的太太，以掩护其地下工作。然而翠平的农村习惯屡屡在上层社交场合穿帮：随地吐痰、大声说话、不会用刀叉、对太太们的话题一窍不通。每次险情都需余则成或秋掌柜紧急善后。翠平也在不断学习适应，但骨子里的朴实与刚烈始终是她最大的破绽和最真实的魅力。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 60,
+      "scan_depth": 3,
+      "comment": "翠平身份危机细节",
+      "related_entries": [
+        "翠平",
+        "余则成"
+      ]
+    },
+    {
+      "id": "电讯科运作",
+      "keys": [
+        "电讯科",
+        "电报",
+        "密码",
+        "破译",
+        "监听"
+      ],
+      "secondary_keys": [
+        "余则成",
+        "发报",
+        "频率"
+      ],
+      "content": "天津站电讯科负责无线电通讯的收发与监控。余则成兼管电讯科事务，这给了他接触机密电报的便利，但也意味着他必须格外小心——每份经手的电报都有记录。电讯科日常工作包括：监听可疑频段、破译截获的共党电文、为行动队提供通讯支持。站内电报使用分级密码本，余则成的职务让他能接触乙级及以上密码。发报需登记时间、频率、字数。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 2,
+      "comment": "电讯科日常运作与余则成的便利",
+      "related_entries": [
+        "余则成",
+        "天津站日常"
+      ]
+    },
+    {
+      "id": "天津站日常",
+      "keys": [
+        "天津站",
+        "日常",
+        "早会",
+        "点名",
+        "值班"
+      ],
+      "secondary_keys": [
+        "吴敬中",
+        "站务",
+        "例会"
+      ],
+      "content": "天津站每日早晨8时举行例会，由站长吴敬中主持。各科室汇报前日工作进展、当日计划。李涯的情报科通常汇报共党动向分析，马奎/陆桥山的行动队报告抓捕行动，余则成的电讯科通报电报往来概要。例会后各科室各自运作。站内实行严格的签到签退制度，外出需登记。站内互相监视气氛浓厚，任何异常行为都可能被记录在案。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "天津站日常运作",
+      "related_entries": [
+        "吴敬中",
+        "余则成",
+        "李涯"
+      ]
+    },
+    {
+      "id": "行动队任务",
+      "keys": [
+        "行动队",
+        "抓捕",
+        "跟踪",
+        "搜查",
+        "刑讯"
+      ],
+      "secondary_keys": [
+        "马奎",
+        "陆桥山",
+        "暗杀"
+      ],
+      "content": "天津站行动队是执行外勤任务的武装力量，负责：跟踪可疑目标、突袭共党据点、抓捕嫌疑人、执行暗杀命令、押送犯人。行动队员多为受过特训的老手，配备手枪和短刀。行动前需由站长或副站长签发行动令。大规模行动（如围捕）需协调宪兵和警察配合。行动队长（马奎/陆桥山）拥有一定的现场决断权，但重要目标必须活口带回审讯。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "行动队职能与流程",
+      "related_entries": [
+        "马奎",
+        "陆桥山"
+      ]
+    },
+    {
+      "id": "吴站长用人术",
+      "keys": [
+        "吴敬中",
+        "权术",
+        "平衡",
+        "制衡"
+      ],
+      "secondary_keys": [
+        "站长",
+        "手腕",
+        "袖手旁观"
+      ],
+      "content": "吴敬中深谙官场权术，其管理天津站的核心策略是'制衡'：让李涯与陆桥山/马奎互相竞争牵制，让各科室互相监督。他自己则高坐钓鱼台，坐收渔利。吴敬中从不亲自动手做脏活，总让下属互相揭发、互相消耗。他对下属的忠诚度判断极准，但贪财好色的弱点也让他容易被利用。余则成正是利用吴敬中的贪婪本性，通过送礼和利益输送来维护信任关系。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 55,
+      "scan_depth": 3,
+      "comment": "吴敬中的管理权术",
+      "related_entries": [
+        "吴敬中",
+        "李涯",
+        "陆桥山"
+      ]
+    },
+    {
+      "id": "李涯执念",
+      "keys": [
+        "李涯",
+        "执念",
+        "忠诚",
+        "信仰"
+      ],
+      "secondary_keys": [
+        "反共",
+        "查内鬼",
+        "不眠"
+      ],
+      "content": "李涯是天津站最危险的人物——不是因为他狡诈，而是因为他真诚。他是军统中少有的真正信仰'党国'理想的人，不贪财不好色，工作起来不要命。他追查共党卧底近乎偏执，常年睡眠不足，办公桌上堆满分析材料。李涯的可怕在于他的纯粹：没有弱点可以利用，没有欲望可以收买，只有那股'誓死反共'的执念驱动着他不断逼近真相。余则成视他为最大威胁。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 60,
+      "scan_depth": 3,
+      "comment": "李涯性格深度",
+      "related_entries": [
+        "李涯",
+        "余则成"
+      ]
+    },
+    {
+      "id": "谢若林生意经",
+      "keys": [
+        "谢若林",
+        "情报",
+        "买卖",
+        "生意"
+      ],
+      "secondary_keys": [
+        "中间人",
+        "价格",
+        "消息"
+      ],
+      "content": "谢若林是天津站的'情报掮客'，他将情报视为纯粹的商品——不问来源不问去向，只看价钱。他的名言是'两根金条放在一起，分不出哪根是高尚的哪根是龌龊的'。谢若林与各方势力都有交易：军统、共党、日伪残余、商界，谁出价高就卖给谁。他是余则成获取情报的重要渠道之一，但也极其危险——因为他同样可能把余则成的秘密卖给出价更高的人。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 2,
+      "comment": "谢若林的情报交易",
+      "related_entries": [
+        "谢若林",
+        "余则成"
+      ]
+    },
+    {
+      "id": "佛龛详细",
+      "keys": [
+        "佛龛",
+        "情报传递",
+        "粉笔记号",
+        "暗格"
+      ],
+      "secondary_keys": [
+        "余则成",
+        "秋掌柜",
+        "死信箱"
+      ],
+      "content": "余则成与秋掌柜之间的情报传递系统以翠平家中的佛龛为核心：佛龛底座内设有暗格，可藏匿微缩胶卷或纸条。日常流程为：余则成将情报用密写药水写在普通纸张上（或拍成缩微胶卷），放入暗格；翠平在买菜时通过花盆暗号通知秋掌柜；秋掌柜择机以访客身份上门取走。紧急情况下另有备用方案：公园长椅下的报纸、理发店特定座位的杂志夹层等。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "佛龛情报系统详细运作",
+      "related_entries": [
+        "佛龛行动",
+        "余则成",
+        "翠平",
+        "秋掌柜"
+      ]
+    },
+    {
+      "id": "军统内部派系",
+      "keys": [
+        "军统",
+        "派系",
+        "中统",
+        "嫡系"
+      ],
+      "secondary_keys": [
+        "保密局",
+        "CC系",
+        "复兴社"
+      ],
+      "content": "军统（保密局）内部并非铁板一块，存在多重派系：戴笠嫡系（浙江帮）、黄埔系、地方势力、降日人员等。天津站的吴敬中属浙江派余脉，李涯出身青浦特训班（中坚骨干），陆桥山是北方地方势力代表。各派系争夺资源和升迁机会，互相倾轧。同时军统与中统（CC系）的明争暗斗从未停歇——两个特务系统争抢功劳、互挖墙脚。这种内耗客观上为余则成提供了操作空间。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 2,
+      "comment": "军统内部派系结构",
+      "related_entries": [
+        "保密局改组",
+        "吴敬中",
+        "李涯"
+      ]
+    },
+    {
+      "id": "晚宴交际",
+      "keys": [
+        "晚宴",
+        "交际",
+        "舞会",
+        "宴请"
+      ],
+      "secondary_keys": [
+        "太太",
+        "应酬",
+        "消息"
+      ],
+      "content": "天津站高层经常举办或参加各种晚宴和舞会——这既是社交需要，也是情报工作的延伸。太太们在晚宴上的闲聊往往泄露丈夫的工作动向。余则成和翠平必须频繁出席这类场合，翠平的不适应成为巨大隐患。晚宴上各方势力互相试探：谁与谁走得近、谁最近频繁外出、谁突然阔绰了——都是有心人的观察目标。站长太太的茶话会更是消息集散地。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "晚宴社交场景",
+      "related_entries": [
+        "太太外交",
+        "翠平"
+      ]
+    },
+    {
+      "id": "接头暗语",
+      "keys": [
+        "暗语",
+        "接头",
+        "切口",
+        "暗号"
+      ],
+      "secondary_keys": [
+        "联络",
+        "确认身份"
+      ],
+      "content": "地下工作中的接头暗语是确认身份的关键手段。常见形式包括：约定问答对（如'今天天气不错'——'是的，适合去紫竹林走走'）、特定物品展示（左手持报纸、胸口别白色花）、时间地点组合（双数日上午10点鱼市第三个摊位）。暗语定期更换以防泄露。紧急接头有简化暗号，如特定方式敲门。暗语被破译是地下工作最致命的威胁之一。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 2,
+      "comment": "接头暗语规则",
+      "related_entries": [
+        "单线联系",
+        "花盆暗号"
+      ]
+    },
+    {
+      "id": "穆连成商路",
+      "keys": [
+        "穆连成",
+        "走私",
+        "商路",
+        "货物"
+      ],
+      "secondary_keys": [
+        "海门",
+        "物资",
+        "利润"
+      ],
+      "content": "穆连成经营着天津最大的地下走私网络，从海门码头到法租界的路线是他的命脉。他的商路不仅运输紧俏物资（盘尼西林、布匹、五金），也暗中为各方传递人员和文件。穆连成奉行'黑白通吃'原则：给军统交保护费、给共党行方便、给日伪残余销赃。他的价值在于中立性——所有人都需要他的渠道，所以所有人都默许他的存在。但一旦平衡被打破，他就是最脆弱的环节。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "穆连成的走私商路",
+      "related_entries": [
+        "穆连成",
+        "海门走私网"
+      ]
+    },
+    {
+      "id": "廖三民忠义",
+      "keys": [
+        "廖三民",
+        "忠义",
+        "底层",
+        "干脏活"
+      ],
+      "secondary_keys": [
+        "行动队",
+        "兄弟",
+        "出生入死"
+      ],
+      "content": "廖三民是行动队的资深队员，枪法精准、身手利落，曾多次执行暗杀和抓捕任务。他不懂政治权谋，只认'谁对我好我就跟谁'的江湖义气。马奎对他有知遇之恩，所以他死心塌地追随；马奎倒台后他陷入迷茫。廖三民代表了军统底层特务的悲哀——出生入死干脏活，却永远是大人物的棋子。如果余则成能争取到他的信任，将获得一个危险但忠诚的盟友。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "廖三民性格与潜力",
+      "related_entries": [
+        "廖三民",
+        "马奎"
+      ]
+    },
+    {
+      "id": "天津租界",
+      "keys": [
+        "租界",
+        "法租界",
+        "英租界",
+        "意租界"
+      ],
+      "secondary_keys": [
+        "天津",
+        "势力范围",
+        "管辖"
+      ],
+      "content": "1946-1949年的天津虽然租界已名义上收回，但各前租界区仍保有明显的外国色彩和复杂的势力格局。法租界区域的咖啡馆和舞厅是上层社交场所；前英租界区域的银行和洋行仍是金融中心。不同区域之间的管辖权模糊地带是地下活动的温床——军统、中统、共党、帮派、外国势力都在这些灰色地带活动。追踪者进入前租界区域往往会'跟丢'目标。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 45,
+      "scan_depth": 2,
+      "comment": "天津租界地理与势力",
+      "related_entries": [
+        "天津地理"
+      ]
+    },
+    {
+      "id": "国共停战破裂",
+      "keys": [
+        "停战",
+        "破裂",
+        "和谈",
+        "全面内战"
+      ],
+      "secondary_keys": [
+        "马歇尔",
+        "军调处",
+        "撕毁"
+      ],
+      "content": "1946年初国共在美国调停下达成停战协议，军事调处执行部（军调处）负责监督。但双方互不信任，停战期间小规模冲突不断。1946年6月蒋介石撕毁停战协议，全面内战爆发。这一背景意味着：军调处这个曾经的'中立'机构变成了废纸，原本在军调处活动的各方情报人员需要迅速转移或隐蔽。余则成的'军调处时期'身份变成了一把双刃剑。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 50,
+      "scan_depth": 2,
+      "comment": "停战破裂背景",
+      "related_entries": [
+        "军调处",
+        "双十协定"
+      ]
+    },
+    {
+      "id": "共党策反术",
+      "keys": [
+        "策反",
+        "争取",
+        "瓦解",
+        "起义"
+      ],
+      "secondary_keys": [
+        "组织",
+        "动摇",
+        "投诚"
+      ],
+      "content": "中共在解放战争中大量运用策反战术：针对国民党军政人员的不满情绪，通过地下关系逐步拉拢。策反对象通常具备以下特征：对腐败不满、有旧同学/亲友在共方、仕途受阻心生怨恨、或是已被抓住把柄的人。策反过程极为耐心——先建立信任，再逐步透露身份，最后提出合作。一旦成功，被策反者比原有地下党更难被怀疑。天津站内就有多人已暗中动摇。",
+      "position": "after_char",
+      "enabled": true,
+      "constant": false,
+      "priority": 55,
+      "scan_depth": 2,
+      "comment": "中共策反术",
+      "related_entries": [
+        "余则成",
+        "单线联系"
+      ]
+    }
+  ],
+  "organizations": [
+    {
+      "id": "org_tianjin_secret_station",
+      "name": "保密局天津站",
+      "type": "情报机构",
+      "stance": "敌对",
+      "aliases": [
+        "天津站",
+        "军统天津站",
+        "保密局驻天津站"
+      ],
+      "description": "1946年国防部保密局在天津设立的分支机构，实际前身为军统天津站。负责华北地区情报搜集、反共特务行动与内部监控。站长吴敬中老谋深算，站内派系林立，行动队长马奎、情报处长陆桥山等各怀心思，中共特工“深海”（余则成）正潜伏其中，在办公室政治与真实谍战之间传递情报。",
+      "parent_org": "org_national_security_bureau",
+      "leader": "npc_wu_jingzhong",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "站长"
+        },
+        {
+          "rank": 2,
+          "title": "处长/队长"
+        },
+        {
+          "rank": 3,
+          "title": "特工/办事员"
+        }
+      ]
+    },
+    {
+      "id": "org_national_security_bureau",
+      "name": "国防部保密局",
+      "type": "情报机构",
+      "stance": "敌对",
+      "aliases": [
+        "保密局本局",
+        "军统局",
+        "保密局"
+      ],
+      "description": "原军统局于1946年改组后的国防部直属情报机关，主持全国反共特务活动与内部清洗。局长毛人凤通过密令遥控各地站点，对天津站的派系内斗睁眼闭眼，借力打力。",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "局长"
+        },
+        {
+          "rank": 2,
+          "title": "副局长/办公室主任"
+        },
+        {
+          "rank": 3,
+          "title": "处长/区站站长"
+        },
+        {
+          "rank": 4,
+          "title": "特派员/督察"
+        }
+      ]
+    },
+    {
+      "id": "org_cpc_tianjin_underground",
+      "name": "中共天津地下情报站",
+      "type": "地下组织",
+      "stance": "友善",
+      "aliases": [
+        "窑台",
+        "天津城工组",
+        "地下党"
+      ],
+      "description": "直属中共华北局城工部，代号“窑台”，负责搜集国民党军警宪特动态与传递指示。交通员老黄以黄记小馆为联络点，利用灶台地道与码头排水渠构成一条秘密交通线，接收“深海”余则成送出的密写情报。",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "城工委书记"
+        },
+        {
+          "rank": 2,
+          "title": "情报组长"
+        },
+        {
+          "rank": 3,
+          "title": "交通员/观察员"
+        }
+      ]
+    },
+    {
+      "id": "org_qinggang_haihe",
+      "name": "海河青帮分舵",
+      "type": "帮派",
+      "stance": "中立",
+      "aliases": [
+        "海河帮",
+        "码头青帮",
+        "海面鬼市"
+      ],
+      "description": "盘踞海门码头与南市的青帮分支，掌控装卸工、茶社与戏园。舵主对外自称木器商人，实则操纵“海面鬼市”走私与情报贩卖。陆桥山暗中与其勾连，以查缉为名抽成获利，马奎则欲借打击帮会立威。",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "舵主"
+        },
+        {
+          "rank": 2,
+          "title": "账房/当家"
+        },
+        {
+          "rank": 3,
+          "title": "帮众/脚行头"
+        }
+      ]
+    },
+    {
+      "id": "org_us_military_intel_tianjin",
+      "name": "美国海军陆战队天津情报联络组",
+      "type": "军事机构",
+      "stance": "敌对",
+      "aliases": [
+        "美军联络组",
+        "陆战队情报处"
+      ],
+      "description": "1945年9月底随美军在塘沽登陆后设立的小型情报小组，表面协助遣返日俘，实则监视中共势力并评估国民党军战力。与天津站通过联络官交换部分反共情报，但美方对保密局内斗嗤之以鼻。",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "联络组组长"
+        },
+        {
+          "rank": 2,
+          "title": "情报分析官"
+        },
+        {
+          "rank": 3,
+          "title": "译电员/调查员"
+        }
+      ]
+    }
+  ],
+  "npc_relationships": [],
+  "org_relationships": [
+    {
+      "a": "org_tianjin_secret_station",
+      "b": "org_national_security_bureau",
+      "type": "从属",
+      "description": "天津站直属于国防部保密局，站长吴敬中受局长毛人凤节制，但拥有华北行动的实际裁量权。"
+    },
+    {
+      "a": "org_tianjin_secret_station",
+      "b": "org_cpc_tianjin_underground",
+      "type": "敌对",
+      "description": "你死我活的地下对抗，天津站核心任务便是破获中共地下网络，“深海”则是插在敌营心脏的一柄暗刃。"
+    },
+    {
+      "a": "org_tianjin_secret_station",
+      "b": "org_qinggang_haihe",
+      "type": "竞争",
+      "description": "陆桥山私下与海河帮合作走私，马奎则伺机拿帮会开刀，天津站内部两种态度使双方关系忽冷忽热。"
+    },
+    {
+      "a": "org_us_military_intel_tianjin",
+      "b": "org_tianjin_secret_station",
+      "type": "同盟",
+      "description": "双方通过联络官交换反共情报与气象观测数据，但互相提防，美方常绕过天津站直接搜集情报。"
+    },
+    {
+      "a": "org_cpc_tianjin_underground",
+      "b": "org_qinggang_haihe",
+      "type": "同盟",
+      "description": "地下组织偶尔借用青帮的码头渠道转移物资，但互相提防，保持极度审慎的距离。"
+    },
+    {
+      "a": "org_us_military_intel_tianjin",
+      "b": "org_cpc_tianjin_underground",
+      "type": "敌对",
+      "description": "美方将共产党视为意识形态对手，暗中协助保密局追踪地下组织活动。"
+    },
+    {
+      "a": "org_national_security_bureau",
+      "b": "org_qinggang_haihe",
+      "type": "同盟",
+      "description": "保密局本局对地方站点利用帮会势力的做法睁一只眼闭一只眼，只要不影响大局。"
+    }
+  ],
+  "story_tree": {
+    "trees": [
+      {
+        "id": "identity_crisis",
+        "name": "峨眉峰追查",
+        "description": "围绕'峨眉峰'代号的排查行动，余则成(玩家)必须在不暴露身份的情况下生存",
+        "icon": "🔍",
+        "nodes": [
+          {
+            "id": "ic_suspicion_rises",
+            "name": "疑云初起",
+            "type": "auto",
+            "description": "马奎凭直觉怀疑站内有共产党潜伏，开始暗中观察每一个人的言行举止。",
+            "condition": "",
+            "requires": [],
+            "on_complete_unlock": [
+              "ic_makui_investigation"
+            ],
+            "effects": {
+              "notify": "【身份危机】马奎开始怀疑站内有内鬼，你感到一双眼睛在暗中注视着你",
+              "inject_prompt": "马奎最近行为反常，总是有意无意地出现在你附近，似乎在监视什么人。站内气氛开始紧张。",
+              "set_var": [
+                {
+                  "var": "makui_suspicion_level",
+                  "value": 1
+                }
+              ]
+            },
+            "position": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": "ic_makui_investigation",
+            "name": "马奎的调查",
+            "type": "timed",
+            "duration_turns": 4,
+            "description": "马奎安排眼线跟踪站内人员，收集可疑行为证据。你必须格外小心。",
+            "requires": [
+              "ic_suspicion_rises"
+            ],
+            "on_complete_unlock": [
+              "ic_frame_or_deflect"
+            ],
+            "effects": {
+              "notify": "【身份危机】马奎已经开始有系统地调查站内人员",
+              "inject_prompt": "马奎的调查越来越深入，他安排手下跟踪多名同事。有人报告说，马奎对你的日常行踪产生了兴趣。",
+              "set_var": [
+                {
+                  "var": "makui_suspicion_level",
+                  "value": 2
+                }
+              ]
+            },
+            "position": {
+              "x": 1,
+              "y": 0
+            }
+          },
+          {
+            "id": "ic_frame_or_deflect",
+            "name": "转移怀疑",
+            "type": "choice",
+            "description": "马奎即将锁定嫌疑人。你必须决定如何应对这场排查。",
+            "requires": [
+              "ic_makui_investigation"
+            ],
+            "on_complete_unlock": [],
+            "choices": [
+              {
+                "id": "ic_frame_makui",
+                "label": "借刀杀人",
+                "description": "利用陆桥山与马奎的矛盾，将嫌疑巧妙转嫁到马奎身上",
+                "effects": {
+                  "notify": "【身份危机】你成功利用内部矛盾将怀疑转向马奎自己",
+                  "set_var": [
+                    {
+                      "var": "makui_framed",
+                      "value": true
+                    },
+                    {
+                      "var": "makui_suspicion_level",
+                      "value": 0
+                    }
+                  ],
+                  "fire_events": [
+                    "makui_downfall"
+                  ]
+                },
+                "unlock": [
+                  "ic_liya_arrives"
+                ]
+              },
+              {
+                "id": "ic_lay_low",
+                "label": "隐忍蛰伏",
+                "description": "暂停一切情报活动，以时间换取安全，等待马奎的注意力转移",
+                "effects": {
+                  "notify": "【身份危机】你暂停了情报活动，保密局的怀疑暂时平息",
+                  "set_var": [
+                    {
+                      "var": "intel_frozen",
+                      "value": true
+                    },
+                    {
+                      "var": "makui_suspicion_level",
+                      "value": 1
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ic_emei_investigation"
+                ]
+              },
+              {
+                "id": "ic_sacrifice_pawn",
+                "label": "弃子求生",
+                "description": "牺牲一个外围联络点来满足马奎的调查欲望，代价是一条交通线的暴露",
+                "effects": {
+                  "notify": "【身份危机】你忍痛牺牲了一个联络点，马奎暂时满足了",
+                  "set_var": [
+                    {
+                      "var": "courier_line_compromised",
+                      "value": true
+                    },
+                    {
+                      "var": "makui_suspicion_level",
+                      "value": 0
+                    }
+                  ],
+                  "state_change": [
+                    {
+                      "var": "hidden_front_morale",
+                      "op": "add",
+                      "value": -10
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ic_emei_investigation"
+                ]
+              }
+            ],
+            "effects": {},
+            "position": {
+              "x": 2,
+              "y": 0
+            }
+          },
+          {
+            "id": "ic_emei_investigation",
+            "name": "峨眉峰排查",
+            "type": "timed",
+            "duration_turns": 5,
+            "description": "南京下令彻查'峨眉峰'代号，吴敬中亲自主持排查行动。全站进入高度警戒。",
+            "requires": [
+              "ic_frame_or_deflect"
+            ],
+            "on_complete_unlock": [
+              "ic_emei_resolution"
+            ],
+            "effects": {
+              "notify": "【峨眉峰】南京密令：彻查'峨眉峰'真实身份，天津站全员接受审查",
+              "inject_prompt": "站长吴敬中召开紧急会议，宣布南京方面下达密令：必须在一个月内查明代号'峨眉峰'的共产党潜伏人员身份。所有人员的档案都要重新审核。",
+              "activate_state": [
+                "emei_hunt"
+              ]
+            },
+            "position": {
+              "x": 3,
+              "y": 1
+            }
+          },
+          {
+            "id": "ic_liya_arrives",
+            "name": "李涯登场",
+            "type": "auto",
+            "description": "马奎倒台后，从延安归来的李涯被调任天津站行动队长，他远比马奎更加危险。",
+            "requires": [
+              "ic_frame_or_deflect"
+            ],
+            "on_complete_unlock": [
+              "ic_emei_investigation"
+            ],
+            "effects": {
+              "notify": "【新威胁】李涯调任天津站行动队长——一个曾在延安潜伏多年的反共专家",
+              "inject_prompt": "一个瘦削冷峻的男人出现在天津站，他叫李涯，代号'佛龛'，曾在延安潜伏数年。所有人都感觉到，这个人比马奎危险十倍。",
+              "reveal_npcs": [
+                "npc_li_ya"
+              ]
+            },
+            "position": {
+              "x": 3,
+              "y": -1
+            }
+          },
+          {
+            "id": "ic_emei_resolution",
+            "name": "峨眉峰的命运",
+            "type": "choice",
+            "description": "排查行动进入最后阶段，你必须做出决定性的选择来终结这场危机。",
+            "requires": [
+              "ic_emei_investigation"
+            ],
+            "choices": [
+              {
+                "id": "ic_redirect_emei",
+                "label": "嫁祸他人",
+                "description": "利用盛乡（吉世光）的假身份，将'峨眉峰'的嫌疑栽到他头上",
+                "effects": {
+                  "notify": "【峨眉峰】你将嫌疑成功转嫁，盛乡的真实身份暴露",
+                  "set_var": [
+                    {
+                      "var": "sheng_xiang_exposed",
+                      "value": true
+                    }
+                  ],
+                  "fire_events": [
+                    "sheng_xiang_arrest"
+                  ]
+                },
+                "unlock": [
+                  "ic_aftermath"
+                ]
+              },
+              {
+                "id": "ic_deep_cover",
+                "label": "主动出击",
+                "description": "向吴敬中提供一份精心伪造的调查报告，将自己塑造成排查功臣",
+                "effects": {
+                  "notify": "【峨眉峰】你反守为攻，成为排查行动的'功臣'",
+                  "set_var": [
+                    {
+                      "var": "deep_sea_trust",
+                      "op": "add",
+                      "value": 15
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ic_aftermath"
+                ]
+              }
+            ],
+            "effects": {},
+            "position": {
+              "x": 4,
+              "y": 0
+            }
+          },
+          {
+            "id": "ic_aftermath",
+            "name": "风波之后",
+            "type": "auto",
+            "description": "峨眉峰排查暂告段落，但新的危险已在酝酿。",
+            "requires": [
+              "ic_emei_resolution"
+            ],
+            "effects": {
+              "notify": "【身份危机】这一轮排查暂时过去了，但你知道，更大的风暴正在来临",
+              "deactivate_lore": [],
+              "set_var": [
+                {
+                  "var": "emei_crisis_resolved",
+                  "value": true
+                }
+              ]
+            },
+            "position": {
+              "x": 5,
+              "y": 0
+            }
+          }
+        ],
+        "_groupX": 40,
+        "_groupY": 40
+      },
+      {
+        "id": "power_struggle",
+        "name": "副站长之争",
+        "description": "天津站内部围绕副站长职位的权力斗争，各方势力此消彼长",
+        "icon": "⚔️",
+        "nodes": [
+          {
+            "id": "ps_vacancy",
+            "name": "虚位以待",
+            "type": "auto",
+            "description": "吴敬中有意悬置副站长职位，坐观马奎、陆桥山等人互斗以巩固自身权威。",
+            "requires": [],
+            "on_complete_unlock": [
+              "ps_makui_vs_lu"
+            ],
+            "effects": {
+              "notify": "【权力斗争】副站长之位虚悬，马奎与陆桥山暗中较劲",
+              "inject_prompt": "天津站的副站长职位一直空缺，这是吴敬中的驭人之术。马奎凭行动能力自居，陆桥山靠情报网络争夺，两人的争斗日趋白热化。"
+            },
+            "position": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": "ps_makui_vs_lu",
+            "name": "两虎相争",
+            "type": "timed",
+            "duration_turns": 5,
+            "description": "马奎和陆桥山的争斗升级，双方都试图拉拢你成为盟友。",
+            "requires": [
+              "ps_vacancy"
+            ],
+            "on_complete_unlock": [
+              "ps_choose_side"
+            ],
+            "effects": {
+              "notify": "【权力斗争】马奎和陆桥山都来拉拢你，你必须谨慎周旋",
+              "inject_prompt": "陆桥山请你吃饭，暗示联手对付马奎；马奎则警告你不要和陆桥山走太近。站长冷眼旁观，似乎在等着看好戏。"
+            },
+            "position": {
+              "x": 1,
+              "y": 0
+            }
+          },
+          {
+            "id": "ps_choose_side",
+            "name": "站队抉择",
+            "type": "choice",
+            "description": "内斗到了关键节点，你必须表明态度——或者巧妙地两边都不得罪。",
+            "requires": [
+              "ps_makui_vs_lu"
+            ],
+            "choices": [
+              {
+                "id": "ps_side_lu",
+                "label": "倾向陆桥山",
+                "description": "暗中配合陆桥山排挤马奎，加速马奎的垮台",
+                "effects": {
+                  "set_var": [
+                    {
+                      "var": "sided_with_lu",
+                      "value": true
+                    }
+                  ],
+                  "state_change": [
+                    {
+                      "var": "station_internal_faction",
+                      "op": "add",
+                      "value": 15
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ps_makui_fall"
+                ]
+              },
+              {
+                "id": "ps_neutral",
+                "label": "保持中立",
+                "description": "不偏不倚，让两人自相消耗，坐收渔翁之利",
+                "effects": {
+                  "set_var": [
+                    {
+                      "var": "stayed_neutral",
+                      "value": true
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ps_makui_fall"
+                ]
+              },
+              {
+                "id": "ps_side_makui",
+                "label": "暗助马奎",
+                "description": "出于策略考虑帮助马奎，让他欠你人情",
+                "effects": {
+                  "set_var": [
+                    {
+                      "var": "sided_with_makui",
+                      "value": true
+                    }
+                  ],
+                  "state_change": [
+                    {
+                      "var": "station_internal_faction",
+                      "op": "add",
+                      "value": 10
+                    }
+                  ]
+                },
+                "unlock": [
+                  "ps_lu_schemes"
+                ]
+              }
+            ],
+            "effects": {},
+            "position": {
+              "x": 2,
+              "y": 0
+            }
+          },
+          {
+            "id": "ps_makui_fall",
+            "name": "马奎倒台",
+            "type": "auto",
+            "description": "马奎在内斗中落败，被冠以'峨眉峰'嫌疑遭到清洗。",
+            "requires": [
+              "ps_choose_side"
+            ],
+            "on_complete_unlock": [
+              "ps_new_order"
+            ],
+            "effects": {
+              "notify": "【权力斗争】马奎被指认为'峨眉峰'，遭到逮捕",
+              "inject_prompt": "马奎在一次审讯中被陆桥山栽赃为共产党卧底'峨眉峰'，尽管他拼命辩解，但证据确凿。他被押送南京，再也没有回来。",
+              "fire_events": [
+                "makui_downfall"
+              ]
+            },
+            "position": {
+              "x": 3,
+              "y": -1
+            }
+          },
+          {
+            "id": "ps_lu_schemes",
+            "name": "陆桥山的反击",
+            "type": "timed",
+            "duration_turns": 3,
+            "description": "陆桥山得知你暗助马奎，开始暗中针对你。",
+            "requires": [
+              "ps_choose_side"
+            ],
+            "on_complete_unlock": [
+              "ps_new_order"
+            ],
+            "effects": {
+              "notify": "【权力斗争】陆桥山知道了你的立场，开始暗中报复",
+              "state_change": [
+                {
+                  "var": "station_internal_faction",
+                  "op": "add",
+                  "value": 10
+                }
+              ]
+            },
+            "position": {
+              "x": 3,
+              "y": 1
+            }
+          },
+          {
+            "id": "ps_new_order",
+            "name": "新的格局",
+            "type": "auto",
+            "description": "一轮洗牌过后，天津站内部形成新的权力格局。副站长之位的归属悬而未决。",
+            "requires": [
+              "ps_makui_fall"
+            ],
+            "on_complete_unlock": [
+              "ps_promotion"
+            ],
+            "effects": {
+              "notify": "【权力斗争】天津站完成一轮洗牌，新的格局正在形成",
+              "inject_prompt": "马奎消失后，李涯接任行动队长，陆桥山志得意满。但吴敬中迟迟不宣布副站长人选，似乎另有打算。"
+            },
+            "position": {
+              "x": 4,
+              "y": 0
+            }
+          },
+          {
+            "id": "ps_promotion",
+            "name": "副站长的桂冠",
+            "type": "choice",
+            "description": "吴敬中暗示要提拔你为副站长。这是机会，也是更大的陷阱。",
+            "requires": [
+              "ps_new_order"
+            ],
+            "choices": [
+              {
+                "id": "ps_accept",
+                "label": "接受提拔",
+                "description": "成为副站长，获得更高密级的同时承担更大的暴露风险",
+                "effects": {
+                  "notify": "【权力斗争】你成为天津站副站长，权力与危险并存",
+                  "set_var": [
+                    {
+                      "var": "promoted_deputy",
+                      "value": true
+                    },
+                    {
+                      "var": "deep_sea_trust",
+                      "op": "add",
+                      "value": 20
+                    }
+                  ]
+                },
+                "unlock": []
+              },
+              {
+                "id": "ps_decline",
+                "label": "婉拒推辞",
+                "description": "以能力不足为由婉拒，避免成为众矢之的",
+                "effects": {
+                  "notify": "【权力斗争】你婉拒了副站长之位，吴敬中意味深长地看了你一眼",
+                  "set_var": [
+                    {
+                      "var": "declined_promotion",
+                      "value": true
+                    }
+                  ]
+                },
+                "unlock": []
+              }
+            ],
+            "effects": {},
+            "position": {
+              "x": 5,
+              "y": 0
+            }
+          }
+        ],
+        "_groupX": 524,
+        "_groupY": 40
+      },
+      {
+        "id": "intelligence_war",
+        "name": "情报暗战",
+        "description": "围绕情报传递、交通线维护和反间谍行动的核心谍战线",
+        "icon": "📡",
+        "nodes": [
+          {
+            "id": "iw_first_mission",
+            "name": "首次接头",
+            "type": "auto",
+            "description": "你在黄记小馆完成与地下组织的首次秘密接头，确认联络暗号和情报传递方式。",
+            "requires": [],
+            "on_complete_unlock": [
+              "iw_courier_line"
+            ],
+            "effects": {
+              "notify": "【情报暗战】你与地下组织成功接头，秘密交通线正式启用",
+              "inject_prompt": "老黄在灶台后面递给你一小瓶密写药水和一张暗号对照表。从今天起，你的每一份情报都将通过这条线传出去。",
+              "unlock_locations": [
+                "pharmacy",
+                "huang_restaurant"
+              ]
+            },
+            "position": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_courier_line",
+            "name": "建立交通线",
+            "type": "timed",
+            "duration_turns": 3,
+            "description": "在天津城内建立一条完整的情报交通线，从站内到解放区。",
+            "requires": [
+              "iw_first_mission"
+            ],
+            "on_complete_unlock": [
+              "iw_key_intel"
+            ],
+            "effects": {
+              "notify": "【情报暗战】秘密交通线建立完毕，情报可以安全传递",
+              "set_var": [
+                {
+                  "var": "courier_line_active",
+                  "value": true
+                }
+              ],
+              "unlock_locations": [
+                "safe_house"
+              ]
+            },
+            "position": {
+              "x": 1,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_key_intel",
+            "name": "关键情报",
+            "type": "quest",
+            "description": "组织要求你获取天津站即将展开的'清剿'行动计划，以保护地下组织的安全。",
+            "requires": [
+              "iw_courier_line"
+            ],
+            "on_complete_unlock": [
+              "iw_counter_intel"
+            ],
+            "effects": {
+              "notify": "【情报暗战】你成功获取并传递了清剿行动计划",
+              "set_var": [
+                {
+                  "var": "key_intel_delivered",
+                  "value": true
+                }
+              ],
+              "state_change": [
+                {
+                  "var": "hidden_front_morale",
+                  "op": "add",
+                  "value": 15
+                }
+              ]
+            },
+            "position": {
+              "x": 2,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_counter_intel",
+            "name": "反间谍陷阱",
+            "type": "timed",
+            "duration_turns": 4,
+            "description": "李涯设下反间谍陷阱，故意泄露假情报来追踪内鬼。你必须识破并绕过它。",
+            "requires": [
+              "iw_key_intel"
+            ],
+            "on_complete_unlock": [
+              "iw_double_game"
+            ],
+            "effects": {
+              "notify": "【情报暗战】李涯布下反间陷阱！你必须小心辨别真假情报",
+              "inject_prompt": "你注意到最近机要室的文件有蹊跷——某些情报似乎是故意放在容易被看到的位置。这可能是李涯设的圈套。"
+            },
+            "position": {
+              "x": 3,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_double_game",
+            "name": "双面谍战",
+            "type": "choice",
+            "description": "你发现谢若林在贩卖的情报中有涉及地下组织的关键线索，必须决定如何处理。",
+            "requires": [
+              "iw_counter_intel"
+            ],
+            "choices": [
+              {
+                "id": "iw_buy_intel",
+                "label": "收买谢若林",
+                "description": "花钱买下那份情报，防止它落入李涯手中",
+                "effects": {
+                  "notify": "【情报暗战】你买下了谢若林手中的危险情报",
+                  "set_var": [
+                    {
+                      "var": "xie_intel_bought",
+                      "value": true
+                    }
+                  ],
+                  "reveal_npcs": [
+                    "npc_xie_ruolin"
+                  ]
+                },
+                "unlock": [
+                  "iw_final_delivery"
+                ]
+              },
+              {
+                "id": "iw_eliminate_threat",
+                "label": "消除威胁",
+                "description": "通过暗中手段让那份情报永远消失，连同知情者",
+                "effects": {
+                  "notify": "【情报暗战】你采取了极端手段消除了情报泄露的风险",
+                  "set_var": [
+                    {
+                      "var": "xie_intel_destroyed",
+                      "value": true
+                    }
+                  ]
+                },
+                "unlock": [
+                  "iw_final_delivery"
+                ]
+              },
+              {
+                "id": "iw_feed_disinfo",
+                "label": "投喂假情报",
+                "description": "通过谢若林向李涯输送精心编造的假情报，将追查引向歧路",
+                "effects": {
+                  "notify": "【情报暗战】你巧妙地利用谢若林向敌人投送了假情报",
+                  "set_var": [
+                    {
+                      "var": "disinfo_planted",
+                      "value": true
+                    }
+                  ]
+                },
+                "unlock": [
+                  "iw_final_delivery"
+                ]
+              }
+            ],
+            "effects": {},
+            "position": {
+              "x": 4,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_final_delivery",
+            "name": "生死传递",
+            "type": "quest",
+            "description": "平津战役前夕，组织要求你传递天津城防部署图——这是最危险也是最关键的一次行动。",
+            "requires": [
+              "iw_double_game"
+            ],
+            "effects": {
+              "notify": "【情报暗战】最终任务：传递天津城防部署图",
+              "inject_prompt": "解放军大兵压境，天津战役一触即发。组织来了最紧急的指示：不惜一切代价获取并传递天津城防部署图。这可能是你潜伏生涯中最后也是最重要的一次行动。",
+              "set_var": [
+                {
+                  "var": "final_mission_active",
+                  "value": true
+                }
+              ]
+            },
+            "position": {
+              "x": 5,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_network_expansion",
+            "name": "扩展情报网",
+            "description": "利用已有的情报渠道建立更广泛的信息网络——但网络越大越容易暴露。",
+            "type": "choice",
+            "condition": "",
+            "requires": [
+              "iw_final_delivery"
+            ],
+            "on_complete_unlock": [],
+            "choices": [
+              {
+                "id": "iw_expand_cautious",
+                "label": "稳健扩展",
+                "description": "只发展经过长期考验的可靠线人，速度慢但安全。",
+                "effects": {
+                  "inject_prompt": "情报网缓慢但稳健地扩展，每一个新节点都经过反复验证。质量优先于速度。",
+                  "set_var": [
+                    {
+                      "key": "intel_network_size",
+                      "value": "moderate"
+                    }
+                  ]
+                },
+                "unlock": [
+                  "iw_endgame_prep"
+                ]
+              },
+              {
+                "id": "iw_expand_aggressive",
+                "label": "快速扩张",
+                "description": "争取尽可能多的情报来源，为即将到来的决战做准备。",
+                "effects": {
+                  "inject_prompt": "情报网快速扩展——但仓促发展的线人中是否混入了敌方的耳目？这个疑虑如影随形。",
+                  "set_var": [
+                    {
+                      "key": "intel_network_size",
+                      "value": "large"
+                    }
+                  ]
+                },
+                "unlock": [
+                  "iw_endgame_prep"
+                ]
+              }
+            ],
+            "position": {
+              "x": 6,
+              "y": 0
+            }
+          },
+          {
+            "id": "iw_endgame_prep",
+            "name": "终局准备",
+            "description": "平津战役前夜，所有情报力量都在为最后的决战做准备。",
+            "type": "quest",
+            "condition": "",
+            "requires": [
+              "iw_network_expansion"
+            ],
+            "on_complete_unlock": [],
+            "effects": {
+              "inject_prompt": "解放军兵临城下，天津站陷入混乱。余则成必须在这最后的时刻完成组织交付的终极任务——这将决定天津解放的代价。",
+              "notify": "【终局】平津战役序幕拉开",
+              "fire_events": [
+                "endgame_begins"
+              ],
+              "activate_state": [
+                "final_phase"
+              ]
+            },
+            "position": {
+              "x": 7,
+              "y": 0
+            }
+          }
+        ],
+        "_groupX": 1008,
+        "_groupY": 40
+      },
+      {
+        "id": "cuiping_crisis",
+        "name": "粗瓷碗与高脚杯 — 翠平线",
+        "description": "翠平的农村背景与上层太太伪装之间的矛盾不断激化，每一次社交都是一场惊心动魄的走钢丝。",
+        "icon": "🏺",
+        "nodes": [
+          {
+            "id": "cc_first_banquet",
+            "name": "第一次晚宴",
+            "description": "翠平首次出席天津站内部聚会，必须装出大家闺秀的样子。",
+            "type": "auto",
+            "condition": "",
+            "requires": [],
+            "on_complete_unlock": [
+              "cc_etiquette_training",
+              "cc_neighbor_suspicion"
+            ],
+            "effects": {
+              "inject_prompt": "翠平在晚宴上的表现引起了部分太太的好奇——这位余太太似乎不太一样。",
+              "notify": "【新支线】翠平的伪装面临考验"
+            },
+            "position": {
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": "cc_etiquette_training",
+            "name": "礼仪特训",
+            "description": "余则成抽空教翠平基本社交礼仪，但时间紧迫效果有限。",
+            "type": "timed",
+            "duration_turns": 3,
+            "condition": "",
+            "requires": [
+              "cc_first_banquet"
+            ],
+            "on_complete_unlock": [
+              "cc_tea_party_test"
+            ],
+            "effects": {
+              "inject_prompt": "翠平学会了基本的用餐礼仪和社交应答，虽然生硬但勉强过关。",
+              "set_var": [
+                {
+                  "key": "cuiping_etiquette",
+                  "value": 1
+                }
+              ]
+            },
+            "position": {
+              "x": 1,
+              "y": -1
+            }
+          },
+          {
+            "id": "cc_neighbor_suspicion",
+            "name": "邻居起疑",
+            "description": "楼下邻居注意到翠平白天的行为习惯异于常人——大声说话、晾衣方式奇怪。",
+            "type": "auto",
+            "condition": "",
+            "requires": [
+              "cc_first_banquet"
+            ],
+            "on_complete_unlock": [
+              "cc_tea_party_test"
+            ],
+            "effects": {
+              "inject_prompt": "邻居太太向站长太太随口提起'余太太好像是乡下来的'，话虽轻描淡写，却像一根刺扎在余则成心里。"
+            },
+            "position": {
+              "x": 1,
+              "y": 1
+            }
+          },
+          {
+            "id": "cc_tea_party_test",
+            "name": "太太茶话会",
+            "description": "站长太太举办茶话会，翠平必须出席。这是一次关键考验。",
+            "type": "choice",
+            "condition": "",
+            "requires": [
+              "cc_etiquette_training",
+              "cc_neighbor_suspicion"
+            ],
+            "on_complete_unlock": [],
+            "choices": [
+              {
+                "id": "cc_coach_cuiping",
+                "label": "事先详细叮嘱翠平",
+                "description": "花时间反复演练可能的对话场景，减少穿帮风险但耗费精力。",
+                "effects": {
+                  "inject_prompt": "翠平在茶话会上表现得沉默寡言但没出大错——太太们觉得她'内向'。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_cover_strength",
+                      "value": 70
+                    }
+                  ]
+                },
+                "unlock": [
+                  "cc_cuiping_adapts"
+                ]
+              },
+              {
+                "id": "cc_fake_illness",
+                "label": "让翠平称病不去",
+                "description": "回避风险，但引起更多好奇和猜测。",
+                "effects": {
+                  "inject_prompt": "翠平缺席引发了太太们的议论——'余太太是不是瞧不起我们？'这种猜测比真相更麻烦。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_cover_strength",
+                      "value": 40
+                    }
+                  ]
+                },
+                "unlock": [
+                  "cc_escalation"
+                ]
+              },
+              {
+                "id": "cc_let_cuiping_be",
+                "label": "让翠平自由发挥",
+                "description": "信任翠平的应变能力，但风险极大。",
+                "effects": {
+                  "inject_prompt": "翠平在茶话会上闹了几个笑话，但她用爽朗的性格化解了尴尬——有些太太反而觉得她'真性情'。结果是不确定的。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_cover_strength",
+                      "value": 55
+                    }
+                  ]
+                },
+                "unlock": [
+                  "cc_cuiping_adapts",
+                  "cc_escalation"
+                ]
+              }
+            ],
+            "position": {
+              "x": 2,
+              "y": 0
+            }
+          },
+          {
+            "id": "cc_cuiping_adapts",
+            "name": "翠平的蜕变",
+            "description": "翠平逐渐找到了自己的社交方式——不完美，但有效。",
+            "type": "auto",
+            "condition": "cuiping_cover_strength >= 55",
+            "requires": [
+              "cc_tea_party_test"
+            ],
+            "on_complete_unlock": [
+              "cc_final_test"
+            ],
+            "effects": {
+              "inject_prompt": "翠平开始学会用沉默和微笑应对不懂的话题，偶尔冒出的'土话'被她巧妙伪装成'老家方言'。她正在成长。",
+              "notify": "翠平的伪装技能有所提升"
+            },
+            "position": {
+              "x": 3,
+              "y": -1
+            }
+          },
+          {
+            "id": "cc_escalation",
+            "name": "疑云加重",
+            "description": "有心人开始认真调查余太太的背景，局势愈发紧张。",
+            "type": "auto",
+            "condition": "cuiping_cover_strength < 55",
+            "requires": [
+              "cc_tea_party_test"
+            ],
+            "on_complete_unlock": [
+              "cc_final_test"
+            ],
+            "effects": {
+              "inject_prompt": "李涯在一次偶然中注意到翠平说了句'同志们'——虽然她立刻改口，但李涯的眼神明显变了。",
+              "notify": "【危险】翠平的伪装出现严重裂痕"
+            },
+            "position": {
+              "x": 3,
+              "y": 1
+            }
+          },
+          {
+            "id": "cc_final_test",
+            "name": "最终抉择",
+            "description": "翠平的真实身份即将暴露，余则成必须做出艰难决定。",
+            "type": "choice",
+            "condition": "",
+            "requires": [
+              "cc_cuiping_adapts",
+              "cc_escalation"
+            ],
+            "on_complete_unlock": [],
+            "choices": [
+              {
+                "id": "cc_send_away",
+                "label": "送翠平离开天津",
+                "description": "以'回老家养病'为由将翠平转移，安全但失去重要掩护。",
+                "effects": {
+                  "inject_prompt": "翠平含泪离开——她知道这可能是永别。余则成独自一人面对更加危险的处境，但至少翠平安全了。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_status",
+                      "value": "evacuated"
+                    }
+                  ],
+                  "fire_events": [
+                    "cuiping_leaves"
+                  ]
+                },
+                "unlock": []
+              },
+              {
+                "id": "cc_double_down",
+                "label": "加固伪装继续坚持",
+                "description": "制造更精密的身份背景故事，冒险但维持现有格局。",
+                "effects": {
+                  "inject_prompt": "余则成精心伪造了一套'翠平老家'的完整故事和证据，暂时稳住了局面。但谎言越来越复杂，维护成本越来越高。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_status",
+                      "value": "reinforced"
+                    }
+                  ]
+                },
+                "unlock": []
+              },
+              {
+                "id": "cc_counterattack",
+                "label": "反击质疑者",
+                "description": "主动出击，用计谋让追查者自顾不暇。",
+                "effects": {
+                  "inject_prompt": "余则成反手将'调查余太太'的人牵连进一桩贪腐案——让他们忙于自保，无暇顾及翠平的事。这步棋很险，但目前奏效了。",
+                  "set_var": [
+                    {
+                      "key": "cuiping_status",
+                      "value": "counterattack"
+                    }
+                  ],
+                  "fire_events": [
+                    "internal_conflict_escalates"
+                  ]
+                },
+                "unlock": []
+              }
+            ],
+            "position": {
+              "x": 4,
+              "y": 0
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

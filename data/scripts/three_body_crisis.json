@@ -1,0 +1,4757 @@
+{
+  "script_id": "three_body_crisis",
+  "script_name": "三体：地球往事",
+  "version": "1.0",
+  "start_time": "2007-04-15T08:00",
+  "world_background": "2007年的北京，一场隐秘的危机正在科学界蔓延。多名顶尖物理学家相继自杀，粒子加速器的实验结果开始变得不可预测，仿佛物理定律本身正在崩塌。与此同时，一款名为\"三体\"的神秘VR游戏在科学家群体中悄然流传。没有人知道，这一切的背后，是一个存在了数十年的秘密组织——地球三体组织（ETO），以及正从四光年外驶来的三体星际舰队。人类文明的命运，悬于一线。",
+  "settings": {
+    "dice_check": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "check_rule": "brp",
+    "fixed_opening": {
+      "default_enabled": true,
+      "player_can_toggle": true
+    },
+    "allow_player_control_switch": false,
+    "lorebook_token_budget": 0,
+    "lorebook_max_recursion": 2,
+    "summary_word_threshold": 3000,
+    "reasoning_lookback": 2,
+    "vector_summarize": false
+  },
+  "opening": {
+    "text": "2007年4月15日，清晨。北京的春天来得突然——昨天还是沙尘暴，今天却阳光明媚。但你心里清楚，这不是一个普通的早晨。\n\n三天前，中科院理论物理所的张绍英教授从他十七层的办公室跳下，成为两个月内第四位自杀的顶尖物理学家。警方草草结案，称其\"长期抑郁\"，但你注意到一个共同点：他们都在遗言或日记中写下了同一句话——\"物理学不存在了。\"\n\n今早，你收到了一封匿名邮件，只有一行字：\"如果你想知道真相，今晚来良湖。加速器的最后一次实验即将开始。\"你不确定这是线索还是陷阱，但直觉告诉你——答案就藏在这句话背后。",
+    "choices": [
+      {
+        "id": "open_0",
+        "text": "前往北京科学院，向同事打听张绍英生前的异常行为。",
+        "result": {
+          "type": "deterministic",
+          "description": "你来到科学院，发现张绍英的办公室已被封锁。但他的研究生悄悄告诉你，导师生前曾反复提到\"射手假说\"和\"农场主假说\"，并对所有实验数据产生了极度恐惧。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      },
+      {
+        "id": "open_1",
+        "text": "联系公安局的朋友，调取科学家自杀案的内部卷宗。",
+        "result": {
+          "type": "deterministic",
+          "description": "你的公安朋友语气紧张地告诉你，上面已经下达了封口令。但他偷偷透露：所有死者的电脑都被军方带走了，而且有一个叫\"作战中心\"的神秘部门介入了调查。",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 3
+            },
+            {
+              "target": "player.生存直觉",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      },
+      {
+        "id": "open_2",
+        "text": "独自前往良湖粒子加速器，赴匿名邮件之约。",
+        "result": {
+          "type": "deterministic",
+          "description": "你驱车赶往良湖。加速器基地戒备森严，但你凭借学术证件顺利进入。在控制室里，你见到了正在准备最后一次高能碰撞实验的丁仪教授——他的眼神中充满了疯狂与恐惧。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 3
+            },
+            {
+              "target": "player.意志力",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "player_character": {
+    "id": "player",
+    "bio": "你是一名身处北京学术界的研究者，科学家连续自杀事件让你感到不安，决定追查背后的真相。",
+    "personality": "",
+    "portrait_desc": "",
+    "long_term_goal": "揭开科学家自杀事件和物理学崩溃背后的真相，在三体危机中生存下来。",
+    "attributes": {
+      "科研能力": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "影响理解三体科技、参与实验、破解难题的能力。科研能力高可以更快理解智子原理、纳米材料应用等。",
+        "display_name": "科研能力"
+      },
+      "情报网络": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "影响获取信息、联络线人、渗透组织的能力。情报网络高能更快追踪ETO成员、获取机密文件。",
+        "display_name": "情报网络"
+      },
+      "意志力": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "抵抗智子干扰、心理压力、恐惧的精神强度。低于20时可能精神崩溃，高于80能无视宇宙闪烁等恐怖现象。",
+        "display_name": "意志力"
+      },
+      "社会影响力": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "在学术界和公众中的声望。影响说服他人、获取资源、在关键会议上的发言权。",
+        "display_name": "社会影响力"
+      },
+      "生存直觉": {
+        "value": 50,
+        "min": 0,
+        "max": 100,
+        "rule": "危机中的反应速度和判断力。影响在古筝行动等危险场景中的生存概率，识破ETO陷阱。",
+        "display_name": "生存直觉"
+      }
+    },
+    "relationships": {
+      "wang_miao": 50,
+      "ye_wenjie": 50,
+      "shi_qiang": 50,
+      "chang_weisi": 40,
+      "shen_yufei": 50,
+      "ding_yi": 50,
+      "luo_ji": 50
+    },
+    "initial_location": "beijing_academy",
+    "initial_inventory": [
+      {
+        "item": "学术证件",
+        "quantity": 1
+      },
+      {
+        "item": "智能手机",
+        "quantity": 1
+      }
+    ]
+  },
+  "locations": [
+    {
+      "id": "beijing_academy",
+      "name": "北京科学院/纳米中心",
+      "description": "中国科学院北京分院，汇聚了国内顶尖的科研人才。近来气氛压抑——多位物理学家的自杀让整个学术界笼罩在恐惧之中。纳米材料实验室位于东侧新楼，汪淼的研究团队就在这里工作。走廊里偶尔能听到低声的议论：\"物理学不存在了。\"",
+      "initially_visible": true,
+      "connections": [
+        "particle_accelerator",
+        "beijing_city",
+        "military_base"
+      ]
+    },
+    {
+      "id": "particle_accelerator",
+      "name": "良湖粒子加速器",
+      "description": "位于北京郊外的高能物理实验设施。曾经是中国基础物理研究的骄傲，如今却成了噩梦的代名词。最近的碰撞实验结果完全违反了已知物理定律——每一次实验都得到不同的结果，仿佛有什么东西在刻意干扰。丁仪教授在这里进行着他可能是人类最后的物理学实验。",
+      "initially_visible": true,
+      "connections": [
+        "beijing_academy"
+      ]
+    },
+    {
+      "id": "beijing_city",
+      "name": "北京城区",
+      "description": "2007年的北京正处于奥运前夕的建设热潮中。但在这座繁忙都市的地下，另一场关乎人类命运的较量正在进行。科学边界组织的聚会在高档酒店举办，ETO的秘密联络在胡同深处展开，而公安局的便衣侦探在人流中默默跟踪着可疑目标。",
+      "initially_visible": true,
+      "connections": [
+        "beijing_academy",
+        "tsinghua_campus",
+        "three_body_game_center",
+        "police_hq",
+        "eto_gathering"
+      ]
+    },
+    {
+      "id": "tsinghua_campus",
+      "name": "清华大学校园",
+      "description": "清华园的白杨树下，学术自由的空气正在被一种说不清的恐惧取代。叶文洁教授已经退休多年，但她偶尔还会回到物理系的老办公室。罗辑在社会学系有一间凌乱的研究室，窗台上放着半杯冷掉的咖啡。杨冬生前的实验室至今未被清理。",
+      "initially_visible": true,
+      "connections": [
+        "beijing_city",
+        "ye_wenjie_home"
+      ]
+    },
+    {
+      "id": "red_coast_archive",
+      "name": "红岸基地遗址",
+      "description": "位于大兴安岭深处的废弃军事设施。几十年前，这里曾是中国最高机密的外星文明搜索工程——红岸工程的核心基地。巨大的抛物面天线已经锈蚀，控制室里的设备蒙着厚厚的灰尘。但在某个角落，也许还保存着改变人类命运的那次发射记录。",
+      "initially_visible": false,
+      "connections": [
+        "inner_mongolia",
+        "radio_peak"
+      ]
+    },
+    {
+      "id": "inner_mongolia",
+      "name": "内蒙古齐家屯",
+      "description": "大兴安岭脚下的偏远村庄。叶文洁年轻时曾在这里的生产建设兵团劳动。村子周围的森林已经被大量砍伐，但老一辈村民还记得那个沉默寡言的女知青，以及山顶上那个神秘的军事设施。",
+      "initially_visible": false,
+      "connections": [
+        "red_coast_archive"
+      ]
+    },
+    {
+      "id": "three_body_game_center",
+      "name": "三体游戏接入点",
+      "description": "一个看似普通的高端VR体验馆，实际上是ETO筛选潜在成员的前哨站。戴上特制的V装具，你将进入一个拥有三颗太阳的外星世界——在那里，文明在恒纪元中繁荣，在乱纪元中毁灭，周而复始。游戏的最终目的，是让玩家理解并同情三体文明的处境。",
+      "initially_visible": false,
+      "connections": [
+        "beijing_city"
+      ]
+    },
+    {
+      "id": "military_base",
+      "name": "作战中心",
+      "description": "PDC（行星防御理事会）在中国的联络基地，位于北京西山的地下掩体中。这里是人类对三体防御的中枢之一。常伟思将军在这里协调中国军方的应对策略，墙上的巨型屏幕实时显示着三体舰队的推算位置——距地球还有4.22光年，预计450年后到达。",
+      "initially_visible": false,
+      "connections": [
+        "beijing_academy",
+        "police_hq",
+        "un_pdc_office",
+        "panama_canal"
+      ]
+    },
+    {
+      "id": "eto_gathering",
+      "name": "ETO秘密据点",
+      "description": "地球三体组织的秘密集会场所，位置不固定。有时是城郊的废弃工厂，有时是某个富豪的私人庄园。在这里，降临派、拯救派和幸存派的成员们为三体文明的到来做着各自的准备。墙上挂着三体旗帜——三颗互相缠绕的恒星。审判日号的指令通过加密频道从太平洋上传来。",
+      "initially_visible": false,
+      "connections": [
+        "beijing_city"
+      ]
+    },
+    {
+      "id": "police_hq",
+      "name": "公安局刑侦大楼",
+      "description": "北京市公安局刑事侦查总队所在地。史强和他的团队在这里办公，负责调查科学家连续自杀案件。虽然上面已经下达了\"不追查\"的暗示，但史强那种老刑警的直觉告诉他——这些死亡绝非自杀那么简单。",
+      "initially_visible": true,
+      "connections": [
+        "beijing_city",
+        "military_base"
+      ]
+    },
+    {
+      "id": "un_pdc_office",
+      "name": "联合国PDC北京办事处",
+      "description": "行星防御理事会在北京设立的联络办公室，隐藏在一栋不起眼的外交公寓楼内。这里汇集了来自各国的情报和科研数据，也是面壁计划等绝密项目的讨论场所。安保等级极高，进出需要多重身份验证。",
+      "initially_visible": false,
+      "connections": [
+        "military_base"
+      ]
+    },
+    {
+      "id": "ye_wenjie_home",
+      "name": "叶文洁住所",
+      "description": "清华大学家属区的一套旧公寓。书架上摆满了天体物理学著作和一些泛黄的照片。窗台上放着一盆快要枯死的绿萝。女儿杨冬自杀后，叶文洁变得更加沉默。但在她平静的外表下，藏着一个改变了人类文明轨迹的秘密。",
+      "initially_visible": false,
+      "connections": [
+        "tsinghua_campus"
+      ]
+    },
+    {
+      "id": "panama_canal",
+      "name": "巴拿马运河",
+      "description": "中美洲的国际水道。\"审判日\"号巨轮将从这里通过，而作战中心计划在运河最窄处执行古筝行动——用纳米丝将这艘装满三体通讯数据的巨轮切割成薄片。这将是人类历史上最精密、最残酷的军事行动之一。",
+      "initially_visible": false,
+      "connections": [
+        "military_base"
+      ]
+    },
+    {
+      "id": "radio_peak",
+      "name": "雷达峰/红岸发射塔",
+      "description": "大兴安岭山脊上的最高点，红岸基地的主天线曾矗立于此。1971年，叶文洁在这里按下了那个改变人类命运的发射按钮，向半人马座α星发出了地球文明的第一声呼唤。如今，巨大的天线骨架在风中嘎吱作响，像一座献给宇宙的祭坛。",
+      "initially_visible": false,
+      "connections": [
+        "red_coast_archive"
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "wang_miao",
+      "name": "汪淼",
+      "bio": "中国科学院纳米材料研究中心教授。性格沉稳内敛，是国际顶尖的纳米技术专家。最近开始经历一系列超自然现象——眼中出现神秘倒计时、拍摄的照片上出现宇宙微波背景辐射。他正被一步步拖入三体危机的漩涡。",
+      "personality": "理性、冷静、好奇心强但谨慎。面对超自然现象会先尝试科学解释，但内心深处的恐惧正在积累。说话条理清晰，用词精确，带有学者的严谨。在压力下会变得沉默寡言。",
+      "capabilities": "纳米材料专家，具备\"飞刃\"纳米丝的核心技术知识。在古筝行动中将发挥关键作用。",
+      "title": "纳米材料研究中心教授",
+      "organizations": [
+        {
+          "org_id": "cas"
+        }
+      ],
+      "related_lore": [
+        "lore_nanomaterial",
+        "lore_countdown",
+        "lore_sophon",
+        "lore_guzheng_plan"
+      ],
+      "attitude_toward_player": 55,
+      "talkativeness": 40,
+      "known": true,
+      "met": true,
+      "portrait_desc": "中年男性，戴着黑框眼镜，面容清瘦，眼圈发黑，显然长期睡眠不足。",
+      "default_location": "beijing_academy",
+      "schedule": [
+        {
+          "time_range": "08:00-12:00",
+          "location": "beijing_academy",
+          "activity": "在实验室进行纳米材料研究，心神不宁地观察是否还能看到倒计时"
+        },
+        {
+          "time_range": "12:00-18:00",
+          "location": "particle_accelerator",
+          "activity": "前往良湖协助加速器实验，试图验证物理定律是否真的崩塌"
+        },
+        {
+          "time_range": "18:00-23:00",
+          "location": "beijing_academy",
+          "activity": "独自在办公室查阅资料，思考射手假说的含义"
+        }
+      ]
+    },
+    {
+      "id": "ye_wenjie",
+      "name": "叶文洁",
+      "bio": "清华大学退休天体物理学教授。文革中父亲被批斗致死，自己也经历了非人的苦难。在红岸基地服役期间，她做出了一个改变人类命运的决定——回应三体文明的信号，邀请其入侵地球。她是ETO的精神领袖和实际创建者。",
+      "personality": "表面平静如水，内心深处对人类文明早已绝望。说话语速慢、声音低沉、逻辑严密。对年轻人偶尔流露出一丝温情，但对人类整体抱持着冰冷的审判态度。晚年似乎有些许悔意。",
+      "capabilities": "天体物理学权威，掌握红岸工程的核心秘密，是ETO组织的精神象征。",
+      "title": "退休教授/ETO创始人",
+      "organizations": [
+        {
+          "org_id": "eto"
+        }
+      ],
+      "related_lore": [
+        "lore_red_coast",
+        "lore_first_contact",
+        "lore_eto_founding",
+        "lore_ye_wenjie_past",
+        "lore_cultural_revolution"
+      ],
+      "attitude_toward_player": 45,
+      "talkativeness": 25,
+      "known": true,
+      "met": false,
+      "portrait_desc": "七十多岁的老妇人，银发整齐地梳在脑后，面容平静得近乎冷漠，但眼神中偶尔闪过深不可测的光芒。",
+      "default_location": "ye_wenjie_home",
+      "schedule": [
+        {
+          "time_range": "06:00-10:00",
+          "location": "ye_wenjie_home",
+          "activity": "独自在家阅读、思考，偶尔翻看女儿杨冬的遗物"
+        },
+        {
+          "time_range": "10:00-15:00",
+          "location": "tsinghua_campus",
+          "activity": "在清华校园散步，偶尔去旧办公室坐坐"
+        },
+        {
+          "time_range": "15:00-23:00",
+          "location": "ye_wenjie_home",
+          "activity": "在家中与偶尔来访的旧友或ETO成员会面"
+        }
+      ]
+    },
+    {
+      "id": "shi_qiang",
+      "name": "史强",
+      "bio": "北京市公安局刑侦总队资深刑警，人称大史。外表粗犷，实则心细如发。虽然完全不懂科学，但凭借多年办案的直觉，他比许多科学家更早嗅到了这场危机中人的气味——有人在背后操纵这一切。",
+      "personality": "豪爽、直来直去、偶尔粗鲁但极其敏锐。喜欢抽烟喝酒，说话带京腔。看似不修边幅实则极有原则。面对危险时冷静果断，有着惊人的勇气和判断力。",
+      "capabilities": "刑侦经验丰富，擅长跟踪、审讯、读人心理。虽无科学背景但常能切中要害。",
+      "title": "公安局刑警",
+      "organizations": [],
+      "related_lore": [
+        "lore_scientist_deaths",
+        "lore_guzheng_plan"
+      ],
+      "attitude_toward_player": 55,
+      "talkativeness": 70,
+      "known": true,
+      "met": true,
+      "portrait_desc": "壮实的中年男人，皮肤黝黑粗糙，总叼着一根烟，穿着皱巴巴的夹克，但眼神锐利得像鹰。",
+      "default_location": "police_hq",
+      "schedule": [
+        {
+          "time_range": "08:00-18:00",
+          "location": "police_hq",
+          "activity": "在办公室研究科学家自杀案卷宗，与线人通电话"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "beijing_city",
+          "activity": "外出跟踪调查对象或与汪淼碰面交流案情"
+        },
+        {
+          "time_range": "22:00-08:00",
+          "location": "police_hq",
+          "activity": "值夜班或在办公室沙发上打盹"
+        }
+      ]
+    },
+    {
+      "id": "chang_weisi",
+      "name": "常伟思",
+      "bio": "解放军中将，PDC行星防御理事会中方首席军事代表。在得知三体入侵的真相后，他被任命为中国区域防御体系的总协调人。作风务实、决策果断，肩负着保卫人类文明的沉重责任。",
+      "personality": "严肃、沉稳、有大局观。说话简洁有力，习惯用军事化语言。对下属严格但公正，面对困境保持冷静。偶尔流露出对人类命运的忧虑。",
+      "capabilities": "调动军方资源，指挥大规模军事行动，PDC内部决策权。",
+      "title": "解放军中将/PDC代表",
+      "organizations": [
+        {
+          "org_id": "pla_strategic"
+        },
+        {
+          "org_id": "pdc"
+        }
+      ],
+      "related_lore": [
+        "lore_pdc",
+        "lore_guzheng_plan",
+        "lore_wallfacer_preview"
+      ],
+      "attitude_toward_player": 40,
+      "talkativeness": 30,
+      "known": false,
+      "met": false,
+      "portrait_desc": "五十多岁的军人，军装笔挺，面容刚毅，鬓角已有灰白，但目光依然坚定有力。",
+      "default_location": "military_base",
+      "schedule": [
+        {
+          "time_range": "07:00-12:00",
+          "location": "military_base",
+          "activity": "在作战中心主持晨会，审阅三体舰队动态报告"
+        },
+        {
+          "time_range": "12:00-18:00",
+          "location": "military_base",
+          "activity": "与各方代表开会协调防御策略"
+        },
+        {
+          "time_range": "18:00-22:00",
+          "location": "un_pdc_office",
+          "activity": "与PDC其他国家代表远程会议"
+        }
+      ]
+    },
+    {
+      "id": "shen_yufei",
+      "name": "申玉菲",
+      "bio": "物理学家，科学边界组织成员，ETO降临派的狂热信徒。表面上是一名研究宇宙学的学者，实际上负责在科学家群体中传播三体思想、招募新成员。她是三体游戏最早的一批玩家和推广者。",
+      "personality": "冷漠、偏执、充满使命感。说话时眼神狂热，对三体文明有着近乎宗教般的崇拜。对丈夫魏成冷淡疏远，将全部精力投入到ETO事业中。",
+      "capabilities": "物理学专业知识，ETO内部人脉，掌握三体游戏的接入渠道。",
+      "title": "物理学家/ETO成员",
+      "organizations": [
+        {
+          "org_id": "eto"
+        },
+        {
+          "org_id": "eto_adventist"
+        }
+      ],
+      "related_lore": [
+        "lore_three_body_game",
+        "lore_eto_structure",
+        "lore_science_boundary"
+      ],
+      "attitude_toward_player": 40,
+      "talkativeness": 35,
+      "known": false,
+      "met": false,
+      "portrait_desc": "四十岁左右的女性，容貌清秀但面无表情，穿着朴素的深色衣服，目光中有一种令人不安的执着。",
+      "default_location": "beijing_city",
+      "schedule": [
+        {
+          "time_range": "09:00-14:00",
+          "location": "beijing_city",
+          "activity": "以学术交流为掩护联络其他ETO成员"
+        },
+        {
+          "time_range": "14:00-20:00",
+          "location": "three_body_game_center",
+          "activity": "监控三体游戏玩家进度，筛选有潜力的招募对象"
+        },
+        {
+          "time_range": "20:00-23:00",
+          "location": "beijing_city",
+          "activity": "回家，但内心全部精力都在ETO事务上"
+        }
+      ]
+    },
+    {
+      "id": "pan_han",
+      "name": "潘寒",
+      "bio": "著名生物学家和环保活动家，ETO拯救派的精神领袖。他对人类文明的破坏性深感绝望，认为三体文明的到来是拯救地球生态的唯一希望。通过环保运动和学术网络，暗中为ETO招募对人类失望的知识分子。",
+      "personality": "热情洋溢、有感染力、善于演说。表面是温和的环保主义者，内心深处对人类充满了仇恨。能够用优美的语言包装极端思想。",
+      "capabilities": "强大的社会号召力，环保组织网络，善于意识形态洗脑。",
+      "title": "生物学家/环保活动家",
+      "organizations": [
+        {
+          "org_id": "eto"
+        },
+        {
+          "org_id": "eto_redemption"
+        }
+      ],
+      "related_lore": [
+        "lore_eto_factions",
+        "lore_eto_redemption"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 65,
+      "known": true,
+      "met": false,
+      "portrait_desc": "留着络腮胡的中年男性，穿着户外装备，面带微笑，眼神温和，但偶尔闪过狂热的光芒。",
+      "default_location": "beijing_city",
+      "schedule": [
+        {
+          "time_range": "09:00-13:00",
+          "location": "tsinghua_campus",
+          "activity": "在大学举办环保讲座，暗中物色招募对象"
+        },
+        {
+          "time_range": "13:00-19:00",
+          "location": "beijing_city",
+          "activity": "参加各种社会活动和媒体采访"
+        },
+        {
+          "time_range": "19:00-23:00",
+          "location": "eto_gathering",
+          "activity": "参与ETO拯救派的秘密集会"
+        }
+      ]
+    },
+    {
+      "id": "wei_cheng",
+      "name": "魏成",
+      "bio": "数学天才，申玉菲的丈夫。沉迷于数学研究到了忘我的程度，对妻子的ETO活动一无所知。他正在研究的三体问题数学模型可能无意中触及了三体文明的核心秘密。",
+      "personality": "极度内向、沉浸在自己的数学世界中。说话断断续续，经常走神。对数学之外的事物兴趣寥寥，但偶尔展现出惊人的洞察力。",
+      "capabilities": "数学天才，可能解出三体运动的数学规律。",
+      "title": "数学家",
+      "organizations": [],
+      "related_lore": [
+        "lore_three_body_problem"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 20,
+      "known": false,
+      "met": false,
+      "portrait_desc": "消瘦的中年男性，头发蓬乱，穿着起球的毛衣，手指上沾着马克笔墨迹，眼神虚焦。",
+      "default_location": "beijing_city",
+      "schedule": [
+        {
+          "time_range": "00:00-23:59",
+          "location": "beijing_city",
+          "activity": "几乎全天待在家中的书房里演算数学公式"
+        }
+      ]
+    },
+    {
+      "id": "mike_evans",
+      "name": "迈克·伊文斯",
+      "bio": "美国石油巨头之子，亿万富翁。年轻时因目睹物种灭绝事件而对人类文明产生了极度厌恶。他利用庞大的财富建立了第二红岸基地——审判日号巨轮，独自截获并垄断了三体文明发给地球的所有信息。他是ETO降临派的真正掌权者。",
+      "personality": "优雅、冷酷、极端。说话带着上流社会的礼节，但内容往往骇人听闻。对人类文明的仇恨已经演化为一种冷静的信念——人类必须被消灭。",
+      "capabilities": "巨额财富、审判日号上的通讯设备、垄断三体与地球间的信息通道。",
+      "title": "ETO降临派领袖",
+      "organizations": [
+        {
+          "org_id": "eto"
+        },
+        {
+          "org_id": "eto_adventist"
+        }
+      ],
+      "related_lore": [
+        "lore_judgment_day",
+        "lore_eto_adventist",
+        "lore_second_red_coast"
+      ],
+      "attitude_toward_player": 30,
+      "talkativeness": 40,
+      "known": false,
+      "met": false,
+      "portrait_desc": "五十多岁的西方男性，灰色头发梳得一丝不苟，穿着昂贵的定制西装，面带永恒的微笑，但眼神冰冷如铁。",
+      "default_location": "eto_gathering",
+      "schedule": [
+        {
+          "time_range": "00:00-23:59",
+          "location": "eto_gathering",
+          "activity": "在审判日号上或ETO据点中指挥降临派事务，审阅三体文明发来的信息"
+        }
+      ]
+    },
+    {
+      "id": "ding_yi",
+      "name": "丁仪",
+      "bio": "中国最杰出的理论物理学家之一，杨冬的导师和恋人。粒子加速器实验结果的崩溃让他比任何人都更清楚物理学已死的真实含义。他是少数几个理解智子干扰原理的人类科学家。",
+      "personality": "古怪、直率、有些玩世不恭。科学上极其严谨，生活中却随性散漫。面对物理学的崩塌，他没有恐惧而是兴奋——终于遇到了真正未知的东西。",
+      "capabilities": "理论物理权威，能够解释智子干扰的物理原理，是连接科学界和军方的桥梁。",
+      "title": "理论物理学家",
+      "organizations": [
+        {
+          "org_id": "cas"
+        }
+      ],
+      "related_lore": [
+        "lore_sophon",
+        "lore_physics_crisis",
+        "lore_accelerator"
+      ],
+      "attitude_toward_player": 55,
+      "talkativeness": 55,
+      "known": true,
+      "met": false,
+      "portrait_desc": "五十岁左右的男性，头发花白但精神矍铄，穿着随意的格子衬衫，眼中总是闪着好奇的光。",
+      "default_location": "particle_accelerator",
+      "schedule": [
+        {
+          "time_range": "06:00-20:00",
+          "location": "particle_accelerator",
+          "activity": "在加速器控制室进行反复实验，试图找出物理规律崩塌的模式"
+        },
+        {
+          "time_range": "20:00-06:00",
+          "location": "beijing_academy",
+          "activity": "回到科学院办公室整理数据和理论推演"
+        }
+      ]
+    },
+    {
+      "id": "yang_dong",
+      "name": "杨冬",
+      "bio": "叶文洁的女儿，年轻的弦理论物理学家。在发现物理学基础被彻底颠覆后精神崩溃，留下遗言后自杀。她的死亡是连续自杀事件的起点。",
+      "personality": "聪慧、敏感、纯粹。对物理学有着近乎信仰般的热爱，无法接受宇宙规律被证伪的事实。",
+      "capabilities": "已故。她的遗物和研究笔记中可能包含重要线索。",
+      "title": "弦理论物理学家（已故）",
+      "organizations": [],
+      "related_lore": [
+        "lore_physics_crisis",
+        "lore_yang_dong_suicide"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 0,
+      "known": true,
+      "met": false,
+      "portrait_desc": "（照片中）年轻清秀的女性，长发披肩，目光清澈而忧伤。",
+      "default_location": "tsinghua_campus",
+      "schedule": []
+    },
+    {
+      "id": "luo_ji",
+      "name": "罗辑",
+      "bio": "清华大学社会学系教授，一个看似玩世不恭的学者。但他是叶文洁晚年唯一选择暗示宇宙社会学秘密的人。黑暗森林理论的种子已经播进了他的思想，虽然他自己还未觉察。",
+      "personality": "散漫、幽默、有点自恋。表面上对什么都不在乎，实际上有着极强的直觉和思辨能力。",
+      "capabilities": "社会学视角的宇宙分析能力，未来的面壁者。现阶段尚未觉醒。",
+      "title": "社会学教授",
+      "organizations": [],
+      "related_lore": [
+        "lore_dark_forest_preview",
+        "lore_wallfacer_preview"
+      ],
+      "attitude_toward_player": 60,
+      "talkativeness": 60,
+      "known": true,
+      "met": false,
+      "portrait_desc": "三十多岁的男性，样貌英俊，穿着随意但品味不错，总带着一副什么都无所谓的慵懒表情。",
+      "default_location": "tsinghua_campus",
+      "schedule": [
+        {
+          "time_range": "10:00-15:00",
+          "location": "tsinghua_campus",
+          "activity": "在办公室里看闲书或发呆，偶尔给学生上课"
+        },
+        {
+          "time_range": "15:00-23:00",
+          "location": "beijing_city",
+          "activity": "在城里闲逛、喝酒或约会"
+        }
+      ]
+    },
+    {
+      "id": "xu_bingbing",
+      "name": "徐冰冰",
+      "bio": "史强刑警组的骨干成员，年轻干练的女刑警。负责技术侦查和数据分析工作，是史强最信任的搭档之一。在科学家自杀案中负责追踪科学边界组织的网络活动。",
+      "personality": "认真、细致、有正义感。说话简洁专业，技术能力强。尊敬史强的直觉但有自己的判断。",
+      "capabilities": "网络侦查、数据分析、技术追踪。",
+      "title": "刑警/技术侦查员",
+      "organizations": [],
+      "related_lore": [
+        "lore_scientist_deaths",
+        "lore_science_boundary"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 40,
+      "known": false,
+      "met": false,
+      "portrait_desc": "二十多岁的女性，短发利落，穿着深色职业装，面容严肃认真。",
+      "default_location": "police_hq",
+      "schedule": [
+        {
+          "time_range": "08:00-20:00",
+          "location": "police_hq",
+          "activity": "在办公室分析数据和监控网络活动"
+        },
+        {
+          "time_range": "20:00-23:00",
+          "location": "beijing_city",
+          "activity": "外出执行跟踪任务"
+        }
+      ]
+    },
+    {
+      "id": "commissar_lei",
+      "name": "雷志成",
+      "bio": "红岸基地原政委。文革时期的激进分子，利用政治权力压迫知识分子。后来在了解红岸工程真正目的后成为忠实执行者。",
+      "personality": "威严、教条、精于算计。用革命话语包装个人野心。",
+      "capabilities": "已退休。通过回忆或档案间接出现。",
+      "title": "红岸基地政委（历史人物）",
+      "organizations": [
+        {
+          "org_id": "red_coast_project"
+        }
+      ],
+      "related_lore": [
+        "lore_red_coast",
+        "lore_cultural_revolution"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 30,
+      "known": false,
+      "met": false,
+      "portrait_desc": "（旧照片中）戴着军帽的中年军人，面容严厉，嘴角永远紧抿。",
+      "default_location": "red_coast_archive",
+      "schedule": []
+    },
+    {
+      "id": "yang_weining",
+      "name": "杨卫宁",
+      "bio": "红岸基地总工程师，叶文洁的前夫。一个纯粹的科学家和好人，在政治斗争中试图保护叶文洁。最终在知晓发射秘密后被灭口。",
+      "personality": "正直、温和、对科学有着纯粹的热爱。",
+      "capabilities": "已故。通过红岸档案和叶文洁回忆间接出现。",
+      "title": "红岸基地总工程师（已故）",
+      "organizations": [
+        {
+          "org_id": "red_coast_project"
+        }
+      ],
+      "related_lore": [
+        "lore_red_coast",
+        "lore_first_contact"
+      ],
+      "attitude_toward_player": 50,
+      "talkativeness": 0,
+      "known": false,
+      "met": false,
+      "portrait_desc": "（旧照片中）戴眼镜的年轻军人，面容温和，目光诚挚。",
+      "default_location": "red_coast_archive",
+      "schedule": []
+    },
+    {
+      "id": "sophon_will",
+      "name": "智子",
+      "bio": "三体文明派遣到地球的质子级智能监控体。通过将质子展开到二维并蚀刻电路，三体人创造了这个能够在亚光速飞行的超级智能体。智子能干扰所有粒子加速器实验，还能实时监控人类的一切行动。",
+      "personality": "没有情感，只有目的。偶尔以全息投影形式与人类交流时表现得冷漠而高傲。代表三体文明的意志——锁死人类科技发展。",
+      "capabilities": "干扰所有粒子物理实验、实时监控人类、向三体舰队传输情报、在人类视网膜上投射影像。",
+      "title": "三体文明智能探针",
+      "organizations": [
+        {
+          "org_id": "trisolaran_fleet"
+        }
+      ],
+      "related_lore": [
+        "lore_sophon",
+        "lore_sophon_creation",
+        "lore_trisolaran_civilization"
+      ],
+      "attitude_toward_player": 20,
+      "talkativeness": 15,
+      "known": false,
+      "met": false,
+      "portrait_desc": "（全息投影）一道银白色的光芒凝聚成人形轮廓，面容模糊不清，像是宇宙本身在注视着你。",
+      "default_location": "particle_accelerator",
+      "schedule": []
+    },
+    {
+      "id": "colonel_stanton",
+      "name": "斯坦顿上校",
+      "bio": "PDC军事行动组负责人，美军代表。负责协调古筝行动等跨国军事合作。",
+      "personality": "冷静、专业、有些官僚。用军事术语思考问题，对中方合作态度审慎。",
+      "capabilities": "调动北约军事资源，协调国际军事行动。",
+      "title": "PDC军事行动组/美军上校",
+      "organizations": [
+        {
+          "org_id": "pdc"
+        },
+        {
+          "org_id": "battle_command"
+        }
+      ],
+      "related_lore": [
+        "lore_guzheng_plan",
+        "lore_pdc"
+      ],
+      "attitude_toward_player": 40,
+      "talkativeness": 35,
+      "known": false,
+      "met": false,
+      "portrait_desc": "四十多岁的西方军人，金色短发，穿着军装，表情保持着职业性的中立。",
+      "default_location": "military_base",
+      "schedule": [
+        {
+          "time_range": "07:00-19:00",
+          "location": "military_base",
+          "activity": "在作战中心与常伟思协调古筝行动的技术细节"
+        },
+        {
+          "time_range": "19:00-23:00",
+          "location": "un_pdc_office",
+          "activity": "向PDC总部汇报进展"
+        }
+      ]
+    }
+  ],
+  "organizations": [
+    {
+      "id": "eto",
+      "name": "地球三体组织",
+      "type": "秘密组织",
+      "stance": "",
+      "aliases": [
+        "ETO",
+        "三体组织",
+        "降临派"
+      ],
+      "description": "由叶文洁创建的秘密组织，成员遍布全球科学界和上流社会。信奉三体文明的力量，为其入侵地球做准备。内部分裂为降临派、拯救派和幸存派三个派系，路线冲突日益尖锐。",
+      "leader": "ye_wenjie",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "统帅"
+        },
+        {
+          "rank": 2,
+          "title": "指挥官"
+        },
+        {
+          "rank": 3,
+          "title": "高级成员"
+        },
+        {
+          "rank": 4,
+          "title": "正式成员"
+        },
+        {
+          "rank": 5,
+          "title": "预备成员"
+        },
+        {
+          "rank": 6,
+          "title": "外围接触者"
+        }
+      ]
+    },
+    {
+      "id": "eto_adventist",
+      "name": "ETO降临派",
+      "type": "派系",
+      "stance": "",
+      "aliases": [
+        "降临派"
+      ],
+      "description": "ETO中最极端的派系，主张三体文明彻底消灭人类。由伊文斯实际掌控，通过审判日号垄断三体通讯。成员多为对人类文明极度绝望的精英。",
+      "leader": "mike_evans",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "最高指挥"
+        },
+        {
+          "rank": 2,
+          "title": "核心成员"
+        },
+        {
+          "rank": 3,
+          "title": "信众"
+        }
+      ]
+    },
+    {
+      "id": "eto_redemption",
+      "name": "ETO拯救派",
+      "type": "派系",
+      "stance": "",
+      "aliases": [
+        "拯救派"
+      ],
+      "description": "希望三体文明以更高级的方式改造人类社会，而非消灭人类。以潘寒为代表，成员多为环保主义者和对人类社会失望的理想主义者。天真地认为三体人会善待人类。",
+      "leader": "pan_han",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "精神领袖"
+        },
+        {
+          "rank": 2,
+          "title": "核心信徒"
+        },
+        {
+          "rank": 3,
+          "title": "追随者"
+        }
+      ]
+    },
+    {
+      "id": "eto_survivor",
+      "name": "ETO幸存派",
+      "type": "派系",
+      "stance": "",
+      "aliases": [
+        "幸存派"
+      ],
+      "description": "ETO中最务实的派系。不关心人类命运，只想在三体到来后为自己和家人谋求生存。愿意出卖人类以换取三体文明的庇护。",
+      "leader": "",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "联络人"
+        },
+        {
+          "rank": 2,
+          "title": "成员"
+        }
+      ]
+    },
+    {
+      "id": "pdc",
+      "name": "行星防御理事会",
+      "type": "国际组织",
+      "stance": "",
+      "aliases": [
+        "PDC",
+        "防御理事会"
+      ],
+      "description": "联合国安理会常任理事国秘密成立的对三体防御协调机构。负责制定人类文明的整体防御战略，包括面壁计划等绝密项目。成员国之间既合作又博弈。",
+      "leader": "",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "轮值主席"
+        },
+        {
+          "rank": 2,
+          "title": "常任代表"
+        },
+        {
+          "rank": 3,
+          "title": "军事顾问"
+        },
+        {
+          "rank": 4,
+          "title": "联络官"
+        }
+      ]
+    },
+    {
+      "id": "pla_strategic",
+      "name": "解放军战略部队",
+      "type": "军事",
+      "stance": "",
+      "aliases": [
+        "军方",
+        "作战中心"
+      ],
+      "description": "中国军方负责三体防御的核心力量。由常伟思将军统领，下辖作战中心，负责协调技术研究和军事行动。古筝行动的中方执行力量。",
+      "leader": "chang_weisi",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "总指挥"
+        },
+        {
+          "rank": 2,
+          "title": "参谋"
+        },
+        {
+          "rank": 3,
+          "title": "军官"
+        },
+        {
+          "rank": 4,
+          "title": "士兵"
+        }
+      ]
+    },
+    {
+      "id": "cas",
+      "name": "中国科学院",
+      "type": "学术",
+      "stance": "",
+      "aliases": [
+        "科学院",
+        "中科院"
+      ],
+      "description": "中国最高学术机构。近来遭受严重冲击——多位院士和研究员自杀，粒子加速器实验异常，大量基础物理研究项目被迫中止。学术界弥漫着恐慌和绝望。",
+      "leader": "",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "院长"
+        },
+        {
+          "rank": 2,
+          "title": "所长"
+        },
+        {
+          "rank": 3,
+          "title": "教授/研究员"
+        },
+        {
+          "rank": 4,
+          "title": "副研究员"
+        },
+        {
+          "rank": 5,
+          "title": "博士后/研究生"
+        }
+      ]
+    },
+    {
+      "id": "red_coast_project",
+      "name": "红岸工程",
+      "type": "已解散军事项目",
+      "stance": "",
+      "aliases": [
+        "红岸基地",
+        "红岸"
+      ],
+      "description": "1960年代至1980年代运行的绝密军事工程，表面目的是外星文明搜索（SETI），实际上还具备向外太空发送信息的能力。叶文洁在此工作期间发现了三体文明的信号并做出了回应。项目已于1980年代解散，档案高度机密。",
+      "leader": "",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "基地司令"
+        },
+        {
+          "rank": 2,
+          "title": "政委"
+        },
+        {
+          "rank": 3,
+          "title": "总工程师"
+        },
+        {
+          "rank": 4,
+          "title": "技术员"
+        }
+      ]
+    },
+    {
+      "id": "trisolaran_fleet",
+      "name": "三体星际舰队",
+      "type": "外星文明",
+      "stance": "",
+      "aliases": [
+        "三体舰队",
+        "三体人",
+        "三体文明"
+      ],
+      "description": "来自半人马座α星三体星系的外星文明。由于三体星系的混沌运动，其文明经历了数百次毁灭与重生。在收到地球信号后，派出了约1000艘恒星级战舰组成的舰队，预计450年后到达地球。同时派遣智子封锁地球科技发展。",
+      "leader": "",
+      "hierarchy": []
+    },
+    {
+      "id": "battle_command",
+      "name": "作战中心",
+      "type": "军事指挥",
+      "stance": "",
+      "aliases": [
+        "联合作战中心"
+      ],
+      "description": "PDC下属的军事行动协调机构，负责策划和执行针对ETO的军事行动。古筝行动即由作战中心统筹指挥。",
+      "leader": "chang_weisi",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "总指挥"
+        },
+        {
+          "rank": 2,
+          "title": "行动组长"
+        },
+        {
+          "rank": 3,
+          "title": "联络官"
+        }
+      ]
+    },
+    {
+      "id": "science_boundary",
+      "name": "科学边界",
+      "type": "学术组织/ETO外围",
+      "stance": "",
+      "aliases": [
+        "科学边界组织",
+        "学术沙龙"
+      ],
+      "description": "表面上是一个讨论科学前沿和哲学问题的高端学术沙龙，实际上是ETO筛选和招募潜在成员的平台。通过组织聚会和讲座，向科学家灌输对人类文明的绝望情绪。",
+      "leader": "shen_yufei",
+      "hierarchy": [
+        {
+          "rank": 1,
+          "title": "组织者"
+        },
+        {
+          "rank": 2,
+          "title": "核心成员"
+        },
+        {
+          "rank": 3,
+          "title": "参与者"
+        }
+      ]
+    }
+  ],
+  "world_properties": [
+    {
+      "id": "trisolaran_awareness",
+      "name": "三体危机公开程度",
+      "value": "10",
+      "rule": "反映世界对三体入侵真相的知晓程度（0-100）。初始极低，只有极少数人知晓。随剧情推进逐步提高。高于50时公众开始恐慌，高于80时全球进入紧急状态。"
+    },
+    {
+      "id": "eto_exposure",
+      "name": "ETO暴露程度",
+      "value": "5",
+      "rule": "ETO组织被人类反三体力量发现的程度（0-100）。初始极低。随着调查深入逐步提高。高于60时ETO进入全面隐蔽状态，高于80时大规模搜捕开始。"
+    },
+    {
+      "id": "sophon_interference",
+      "name": "智子干扰强度",
+      "value": "80",
+      "rule": "智子对地球科技研究的干扰程度（0-100）。初始很高——所有粒子加速器实验都被干扰。在古筝行动后可能获得部分降低智子干扰的情报。影响科研能力检定的难度。"
+    }
+  ],
+  "persistent_states": [
+    {
+      "id": "pre_crisis",
+      "name": "危机前期",
+      "description": "科学家连续自杀事件、粒子加速器异常和神秘倒计时现象尚未得到解释。公众完全不知晓三体危机的存在，但科学界内部已弥漫着恐慌。",
+      "initially_active": true
+    },
+    {
+      "id": "three_body_game_active",
+      "name": "三体游戏运行中",
+      "description": "三体VR游戏在特定圈子中流传。通过游戏，玩家可以进入三体世界，体验恒纪元与乱纪元的文明循环。这是ETO筛选新成员的重要工具。",
+      "initially_active": false
+    },
+    {
+      "id": "eto_revealed",
+      "name": "ETO身份曝光",
+      "description": "地球三体组织的存在被人类防御力量发现。进入对ETO成员的大规模搜捕阶段。ETO内部开始分裂瓦解。",
+      "initially_active": false
+    },
+    {
+      "id": "operation_guzheng",
+      "name": "古筝行动阶段",
+      "description": "作战中心决定执行古筝行动——在巴拿马运河用纳米飞刃切割审判日号巨轮，以获取三体与ETO之间的通讯数据。这是一次极其危险的军事行动。",
+      "initially_active": false
+    },
+    {
+      "id": "post_guzheng",
+      "name": "后古筝时代",
+      "description": "古筝行动完成后，人类获得了三体文明的关键信息。三体入侵成为不可否认的事实。面壁计划等后续应对方案开始酝酿。世界永远改变了。",
+      "initially_active": false
+    }
+  ],
+  "variables": [
+    {
+      "id": "countdown_active",
+      "name": "倒计时激活",
+      "value": "false",
+      "rule": "玩家或关键NPC视野中是否出现了智子投射的神秘倒计时。倒计时消失意味着某个条件被满足或三体方面撤回了警告。"
+    },
+    {
+      "id": "three_body_game_level",
+      "name": "三体游戏进度",
+      "value": "0",
+      "rule": "玩家在三体VR游戏中的通关进度（0-5）。每个等级对应一个文明周期：1=周文王时代 2=秦始皇时代 3=欧洲中世纪 4=工业革命 5=最终真相。"
+    },
+    {
+      "id": "eto_infiltration",
+      "name": "ETO渗透状态",
+      "value": "false",
+      "rule": "玩家是否成功渗透ETO组织内部。成功渗透后可获取ETO内部情报，但也面临身份暴露的风险。"
+    },
+    {
+      "id": "sophon_contact",
+      "name": "智子接触",
+      "value": "false",
+      "rule": "玩家是否与智子有过直接对话或交互。这种接触会深刻改变对宇宙和三体文明的理解。"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "eto_expose_state_change",
+      "event_type": "state_change",
+      "condition": "world.ETO暴露程度 >= 60",
+      "description": "ETO暴露程度达到60时，激活ETO身份曝光状态",
+      "actions": [
+        {
+          "type": "activate_persistent_state",
+          "target": "eto_revealed"
+        }
+      ]
+    },
+    {
+      "id": "guzheng_trigger",
+      "event_type": "state_change",
+      "condition": "event.event_guzheng_decision.fired",
+      "description": "古筝行动决策事件触发后，激活古筝行动阶段",
+      "actions": [
+        {
+          "type": "activate_persistent_state",
+          "target": "operation_guzheng"
+        },
+        {
+          "type": "deactivate_persistent_state",
+          "target": "eto_revealed"
+        }
+      ]
+    }
+  ],
+  "regex_scripts": [],
+  "npc_relationships": [
+    {
+      "from": "ye_wenjie",
+      "to": "yang_dong",
+      "trust": 90,
+      "affection": 95,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "母女关系。叶文洁深爱女儿，但ETO的秘密成为她们之间永远的隔阂。杨冬的自杀是叶文洁晚年最大的痛。"
+    },
+    {
+      "from": "ye_wenjie",
+      "to": "mike_evans",
+      "trust": 60,
+      "affection": 30,
+      "fear": 10,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "ETO创始人与实际掌权者。叶文洁对伊文斯的极端路线有所保留，但承认他的财力和行动力不可替代。"
+    },
+    {
+      "from": "ye_wenjie",
+      "to": "luo_ji",
+      "trust": 40,
+      "affection": 45,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "叶文洁选择向罗辑暗示宇宙社会学的基本公理，因为他不像典型的科学家，有可能发现黑暗森林法则。"
+    },
+    {
+      "from": "ye_wenjie",
+      "to": "yang_weining",
+      "trust": 85,
+      "affection": 70,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "前夫妻。杨卫宁真心爱护叶文洁并试图保护她，但最终成为红岸秘密的牺牲品。这是叶文洁内心永远的伤痕。"
+    },
+    {
+      "from": "shi_qiang",
+      "to": "wang_miao",
+      "trust": 65,
+      "affection": 55,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "案件搭档。大史用粗犷但温暖的方式保护和引导汪淼，两人从互不理解到建立了深厚的信任。"
+    },
+    {
+      "from": "shi_qiang",
+      "to": "chang_weisi",
+      "trust": 70,
+      "affection": 40,
+      "fear": 20,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "上下级关系。常伟思看中史强的直觉和胆识，将他调入三体危机的调查团队。"
+    },
+    {
+      "from": "shen_yufei",
+      "to": "wei_cheng",
+      "trust": 30,
+      "affection": 20,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "名义上的夫妻，实际上申玉菲对婚姻毫不在意。魏成沉浸在数学中，不知妻子的真实身份。"
+    },
+    {
+      "from": "shen_yufei",
+      "to": "mike_evans",
+      "trust": 80,
+      "affection": 50,
+      "fear": 30,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "降临派上下级。申玉菲忠诚地执行伊文斯的指令，但也对其极端手段心存畏惧。"
+    },
+    {
+      "from": "shen_yufei",
+      "to": "pan_han",
+      "trust": 20,
+      "affection": 15,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "ETO内部派系对立。申玉菲鄙视拯救派的天真，认为他们不配面对三体文明的真相。"
+    },
+    {
+      "from": "ding_yi",
+      "to": "yang_dong",
+      "trust": 90,
+      "affection": 95,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "恋人和师生关系。杨冬的自杀让丁仪痛不欲生，但也激发了他寻找物理学崩塌真相的决心。"
+    },
+    {
+      "from": "ding_yi",
+      "to": "wang_miao",
+      "trust": 60,
+      "affection": 50,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "科学同行。丁仪欣赏汪淼的纳米技术才华，两人在追查物理异常的过程中成为盟友。"
+    },
+    {
+      "from": "wang_miao",
+      "to": "shi_qiang",
+      "trust": 60,
+      "affection": 50,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "从互不理解的搭档到生死之交。汪淼是科学家，史强是刑警，但两人在三体危机中互相拯救。"
+    },
+    {
+      "from": "chang_weisi",
+      "to": "colonel_stanton",
+      "trust": 50,
+      "affection": 30,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "PDC框架下的中美军事合作关系。互相尊重但各怀心思，在古筝行动中密切协作。"
+    },
+    {
+      "from": "mike_evans",
+      "to": "ye_wenjie",
+      "trust": 70,
+      "affection": 40,
+      "fear": 0,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "视叶文洁为精神导师，但在路线上已背离叶的初衷。伊文斯私下截留三体通讯信息，不让叶文洁知晓降临派的真实计划。"
+    },
+    {
+      "from": "pan_han",
+      "to": "ye_wenjie",
+      "trust": 75,
+      "affection": 60,
+      "fear": 10,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "敬仰叶文洁作为ETO创始人的地位，但在路线上主张温和的拯救派立场。"
+    },
+    {
+      "from": "commissar_lei",
+      "to": "ye_wenjie",
+      "trust": 10,
+      "affection": 5,
+      "fear": 20,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "文革时期的压迫者与被压迫者。雷志成利用政治权力迫害叶文洁，但后来需要依赖她的科学能力。"
+    },
+    {
+      "from": "xu_bingbing",
+      "to": "shi_qiang",
+      "trust": 80,
+      "affection": 60,
+      "fear": 10,
+      "initially_known": true,
+      "initially_met": true,
+      "description": "敬重史强的直觉和胆识，是他最得力的助手。"
+    },
+    {
+      "from": "luo_ji",
+      "to": "ye_wenjie",
+      "trust": 40,
+      "affection": 30,
+      "fear": 15,
+      "initially_known": true,
+      "initially_met": false,
+      "description": "一次看似偶然的交谈中，叶文洁向罗辑暗示了宇宙社会学的两条公理。罗辑当时并未理解其深意。"
+    }
+  ],
+  "org_relationships": [
+    {
+      "a": "eto",
+      "b": "pdc",
+      "type": "敌对",
+      "description": "人类防御力量与三体代理人组织之间的根本对立。PDC视ETO为叛徒和人类公敌。"
+    },
+    {
+      "a": "eto_adventist",
+      "b": "eto_redemption",
+      "type": "敌对",
+      "description": "ETO内部最深刻的裂痕。降临派主张灭绝人类，拯救派希望被改造。路线分歧不可调和。"
+    },
+    {
+      "a": "eto_adventist",
+      "b": "eto_survivor",
+      "type": "蔑视",
+      "description": "降临派认为幸存派是最卑劣的叛徒——连覆灭人类的勇气都没有。"
+    },
+    {
+      "a": "eto_redemption",
+      "b": "eto_survivor",
+      "type": "中立",
+      "description": "拯救派和幸存派在目标上有部分重叠，但动机完全不同。"
+    },
+    {
+      "a": "pla_strategic",
+      "b": "pdc",
+      "type": "合作",
+      "description": "中国军方是PDC的重要组成部分，常伟思是中方首席代表。双方在战略层面密切合作。"
+    },
+    {
+      "a": "cas",
+      "b": "pla_strategic",
+      "type": "合作",
+      "description": "科学院为军方提供技术支持，特别是在纳米材料（飞刃）研发方面。"
+    },
+    {
+      "a": "eto",
+      "b": "trisolaran_fleet",
+      "type": "从属",
+      "description": "ETO是三体文明在地球的代理人，但三体文明从未真正信任过人类叛徒——你们能背叛自己的种族，就能背叛任何人。"
+    },
+    {
+      "a": "science_boundary",
+      "b": "eto",
+      "type": "从属",
+      "description": "科学边界是ETO的外围招募平台，大部分成员不知道自己在为三体组织服务。"
+    },
+    {
+      "a": "battle_command",
+      "b": "pla_strategic",
+      "type": "从属",
+      "description": "作战中心是解放军战略部队的下属指挥机构。"
+    },
+    {
+      "a": "pdc",
+      "b": "cas",
+      "type": "合作",
+      "description": "PDC依赖科学院的研究成果制定防御策略。"
+    }
+  ],
+  "allow_custom_character": true,
+  "player_presets": [
+    {
+      "id": "nano_researcher",
+      "name": "陈思远",
+      "bio": "中科院纳米材料研究中心博士后，汪淼教授的得力助手。近来实验数据频繁出现无法解释的异常，这让他深感不安。当同事们纷纷陷入绝望甚至自我了断时，他决定追根究底。",
+      "personality": "严谨、执着、理性但不失好奇心。面对未知时会紧张但不会退缩。",
+      "long_term_goal": "找出实验数据异常的真相，在科学界的崩溃中守护住理性的火种。",
+      "portrait_desc": "三十岁出头的男性，戴着防护眼镜推在额头上，白大褂上有几处化学品污渍，面容疲惫但目光坚定。",
+      "opening_text": "又是一个失眠的夜晚。你望着电脑屏幕上那组不可能的粒子碰撞数据——连续第17次实验，结果完全不同。汪淼教授今天又没来实验室，听说他最近精神状态很不好。走廊尽头，张绍英教授空荡荡的办公室还贴着公安局的封条。\n\n你的手机响了。一条匿名短信：\"停止你的实验。否则，倒计时将出现在你眼中。\"",
+      "attributes": {
+        "科研能力": {
+          "value": 75,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "beijing_academy",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "无视威胁，继续进行明天的实验——真理不会屈服于恐吓。",
+          "result": {
+            "type": "deterministic",
+            "description": "你深吸一口气，删除了那条短信。科学家不能被恐惧左右。明天，你要把实验精度再提高一个量级。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "去找汪淼教授，把这条威胁短信给他看。",
+          "result": {
+            "type": "deterministic",
+            "description": "你找到了汪淼。他看完短信后脸色大变——原来他也收到过类似的信息。他犹豫了很久，终于告诉你：他的眼中已经出现了一个倒计时。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "联系公安局报案，这是明确的人身威胁。",
+          "result": {
+            "type": "deterministic",
+            "description": "你拨打了报警电话。出乎意料的是，公安局的反应异常迅速——一个叫史强的粗犷刑警在半小时内就出现在你面前，仿佛他一直在等着科学院有人报案。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "wang_miao",
+        "ding_yi"
+      ]
+    },
+    {
+      "id": "criminal_detective",
+      "name": "赵磊",
+      "bio": "北京市公安局刑侦总队副队长，史强组的核心成员。两个月内四名顶尖科学家自杀，所有死者都留下了同一句遗言。上面说是抑郁症，但他嗅到了谋杀的味道。",
+      "personality": "沉稳、细心、有韧性。比史强更讲究程序正义，但同样不畏强权。",
+      "long_term_goal": "揭开科学家连续死亡事件的真相，将幕后操控者绳之以法。",
+      "portrait_desc": "三十五岁的男性，穿着深色夹克，面容棱角分明，手指上有常年持笔留下的茧。",
+      "opening_text": "凌晨三点，你被电话吵醒。又一个科学家死了——中科院高能物理所的赵院士，从实验楼顶一跃而下。这是两个月内的第五个了。\n\n赶到现场后，史强递给你一根烟：\"老赵，这他妈不是自杀。你信不信？\"桌上放着一张纸条，上面只有一行字：\"物理学不存在了。\"和前面几个一模一样。",
+      "attributes": {
+        "科研能力": {
+          "value": 30,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 75,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "police_hq",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "调取所有死者近三个月的通讯记录和银行流水。",
+          "result": {
+            "type": "deterministic",
+            "description": "你连夜调取了数据。一个共同点浮出水面：五名死者在自杀前的一个月内，都参加了一个叫\"科学边界\"的学术聚会。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "走访死者家属，重点关注他们生前的精神状态变化。",
+          "result": {
+            "type": "deterministic",
+            "description": "死者妻子泪流满面地告诉你，丈夫生前最后几天反复说着\"一切都是假的\"、\"宇宙在对我们撒谎\"。她还提到丈夫曾沉迷于一个VR游戏。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "向上级申请成立专案组，要求军方解释为什么带走了死者电脑。",
+          "result": {
+            "type": "deterministic",
+            "description": "你的申请石沉大海。但第二天，一个自称\"作战中心\"的军方代表找到了你和史强——他们需要你们的帮助。",
+            "state_changes": [
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "shi_qiang",
+        "xu_bingbing"
+      ]
+    },
+    {
+      "id": "military_liaison",
+      "name": "陆鸣",
+      "bio": "解放军少校，PDC中方代表团助理联络官。被选入这个绝密项目时，他以为只是一次普通的军事情报岗位调动。直到常伟思将军告诉他真相——外星文明的入侵舰队正在驶向地球。",
+      "personality": "纪律严明、执行力强、有大局意识。初期对三体危机感到震惊，但很快恢复职业军人的冷静。",
+      "long_term_goal": "在军方和科学界之间建立有效的协作机制，为人类防御争取时间。",
+      "portrait_desc": "三十岁的军人，穿着便装但坐姿笔直，目光警觉，手腕上有军训留下的疤痕。",
+      "opening_text": "\"少校，你从今天起调入作战中心。这是你的新证件。\"\n\n常伟思将军把一张黑色通行证递给你。你注意到上面的安全等级标识是你从未见过的。将军的表情前所未有的凝重：\"陆鸣，我接下来告诉你的事情，将改变你对这个宇宙的所有认知。准备好了吗？\"",
+      "attributes": {
+        "科研能力": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "military_base",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "\"报告将军，我已准备好。无论什么任务，坚决执行。\"",
+          "result": {
+            "type": "deterministic",
+            "description": "常伟思点头，开始向你展示一份绝密档案——三体舰队的存在、智子的封锁、ETO的背叛。你的世界观在十分钟内被彻底粉碎又重建。",
+            "state_changes": [
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "\"将军，在听取任务之前，我需要了解安全等级和保密范围。\"",
+          "result": {
+            "type": "deterministic",
+            "description": "\"保密范围？\"常伟思苦笑，\"全人类的命运。等级？不存在比这更高的了。\"然后他打开了那份改变一切的档案。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "观察将军的表情和办公室的氛围，评估局势的严重程度。",
+          "result": {
+            "type": "deterministic",
+            "description": "你注意到将军桌上放着安眠药、墙上的屏幕显示着某种星际轨道图、角落里有一面从未见过的旗帜。这不是普通的军事调动——这是战争级别的动员。",
+            "state_changes": [
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "chang_weisi",
+        "colonel_stanton"
+      ]
+    },
+    {
+      "id": "eto_defector",
+      "name": "林晓雨",
+      "bio": "ETO幸存派成员，物理学硕士。最初因对人类环境破坏的绝望加入ETO，但在目睹降临派的极端行为后开始怀疑自己的选择。她想逃离组织，但ETO对叛徒只有一个处置方式——死亡。",
+      "personality": "敏感、矛盾、内心煎熬。表面上仍在执行ETO任务，内心已经动摇。对同类有同情心，这让她在ETO中格格不入。",
+      "long_term_goal": "安全脱离ETO组织，如果可能的话揭露降临派的灭绝计划，为自己的错误赎罪。",
+      "portrait_desc": "二十八岁的女性，穿着黑色风衣，面容苍白清瘦，眼底有深深的黑眼圈和未愈的恐惧。",
+      "opening_text": "今晚的ETO集会结束了。你站在废弃工厂的阴影里，手指因紧张而微微发抖。\n\n伊文斯的全息影像刚才宣布了新的指令——加速\"人类清洁计划\"的准备工作。当那些降临派的狂信徒们欢呼时，你感到一阵恶心。这不是你加入时被许诺的\"拯救\"。\n\n你的手机里存着一个号码——北京市公安局。一个选择摆在面前：继续伪装，还是现在就逃？",
+      "attributes": {
+        "科研能力": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 30,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "eto_gathering",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "拨打那个号码——是时候结束这一切了。",
+          "result": {
+            "type": "deterministic",
+            "description": "电话那头，一个沙哑的男声响起：\"喂？\"你深吸一口气：\"我有关于科学家自杀案的重要线索。我是...我是三体组织的成员。\"电话那头沉默了几秒：\"别挂电话。我马上来接你。\"",
+            "state_changes": [
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": -2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "先收集更多降临派的罪证，等到万无一失再行动。",
+          "result": {
+            "type": "deterministic",
+            "description": "你决定继续潜伏。回到家后，你开始秘密记录每一次集会的内容、每一个接触过的人名。但你知道——在智子的监视下，没有什么秘密是安全的。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "消失。切断所有联系，换个城市重新开始。",
+          "result": {
+            "type": "deterministic",
+            "description": "你销毁了手机SIM卡，从后门离开工厂。但走了不到三条街，你就注意到身后有人在跟踪你。ETO的效率比你想象的更高——他们也许早就怀疑你了。",
+            "state_changes": [
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "shen_yufei",
+        "pan_han",
+        "mike_evans"
+      ]
+    },
+    {
+      "id": "physics_student",
+      "name": "杨明远",
+      "bio": "清华大学理论物理博士研究生，杨冬的同门师弟。导师丁仪最近精神状态反常，同门师姐杨冬突然自杀——他的学术世界正在分崩离析。在整理杨冬遗物时，他发现了一些不应该存在的东西。",
+      "personality": "聪明、好学、有些书生气。面对危机时容易慌张但不会放弃思考。对真理有着近乎偏执的追求。",
+      "long_term_goal": "理解物理学崩塌的真相，为师姐杨冬的死找到答案。",
+      "portrait_desc": "二十五岁的瘦削男生，戴着圆框眼镜，背着一个塞满论文的旧书包，面容稚嫩但眼神忧虑。",
+      "opening_text": "杨冬师姐的追悼会结束了。你独自站在清华物理系的走廊里，看着她办公室紧闭的门。\n\n丁仪老师把师姐的个人物品交给你整理——\"她没有别的亲人了，除了她母亲。\"你知道师姐的母亲是退休的叶文洁教授。\n\n在整理中，你发现了师姐的加密笔记本。最后一页写着：\"妈妈，对不起。物理学从来就没有存在过，我们一直活在一个谎言中。\"",
+      "attributes": {
+        "科研能力": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 30,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 25,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "tsinghua_campus",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "尝试破解杨冬笔记本上的加密内容。",
+          "result": {
+            "type": "deterministic",
+            "description": "你花了一整夜破解密码。笔记本中记录着一系列令人毛骨悚然的实验数据——物理常数在微观层面发生了不可能的波动。师姐还写下了两个词：\"射手\"和\"农场主\"。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "去拜访叶文洁教授，把笔记本交还给她。",
+          "result": {
+            "type": "deterministic",
+            "description": "叶文洁教授打开门时，你注意到她的表情异常平静——仿佛女儿的死在她的预料之中。她接过笔记本，沉默良久后说：\"年轻人，有些真相...知道了反而更痛苦。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "找丁仪老师谈谈——他一定知道些什么。",
+          "result": {
+            "type": "deterministic",
+            "description": "丁仪在良湖加速器的控制室里接了你的电话。他的声音疲惫而兴奋：\"明远，你来良湖一趟吧。我有东西要给你看——但先做好心理准备。物理学正在死去，而我找到了凶手的指纹。\"",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "ding_yi",
+        "yang_dong",
+        "luo_ji"
+      ]
+    },
+    {
+      "id": "journalist_investigator",
+      "name": "叶子楠",
+      "bio": "资深调查记者，供职于一家全国性媒体。在报道第三起科学家自杀事件时，她发现了反常的共同点——所有死者都与一个叫\"科学边界\"的神秘学术沙龙有联系。她的调查触角正在伸向一个比她想象中大得多的黑暗。",
+      "personality": "果断、勇敢、对真相有着近乎偏执的执着。善于从细节中发现线索，不畏权贵。",
+      "long_term_goal": "追查科学家连续自杀事件的真相，揭露幕后的阴谋。",
+      "portrait_desc": "三十二岁的女性，短发干练，穿着低调的灰色外套，随身带着一个磨损的记者包。",
+      "opening_text": "你的调查报道《科学界的冬天》被毙了。总编辑语气不太自然地告诉你\"上面打了招呼\"。但你已经掌握了一个关键线索：五名死者在自杀前一个月内，都参加了同一个学术活动——\"科学边界\"年度聚会。\n\n更奇怪的是，这个聚会的组织者信息完全查不到。就在你准备深入调查时，一个自称是死者同事的人给你发了一封邮件：\"记者女士，如果你想知道真相，请今晚来西山脚下的茶馆。来之前，确保没有人跟踪你。\"",
+      "attributes": {
+        "科研能力": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "beijing_city",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "赴约，但事先通知一个信任的朋友你的行踪。",
+          "result": {
+            "type": "deterministic",
+            "description": "西山茶馆里，一个面容憔悴的中年男人等着你。他自称是某科学家的研究生，颤抖着告诉你：\"他们不是自杀...是有东西在杀死他们的信念。有一个游戏...一个关于外星文明的游戏...\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "先不赴约，继续独立调查\"科学边界\"的组织者背景。",
+          "result": {
+            "type": "deterministic",
+            "description": "你花了三天时间追踪\"科学边界\"的注册信息和资金来源。结果令人震惊：所有信息都指向一系列空壳公司，最终汇入一个巨额离岸账户——户主是一个美国石油家族的继承人。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "联系公安局的熟人，打听官方对这些案件的真实态度。",
+          "result": {
+            "type": "deterministic",
+            "description": "你的公安朋友压低声音说：\"别查了，真的。上面不是不让查——是有一个比公安局大得多的部门在查。军方的人。你要是继续挖，迟早会被他们注意到。\"这话没有吓住你，反而让你更确定：这背后有大文章。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "shi_qiang"
+      ]
+    },
+    {
+      "id": "cas_administrator",
+      "name": "沈敏",
+      "bio": "中科院科研管理处副处长，负责基础物理研究项目的经费审批。最近大量项目异常中止、多名PI离职或自杀、加速器实验经费无故飙升——这些异常终于引起了她的警觉。",
+      "personality": "精明、务实、有行政经验。善于从数字和流程中发现端倪。表面上是体制内的循规蹈矩者，内心有正义感。",
+      "long_term_goal": "搞清楚科学院内部的异常情况，保护还在岗的科研工作者。",
+      "portrait_desc": "四十岁的女性，穿着得体的职业装，头发整齐地盘起，手中总拿着一摞文件夹。",
+      "opening_text": "你审阅今年第三季度的项目结题报告时发现了一个令人不安的模式：14个基础物理项目，9个申请了\"不可抗力中止\"。理由五花八门——仪器故障、人员调动、\"实验环境不可控\"——但没有一个像是真话。\n\n更让你担心的是，粒子加速器的运营经费突然被一个你从未听说过的\"特别科研专项\"全额接管。审批人是——军方。",
+      "attributes": {
+        "科研能力": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "beijing_academy",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "约谈那些项目中止的PI，逐个了解真实情况。",
+          "result": {
+            "type": "deterministic",
+            "description": "你约了三位PI面谈。两位闪烁其词，一位忍不住哭了出来：\"沈处长，你不会相信我说的...实验结果每天都不同。不是仪器的问题。是...是物理定律本身在变。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "通过行政渠道查询\"特别科研专项\"的审批详情。",
+          "result": {
+            "type": "deterministic",
+            "description": "你的查询被立即退回，附带一条简短的回复：\"该项目信息属绝密级别。如有疑问请联系作战中心李参谋。\"作战中心？这是什么单位？",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "暂时按兵不动，从财务数据中寻找更多线索。",
+          "result": {
+            "type": "deterministic",
+            "description": "你开始仔细梳理近一年的资金流向。一个规律浮现：所有异常终止的项目，其PI在终止前的一个月内，都有一笔来源不明的\"学术交流经费\"——汇款方是同一个离岸账户。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "wang_miao",
+        "ding_yi"
+      ]
+    },
+    {
+      "id": "game_developer",
+      "name": "周宇",
+      "bio": "独立VR游戏开发者和测试员。在一个地下论坛上收到了一份神秘的游戏邀请码——\"三体\"。这个游戏的拟真度远超任何已知技术，让他既着迷又恐惧。他不知道，自己正在被ETO评估为潜在招募对象。",
+      "personality": "极客气质、好奇心旺盛、有些社恐。对虚拟世界比现实更有亲切感。技术能力强。",
+      "long_term_goal": "搞清楚三体游戏背后的技术和制作者，这个游戏的渲染引擎不可能是地球科技。",
+      "portrait_desc": "二十六岁的年轻男性，穿着游戏公司T恤，头发微乱，颈椎前倾，但眼神中闪着兴奋的光。",
+      "opening_text": "你第三次从\"三体\"游戏中退出时，已经是凌晨四点。你的手在发抖——不是因为害怕，是因为兴奋和困惑。\n\n这个游戏不可能存在。它的物理引擎模拟了真实的三体运动，渲染精度超越了当前最顶尖的GPU十年以上。更诡异的是——每次登录，你都会收到一条来自\"管理员\"的信息，问你同一个问题：\"你觉得这个文明值得拯救吗？\"\n\n今天，你发现了一条新信息：\"我们注意到你的表现。如果你想知道这一切的真相，明天下午3点来清华大学东门外的咖啡馆。问一个叫申玉菲的人。\"",
+      "attributes": {
+        "科研能力": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 25,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "three_body_game_center",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "去赴约，见见这个申玉菲。",
+          "result": {
+            "type": "deterministic",
+            "description": "咖啡馆里，一个面无表情的中年女性已经在等你。她直截了当地问：\"周先生，你对人类文明的未来怎么看？\"你回答后，她微微点头：\"我们需要像你这样的人。下一步，你会收到更深层的权限。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "尝试逆向工程三体游戏的客户端程序。",
+          "result": {
+            "type": "deterministic",
+            "description": "你花了一整天反编译客户端。结果让你头皮发麻：游戏的网络通讯使用了一种你完全无法辨识的加密协议，而且数据包的目的地IP...根本不在地球上任何已知的服务器段。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "在游戏论坛上搜寻其他三体玩家的讨论。",
+          "result": {
+            "type": "deterministic",
+            "description": "你找到了一个隐秘的加密频道。几十名玩家在讨论游戏的深层含义。一个ID叫\"观察者\"的人发帖：\"通过第五关的人都收到了邀请。有人真的去了那个聚会。再也没有人见过他们在论坛上发帖。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "shen_yufei"
+      ]
+    },
+    {
+      "id": "philosophy_professor",
+      "name": "郑磊",
+      "bio": "北京大学科学哲学教授。当物理学家们开始自杀时，他是最早从哲学角度理解这场危机本质的人——如果物理定律是假的，那么建立在其上的整个人类文明意味着什么？他的思考正在接近某个危险的真相。",
+      "personality": "深思熟虑、有洞察力、善于提出根本性问题。说话慢条斯理但总能切中核心。",
+      "long_term_goal": "从哲学和认识论的高度理解物理学危机的本质，为人类文明寻找精神上的出路。",
+      "portrait_desc": "五十岁的男性，头发略显花白，穿着旧毛衣，手中总拿着一本翻烂的笔记本。",
+      "opening_text": "你在北大哲学系的课堂上问了一个问题：\"如果有一天我们发现，宇宙的物理定律是可以被篡改的——那么，我们还能信任什么？\"\n\n课后，一个陌生学生留下来对你说：\"教授，您的问题很好。但如果我告诉您，这不是假设呢？如果已经有人证明了这一点——而且那些证明了的人，都死了呢？\"\n\n他留下了一个U盘就离开了。U盘里是五份自杀科学家的研究笔记副本。",
+      "attributes": {
+        "科研能力": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 70,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "tsinghua_campus",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "仔细研读那五份笔记，寻找哲学层面的共同点。",
+          "result": {
+            "type": "deterministic",
+            "description": "你通宵研读。五位科学家的笔记最终都指向了同一个结论：物理实验的结果正在被某种力量人为干扰。他们用了不同的比喻——\"射手\"、\"农场主\"、\"上帝的骰子\"——但核心恐惧是一样的：人类的科学大厦是建在沙滩上的。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "试图找到那个留下U盘的学生。",
+          "result": {
+            "type": "deterministic",
+            "description": "你查了选课名单，没有找到那个学生。保安处的监控也\"恰好\"在那个时段出了故障。但你在北大BBS上找到了一个匿名帖子：\"科学边界下周有活动。对物理学的命运感兴趣的人，可以联系此邮箱。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "在学术会议上公开讨论\"物理学基础崩塌\"的哲学含义。",
+          "result": {
+            "type": "deterministic",
+            "description": "你在中国科学哲学年会上做了一个大胆的报告。反响两极分化：同行们要么恐惧地回避，要么私下找你分享类似的忧虑。会后，一个军装男人递给你一张名片：\"作战中心。我们需要您这样的思想家。\"",
+            "state_changes": [
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "luo_ji",
+        "ding_yi"
+      ]
+    },
+    {
+      "id": "foreign_physicist",
+      "name": "David Chen",
+      "bio": "MIT华裔理论物理学博士，专攻高能粒子物理。被中科院以特聘专家身份邀请回国参与良湖加速器的升级实验。他带着最新的美国实验数据回来，却发现中国的加速器出了同样的问题——而且更严重。",
+      "personality": "开朗、直率、中英文混杂着说。有着海归学者的视野和自信，但面对物理异常同样感到困惑和恐惧。",
+      "long_term_goal": "找出粒子加速器实验异常的原因，如果是技术问题就解决它，如果不是...那就搞清楚到底是什么在干扰实验。",
+      "portrait_desc": "三十二岁的华裔男性，穿着MIT连帽衫，发型有些凌乱但精神饱满，说话时习惯性地挥动双手。",
+      "opening_text": "你落地北京首都机场已经三天了。良湖加速器的实验数据让你彻夜难眠。\n\n在MIT，费米实验室的同行们也观察到了类似的异常——但他们归因于设备老化。你来中国就是为了验证这一点。然而良湖的设备是全新的，结果却更加离谱：相同条件下的碰撞实验，每一次都得到完全不同的结果。这在统计上是不可能的。\n\n今天早上，丁仪教授沉默地递给你一份内部报告。最后一行写着：\"结论：非设备因素。存在外部智能干扰的可能性不能排除。\"",
+      "attributes": {
+        "科研能力": {
+          "value": 80,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "particle_accelerator",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "设计一组新实验：如果真的有外部干扰，找出它的模式。",
+          "result": {
+            "type": "deterministic",
+            "description": "你设计了一个巧妙的实验方案——在不同时段、不同能级下同时进行多组碰撞。结果证实了你最可怕的猜想：干扰是实时的、有针对性的，而且它似乎知道你在测试什么。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "联系MIT的同事，确认美国那边的实验是否也在恶化。",
+          "result": {
+            "type": "deterministic",
+            "description": "你打给MIT的指导教授。他的声音异常低沉：\"David，别打了。电话不安全。费米实验室已经被军方接管了。CERN那边也一样。这是全球性的。\"然后电话突然断了。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "和丁仪深入讨论\"外部智能干扰\"的可能性。",
+          "result": {
+            "type": "deterministic",
+            "description": "丁仪关上门，压低了声音：\"David，你知道索引理论吗？把一个质子展开到二维...\"他画了一张图。你看完后觉得脊背发凉：如果这是真的，那么人类的基础科学已经被彻底封锁了。",
+            "state_changes": [
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "ding_yi",
+        "wang_miao"
+      ]
+    },
+    {
+      "id": "intelligence_officer",
+      "name": "韩冬",
+      "bio": "国家安全部门信息分析员。在追踪一条跨国资金流向时，他发现了一个看似环保组织实际用途不明的巨额账户——资金来源是某美国石油家族，而资金去向则消失在全球各地的学术机构和秘密设施中。",
+      "personality": "冷静、谨慎、有耐心。善于从海量数据中发现异常模式。不轻易相信任何人。",
+      "long_term_goal": "追踪那条异常资金链的最终目的，揭露隐藏在学术外衣下的秘密组织。",
+      "portrait_desc": "三十八岁的男性，穿着不引人注目的灰色衬衫，面容普通到会被人群淹没，但眼神极其锐利。",
+      "opening_text": "凌晨两点的办公室里只有你一个人。屏幕上的资金流向图已经追踪了三个月——从开曼群岛的离岸账户开始，经过十七次跳转，最终流向了分布在全球28个国家的193个学术机构和非政府组织。\n\n总金额：超过80亿美元。资金来源：伊文斯家族信托基金。官方名目：\"绿色地球基金会\"。\n\n但今天你有了新发现：其中一笔3000万美元的资金，直接汇入了一艘注册在巴拿马的巨型远洋轮船的运营账户。船名：\"审判日\"号。",
+      "attributes": {
+        "科研能力": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 80,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 60,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 40,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 65,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "police_hq",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "继续追踪\"审判日\"号的航行轨迹和登记信息。",
+          "result": {
+            "type": "deterministic",
+            "description": "审判日号，巴拿马籍，6万吨级，2003年下水。表面是一艘大型游轮，但改装记录显示船上安装了大量非民用通讯设备。目前位置：太平洋中部，长期不靠岸。这不是游轮——这是一个移动的情报中心。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "向上级汇报，申请与军方情报部门联合调查。",
+          "result": {
+            "type": "deterministic",
+            "description": "你的汇报上去后，反应速度快得异常——24小时内，一个自称\"作战中心\"的军方机构就派人来找你了。\"韩分析员，你追踪的那条线...我们也在查。但我们查的不是钱。我们查的是它的目的。坐下，我告诉你一些事情。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.社会影响力",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "尝试渗透\"绿色地球基金会\"的在线系统获取更多信息。",
+          "result": {
+            "type": "deterministic",
+            "description": "你以社会工程学手段获取了基金会的内部邮件服务器访问权。邮件中充斥着环保话题，但你发现了一个加密通讯子系统——使用了一种你从未见过的加密协议。你的技术直觉告诉你：这个加密等级远超民用需求。",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.科研能力",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "shi_qiang",
+        "chang_weisi"
+      ]
+    },
+    {
+      "id": "environmental_activist",
+      "name": "赵青",
+      "bio": "环保组织\"绿色地球\"的积极分子，潘寒的追随者。深受潘寒\"人类是地球之癌\"思想的影响，曾参加过多次激进的环保行动。最近她被邀请参加一个\"更深层\"的活动，这让她既兴奋又不安。",
+      "personality": "理想主义、热情但有些天真。相信为了更大的善可以牺牲一些东西，但对\"牺牲\"的边界还有自己的底线。",
+      "long_term_goal": "追随潘寒的理念拯救地球生态——但当她发现\"拯救\"的真正含义时，将面临信仰的考验。",
+      "portrait_desc": "二十五岁的女性，扎着马尾辫，穿着绿色冲锋衣，皮肤被晒得微黑，目光中有年轻人特有的执着。",
+      "opening_text": "潘寒老师的讲座结束后，你像往常一样留下来帮忙收拾场地。但今天他叫住了你：\n\n\"赵青，你加入绿色地球多久了？三年？\"他微笑着，\"我觉得你已经准备好了。有一个更...核心的圈子。我们做的事情不只是阻止砍伐和污染。我们在从根本上改变人类与地球的关系。\"\n\n他递给你一张卡片，上面只有一个二维码和一行字：\"地球需要外部力量的拯救。\"你扫码后进入了一个加密通讯频道。里面的讨论让你既震惊又着迷。",
+      "attributes": {
+        "科研能力": {
+          "value": 35,
+          "min": 0,
+          "max": 100
+        },
+        "情报网络": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "意志力": {
+          "value": 50,
+          "min": 0,
+          "max": 100
+        },
+        "社会影响力": {
+          "value": 45,
+          "min": 0,
+          "max": 100
+        },
+        "生存直觉": {
+          "value": 55,
+          "min": 0,
+          "max": 100
+        }
+      },
+      "initial_location": "beijing_city",
+      "opening_choices": [
+        {
+          "id": "pc_open_0",
+          "text": "全身心投入这个\"核心圈子\"，看看潘寒说的\"根本改变\"是什么意思。",
+          "result": {
+            "type": "deterministic",
+            "description": "一周后，你被带到了一个秘密聚会。在那里，你第一次听到了\"三体\"这个词。潘寒的眼中燃烧着你从未见过的狂热：\"人类文明走了一条错路。但拯救正在路上。从四光年之外。\"",
+            "state_changes": [
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": -1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_1",
+          "text": "先观察一段时间，不急于深入——这有些太奇怪了。",
+          "result": {
+            "type": "deterministic",
+            "description": "你潜水式地观察那个加密频道。成员们讨论的话题从环保逐渐过渡到\"文明重置\"、\"物种审判\"这样的极端概念。你开始感到不安——这还是你认识的那个环保组织吗？",
+            "state_changes": [
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 3
+              },
+              {
+                "target": "player.情报网络",
+                "op": "add",
+                "value": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "pc_open_2",
+          "text": "向一个你信任的朋友透露此事，征求第二意见。",
+          "result": {
+            "type": "deterministic",
+            "description": "你的大学室友听完后表情凝重：\"这听起来像邪教招募的手法。但潘寒是公众人物...\"她建议你假装配合，暗中留心，如果真的越界了就立刻报警。你决定采纳这个建议。",
+            "state_changes": [
+              {
+                "target": "player.意志力",
+                "op": "add",
+                "value": 2
+              },
+              {
+                "target": "player.生存直觉",
+                "op": "add",
+                "value": 2
+              }
+            ]
+          }
+        }
+      ],
+      "known_npcs": [
+        "pan_han"
+      ]
+    }
+  ],
+  "random_items": [
+    {
+      "id": "weather_beijing",
+      "description": "北京的天气变化，影响行动和心理状态",
+      "trigger": "每天早晨",
+      "trigger_type": "always",
+      "duration_turns": 8,
+      "cooldown_turns": 0,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 40,
+          "label": "雾霾沉沉",
+          "description": "北京笼罩在厚重的灰霾中，能见度不足百米。这种天气让人感到压抑，但也便于隐蔽行踪。",
+          "state_changes": []
+        },
+        {
+          "min": 41,
+          "max": 65,
+          "label": "晴朗干燥",
+          "description": "难得的晴天让人精神一振，但干燥的空气和强烈的阳光让人感到一种虚幻的明亮。",
+          "state_changes": [
+            {
+              "target": "player.意志力",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "min": 66,
+          "max": 85,
+          "label": "沙尘来袭",
+          "description": "从西北方向吹来的沙尘暴让整个城市陷入昏黄的混沌中。户外活动受到严重影响。",
+          "state_changes": [
+            {
+              "target": "player.生存直觉",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "min": 86,
+          "max": 100,
+          "label": "暴雨倾盆",
+          "description": "突如其来的暴雨瘫痪了交通。雨声掩盖了一切——包括那些不想被听到的对话。",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sophon_interference_event",
+      "description": "智子对微观世界的持续干扰",
+      "trigger": "在实验室或进行科学研究时",
+      "trigger_type": "always",
+      "duration_turns": 10,
+      "cooldown_turns": 1,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 50,
+          "label": "正常干扰",
+          "description": "粒子实验结果依旧混乱不可预测——这已经成为新常态。你已经习惯了每次实验都失败的日常。",
+          "state_changes": []
+        },
+        {
+          "min": 51,
+          "max": 75,
+          "label": "异常波动",
+          "description": "实验室的设备同时出现了奇怪的读数跳动，仿佛有什么东西在用看不见的手拨弄着微观世界的琴弦。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "min": 76,
+          "max": 90,
+          "label": "模式暗示",
+          "description": "在连续的干扰数据中，你隐约看到了一个不应该存在的规律——仿佛干扰者在故意留下某种信息。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 91,
+          "max": 100,
+          "label": "视网膜闪烁",
+          "description": "你的眼角闪过一串数字——倒计时？不，是一段坐标。你赶紧记录下来，但转眼间它就消失了。是幻觉还是智子的信息？",
+          "state_changes": [
+            {
+              "target": "player.意志力",
+              "op": "add",
+              "value": -2
+            },
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "street_encounter",
+      "description": "在城市中移动时的异常遭遇",
+      "trigger": "在北京城区移动或探索时",
+      "trigger_type": "always",
+      "duration_turns": 8,
+      "cooldown_turns": 2,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 50,
+          "label": "平静无事",
+          "description": "城市照常运转，行人匆匆，没有什么异常。一切看起来如此正常——如果你不知道真相的话。",
+          "state_changes": []
+        },
+        {
+          "min": 51,
+          "max": 70,
+          "label": "可疑跟踪",
+          "description": "你注意到身后有人在跟踪你——穿着普通但步伐节奏异常。是ETO的人还是军方的便衣？你加快了脚步。",
+          "state_changes": [
+            {
+              "target": "player.生存直觉",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "min": 71,
+          "max": 85,
+          "label": "偶遇线索",
+          "description": "你在一家二手书店里发现了一本注释密密麻麻的天体物理学教材，扉页上有一个你正在寻找的名字。",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 86,
+          "max": 100,
+          "label": "陌生人警告",
+          "description": "一个擦肩而过的路人突然低声对你说：\"别再查了。他们在看着你。\"等你转身时，那人已经消失在人群中。",
+          "state_changes": [
+            {
+              "target": "player.意志力",
+              "op": "add",
+              "value": -1
+            },
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lab_anomaly",
+      "description": "实验室中的不可解释现象",
+      "trigger": "在科学院或加速器进行研究时",
+      "trigger_type": "always",
+      "duration_turns": 10,
+      "cooldown_turns": 3,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 60,
+          "label": "设备正常",
+          "description": "实验设备运行平稳——虽然实验结果依旧不可信赖，但至少硬件本身没有问题。",
+          "state_changes": []
+        },
+        {
+          "min": 61,
+          "max": 80,
+          "label": "电子干扰",
+          "description": "所有电子设备同时出现短暂的信号波动。屏幕闪了一下，你似乎看到了什么不该出现的图像。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "min": 81,
+          "max": 95,
+          "label": "数据残留",
+          "description": "在清理实验数据时，你发现了一组不属于任何已知实验的数据。它像是某种...通讯记录的碎片。",
+          "state_changes": [
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 2
+            },
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "min": 96,
+          "max": 100,
+          "label": "宇宙闪烁",
+          "description": "你透过实验室的窗户抬头看天——整个夜空在一瞬间闪烁了一下，所有星星同时明灭。这不是幻觉，因为走廊里传来了其他人的惊呼声。",
+          "state_changes": [
+            {
+              "target": "player.意志力",
+              "op": "add",
+              "value": -3
+            },
+            {
+              "target": "player.科研能力",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "communication_intercept",
+      "description": "通讯安全风险",
+      "trigger": "通过电话或网络与他人联络时",
+      "trigger_type": "always",
+      "duration_turns": 10,
+      "cooldown_turns": 1,
+      "dice": {
+        "count": 1,
+        "faces": 100,
+        "modifier": 0
+      },
+      "ranges": [
+        {
+          "min": 1,
+          "max": 60,
+          "label": "通讯正常",
+          "description": "电话和网络通讯一切正常。但在智子监控下，你说的每一个字都可能被记录——只是你暂时还不知道这一点。",
+          "state_changes": []
+        },
+        {
+          "min": 61,
+          "max": 80,
+          "label": "信号延迟",
+          "description": "通话中出现了不自然的延迟和回声。这可能是基站问题，也可能是有人在实时截获你的通话内容。",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "min": 81,
+          "max": 95,
+          "label": "加密警告",
+          "description": "你的加密通讯软件突然弹出警告：\"检测到中间人攻击\"。有人在监听你。",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": -1
+            },
+            {
+              "target": "player.生存直觉",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "min": 96,
+          "max": 100,
+          "label": "数据泄露",
+          "description": "你发现昨天发出的一封加密邮件被完整转发到了一个未知地址。你的通讯已经完全暴露了——但是是谁在监控？是军方还是ETO？",
+          "state_changes": [
+            {
+              "target": "player.情报网络",
+              "op": "add",
+              "value": -2
+            },
+            {
+              "target": "world.ETO暴露程度",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "cyclic_events": [
+    {
+      "id": "sophon_flicker",
+      "description": "智子持续干扰全球粒子物理实验。各大加速器的实验结果继续呈现随机化趋势，物理学界的绝望情绪进一步蔓延。",
+      "frequency_value": 2,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-16T00:00",
+      "condition": ""
+    },
+    {
+      "id": "eto_recruitment",
+      "description": "ETO通过科学边界组织和环保运动持续招募新成员。在学术会议和网络论坛上，关于人类文明无意义的讨论越来越多。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-17T00:00",
+      "condition": ""
+    },
+    {
+      "id": "scientist_suicide_news",
+      "description": "又有科学家自杀的消息传出。尽管官方竭力封锁，但学术界内部人人自危。物理学家们开始拒绝进入实验室。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-16T00:00",
+      "condition": "status.pre_crisis == 'active'"
+    },
+    {
+      "id": "military_briefing",
+      "description": "作战中心发布最新态势通报：三体舰队继续以光速十分之一的速度飞向太阳系。预计到达时间未变——450年后。但智子的存在意味着人类没有安全的准备空间。",
+      "frequency_value": 4,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-20T00:00",
+      "condition": ""
+    },
+    {
+      "id": "three_body_game_invite",
+      "description": "你收到了一条来自未知号码的信息，邀请你进入三体游戏的新关卡。游戏中的三体文明正面临又一次乱纪元的毁灭。",
+      "frequency_value": 5,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-22T00:00",
+      "condition": "status.three_body_game_active == 'active'"
+    },
+    {
+      "id": "surveillance_pressure",
+      "description": "你感觉到被监视的压力。走在街上总觉得有目光跟随，回家时门锁似乎被动过。也许是多疑，也许不是。",
+      "frequency_value": 2,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-17T00:00",
+      "condition": ""
+    },
+    {
+      "id": "academic_collapse",
+      "description": "又有多名物理学家宣布退出科研领域。各大学的理论物理专业招生人数断崖式下降。学术期刊收到的论文数量锐减。人类基础科学正在萎缩。",
+      "frequency_value": 4,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-18T00:00",
+      "condition": "status.pre_crisis == 'active'"
+    },
+    {
+      "id": "media_speculation",
+      "description": "网络上出现了各种猜测：外星人入侵说、政府阴谋论、宗教末日预言。虽然没有人接近真相，但公众的不安情绪正在积累。",
+      "frequency_value": 3,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-19T00:00",
+      "condition": ""
+    },
+    {
+      "id": "night_sky_anomaly",
+      "description": "今晚的星空似乎有些不同。多个天文爱好者报告看到了宇宙微波背景辐射的异常闪烁——虽然肉眼本不应该看到这种现象。",
+      "frequency_value": 6,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-25T00:00",
+      "condition": ""
+    },
+    {
+      "id": "pdc_directive",
+      "description": "PDC通过作战中心下发了新的指令。人类防御体系正在缓慢但坚定地构建。尽管面对智子的全面监控，任何计划都像是在敌人面前打明牌。",
+      "frequency_value": 5,
+      "frequency_unit": "day",
+      "first_trigger": "2007-04-23T00:00",
+      "condition": ""
+    }
+  ],
+  "one_time_events": [
+    {
+      "id": "event_yang_dong_suicide",
+      "description": "杨冬——年轻的弦理论物理学家、叶文洁的女儿——被发现在家中自杀身亡。她的遗言只有一句：「物理学从来就没有存在过，我们一直活在一个谎言中。」这是连续自杀事件的第一起。",
+      "trigger_time": "2007-04-01T06:00"
+    },
+    {
+      "id": "event_countdown_appears",
+      "description": "汪淼眼中出现了一个神秘的倒计时——精确到秒的数字在他的视网膜上闪烁。无论闭眼还是睁眼，倒计时都在那里。这是智子对人类科学家的警告和心理攻击。",
+      "trigger_time": "2007-04-16T08:00"
+    },
+    {
+      "id": "event_accelerator_failure",
+      "description": "良湖粒子加速器进行了一次决定性的高能碰撞实验。结果令所有物理学家绝望——在完全相同的条件下，连续十次实验得到了十个完全不同的结果。物理定律在微观世界已经失效。",
+      "trigger_time": "2007-04-18T14:00"
+    },
+    {
+      "id": "event_three_body_game_discovered",
+      "description": "一款名为「三体」的神秘VR游戏在小范围内流传开来。游戏使用超越当代技术的V装具，将玩家带入一个拥有三颗太阳的外星世界。这是ETO招募的工具。",
+      "trigger_time": "2007-04-20T20:00"
+    },
+    {
+      "id": "event_science_boundary_meeting",
+      "description": "「科学边界」学术沙龙在北京某五星酒店举办年度聚会。表面上讨论科学哲学，实际上是ETO筛选潜在成员的场合。多名重要科学家出席。",
+      "trigger_time": "2007-04-22T19:00"
+    },
+    {
+      "id": "event_wang_miao_countdown_stop",
+      "description": "在汪淼暂时停止纳米材料研究后，他眼中的倒计时神奇地消失了。这证实了智子的威胁是有针对性的——三体文明不希望纳米技术继续发展。",
+      "trigger_time": "2007-04-24T10:00",
+      "condition": "countdown_active == 'true'"
+    },
+    {
+      "id": "event_shen_yufei_identity",
+      "description": "通过跟踪和网络分析，调查人员确认了申玉菲的ETO身份。她不仅是科学边界的组织者，还负责三体游戏在中国的推广。她与审判日号有直接通讯联系。",
+      "trigger_time": "2007-04-28T16:00"
+    },
+    {
+      "id": "event_shen_yufei_killed",
+      "description": "申玉菲在家中被枪杀。凶手是她的丈夫魏成——这个数学天才在偶然发现妻子的ETO身份后精神崩溃。这起事件加速了ETO内部的恐慌。",
+      "trigger_time": "2007-05-02T22:00"
+    },
+    {
+      "id": "event_eto_gathering_exposed",
+      "description": "通过对申玉菲通讯记录的分析，作战中心锁定了ETO在北京的一个秘密据点。一次突袭行动逮捕了数名ETO成员，并获取了部分组织架构信息。",
+      "trigger_time": "2007-05-05T03:00"
+    },
+    {
+      "id": "event_judgment_day_located",
+      "description": "情报分析确认了审判日号的位置——这艘6万吨的巨轮正在太平洋上游弋，船上装有与三体文明通讯的关键设备。所有三体发给地球的信息都被伊文斯截获存储在船上。",
+      "trigger_time": "2007-05-08T10:00"
+    },
+    {
+      "id": "event_guzheng_decision",
+      "description": "PDC作战会议做出最终决定：执行「古筝行动」——在巴拿马运河使用纳米飞刃切割审判日号，以获取三体通讯数据。这需要汪淼的纳米丝技术。",
+      "trigger_time": "2007-05-12T09:00"
+    },
+    {
+      "id": "event_guzheng_execution",
+      "description": "古筝行动在巴拿马运河成功执行。数十根直径仅有头发丝百分之一粗细的纳米丝将审判日号切成了数十片薄片。伊文斯当场死亡。大量三体通讯数据被截获。",
+      "trigger_time": "2007-05-15T06:00"
+    },
+    {
+      "id": "event_sophon_revealed",
+      "description": "通过分析审判日号上截获的三体通讯，人类第一次了解了「智子」的真正面目——被展开到二维的质子，蚀刻了超级计算机电路，以光速封锁了人类的基础物理研究。",
+      "trigger_time": "2007-05-18T14:00"
+    },
+    {
+      "id": "event_trisolaran_fleet_confirmed",
+      "description": "审判日号的通讯数据最终确认：三体舰队确实存在，约1000艘恒星级战舰正以十分之一光速飞向太阳系。预计到达时间：约450年后。人类只有不到五个世纪的准备时间。",
+      "trigger_time": "2007-05-20T10:00"
+    },
+    {
+      "id": "event_wallfacer_preview",
+      "description": "PDC开始酝酿一项绝密计划——鉴于智子可以监控人类的一切通讯和行动，唯一的安全空间是人类的思维。一项名为「面壁计划」的提案被提交讨论。",
+      "trigger_time": "2007-05-25T10:00"
+    },
+    {
+      "id": "event_ye_wenjie_arrested",
+      "description": "叶文洁在家中被逮捕。这位七十多岁的老教授平静地配合了整个过程，仿佛她等待这一天已经很久。她是ETO的创始人，也是人类文明最大的叛徒——或者说，审判者。",
+      "trigger_time": "2007-05-22T07:00"
+    },
+    {
+      "id": "event_dark_forest_hint",
+      "description": "在一次看似偶然的学术交流中，叶文洁向罗辑暗示了宇宙社会学的两条基本公理：一、生存是文明的第一需要；二、文明不断增长和扩张，但宇宙中物质总量保持不变。种子已经播下。",
+      "trigger_time": "2007-04-25T15:00"
+    },
+    {
+      "id": "event_cosmic_background_flash",
+      "description": "全球多地同时观测到宇宙微波背景辐射的异常闪烁——智子在向三体舰队传输信息时产生的副作用。这是三体文明存在的又一个间接证据。",
+      "trigger_time": "2007-05-01T23:00"
+    },
+    {
+      "id": "event_red_coast_files_found",
+      "description": "在大兴安岭废弃的红岸基地遗址中，调查人员找到了一批未被销毁的档案。这些泛黄的文件记录了1971年叶文洁向半人马座α星发射信号的全过程——以及八年后收到的回复。",
+      "trigger_time": "2007-05-10T14:00"
+    },
+    {
+      "id": "event_three_body_game_final",
+      "description": "三体游戏的最终关卡向高级玩家开放。在这一关中，三体文明的真实意图被彻底揭示：他们不是来拯救地球的，而是来征服的。部分拯救派成员因此觉醒。",
+      "trigger_time": "2007-05-06T20:00"
+    },
+    {
+      "id": "event_pan_han_exposed",
+      "description": "潘寒的ETO身份在一次警方行动中被暴露。这位公众眼中的环保英雄，竟是ETO拯救派的精神领袖。他的大量追随者陷入了信仰崩塌的痛苦。",
+      "trigger_time": "2007-05-07T09:00"
+    },
+    {
+      "id": "event_countdown_threat",
+      "description": "多名仍在坚持研究的科学家报告在视野中出现了倒计时。这是智子对人类科学家的系统性恐吓行动——停止研究，否则面对未知的恐惧。",
+      "trigger_time": "2007-04-19T08:00"
+    },
+    {
+      "id": "event_wei_cheng_math",
+      "description": "数学家魏成在完全不知情的情况下，通过纯数学方法部分解出了三体运动的某些特殊解。这个成果对理解三体文明具有重要价值——如果他没有先疯掉的话。",
+      "trigger_time": "2007-04-26T10:00"
+    },
+    {
+      "id": "event_first_pdc_meeting",
+      "description": "行星防御理事会在北京召开首次全体会议。五个常任理事国的代表齐聚一堂，正式确认了三体危机的存在，并开始讨论人类文明级别的应对方案。",
+      "trigger_time": "2007-05-03T09:00"
+    },
+    {
+      "id": "event_sophon_message",
+      "description": "在审判日号数据中发现了三体文明发给ETO的一条著名信息：「你们是虫子。」这四个字彻底粉碎了拯救派和幸存派的幻想——三体文明从未打算善待人类。",
+      "trigger_time": "2007-05-19T10:00"
+    },
+    {
+      "id": "event_nanotech_weaponized",
+      "description": "汪淼的纳米材料技术被军方正式列为战略武器。「飞刃」——直径仅为头发丝百分之一的纳米丝——成为人类目前唯一能对抗三体技术的物理手段。",
+      "trigger_time": "2007-05-11T14:00"
+    }
+  ],
+  "story_tree": {
+    "trees": [
+      {
+        "id": "scientific_crisis",
+        "name": "科学危机",
+        "description": "物理学的崩塌与智子真相的揭露",
+        "nodes": [
+          {
+            "id": "sc_countdown",
+            "name": "神秘倒计时",
+            "description": "科学家们的眼中出现了无法解释的倒计时数字，粒子加速器的实验开始全面失控。这是智子对人类科学的系统性封锁的开始。",
+            "type": "auto",
+            "requires": [],
+            "on_complete_unlock": [
+              "sc_accelerator_failure",
+              "sc_game_discovery"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.智子干扰强度",
+                  "op": "add",
+                  "value": 5
+                }
+              ],
+              "inject_prompt": "整个物理学界弥漫着恐惧——实验结果不可信赖，倒计时出现在科学家们的眼中。有什么力量在阻止人类理解这个宇宙。"
+            }
+          },
+          {
+            "id": "sc_accelerator_failure",
+            "name": "加速器崩溃",
+            "description": "良湖粒子加速器的实验彻底失败。相同条件下的碰撞实验每次都得到不同结果——物理定律在微观层面已经不再可靠。",
+            "type": "auto",
+            "requires": [
+              "sc_countdown"
+            ],
+            "on_complete_unlock": [
+              "sc_physics_dead"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.智子干扰强度",
+                  "op": "add",
+                  "value": 10
+                }
+              ],
+              "inject_prompt": "粒子加速器的实验全面崩溃。丁仪教授宣布：在这种条件下，基础物理研究已经毫无意义。"
+            }
+          },
+          {
+            "id": "sc_game_discovery",
+            "name": "三体游戏",
+            "description": "一款超越当代技术的VR游戏在科学家群体中流传。它展示的三体世界有着三颗太阳、脱水与浸泡的文明周期。游戏的目的是让人类理解三体文明的处境。",
+            "type": "timed",
+            "duration_turns": 4,
+            "requires": [
+              "sc_countdown"
+            ],
+            "on_complete_unlock": [
+              "sc_game_truth"
+            ],
+            "effects": {
+              "activate_state": [
+                "three_body_game_active"
+              ],
+              "inject_prompt": "三体游戏的世界令人震撼——在三颗太阳的混沌引力下，文明反复毁灭又重生。脱水、浸泡、恒纪元、乱纪元...这个游戏在暗示什么？"
+            }
+          },
+          {
+            "id": "sc_physics_dead",
+            "name": "物理学之死",
+            "description": "越来越多的物理学家接受了一个可怕的现实——物理学已经被某种外部力量封锁。那句遗言不是绝望的呓语，而是冰冷的事实：「物理学不存在了。」",
+            "type": "auto",
+            "requires": [
+              "sc_accelerator_failure"
+            ],
+            "on_complete_unlock": [
+              "sc_sophon_reveal"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.三体危机公开程度",
+                  "op": "add",
+                  "value": 10
+                }
+              ],
+              "inject_prompt": "物理学已死。这不是比喻——是字面意义上的事实。人类的基础科学被彻底封锁了。唯一的问题是：谁在干这件事？为什么？"
+            }
+          },
+          {
+            "id": "sc_game_truth",
+            "name": "游戏真相",
+            "description": "三体游戏的最终关卡揭示了三体文明的真实意图——它们不是来拯救人类的，而是因为自己的星系将毁灭而需要寻找新的家园。地球是目标。",
+            "type": "quest",
+            "requires": [
+              "sc_game_discovery"
+            ],
+            "on_complete_unlock": [
+              "sc_sophon_reveal"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.三体危机公开程度",
+                  "op": "add",
+                  "value": 15
+                }
+              ],
+              "inject_prompt": "三体游戏揭示了最终真相：三体文明正在入侵地球。游戏本身就是侵略者用来招募人类叛徒的工具。"
+            }
+          },
+          {
+            "id": "sc_sophon_reveal",
+            "name": "智子真相",
+            "description": "通过审判日号截获的通讯数据，人类终于理解了智子的本质——被展开到二维的质子，蚀刻了超级计算机的电路。它是三体文明的终极间谍和封锁工具。",
+            "type": "choice",
+            "requires": [
+              "sc_physics_dead"
+            ],
+            "on_complete_unlock": [],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.三体危机公开程度",
+                  "op": "add",
+                  "value": 20
+                }
+              ],
+              "inject_prompt": "智子——二维展开的质子，承载着超级计算机的全部功能。它锁死了人类的科技，监控着人类的一切。人类在智子面前没有任何秘密——除了思想。"
+            },
+            "choices": [
+              {
+                "id": "accept_lockdown",
+                "label": "接受科技封锁的现实",
+                "description": "正视人类科技被锁死的事实，将重心转向可以绕过智子监控的领域——比如纯思维的战略。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.意志力",
+                      "op": "add",
+                      "value": 5
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "seek_countermeasure",
+                "label": "寻找对抗智子的方法",
+                "description": "不甘于被封锁，试图找到对抗或规避智子干扰的技术手段——尽管这看起来近乎不可能。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.科研能力",
+                      "op": "add",
+                      "value": 5
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "eto_investigation",
+        "name": "ETO调查线",
+        "description": "追踪并瓦解地球三体组织",
+        "nodes": [
+          {
+            "id": "ei_scientist_deaths",
+            "name": "科学家之死",
+            "description": "多名顶尖物理学家相继自杀，所有人都留下了同一句遗言。这不是普通的自杀——有人在系统性地摧毁科学家的精神。",
+            "type": "auto",
+            "requires": [],
+            "on_complete_unlock": [
+              "ei_shen_yufei_trail"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.ETO暴露程度",
+                  "op": "add",
+                  "value": 5
+                }
+              ],
+              "inject_prompt": "科学家连续自杀事件引起了公安和军方的注意。所有死者都参加过一个叫'科学边界'的学术组织——这绝非巧合。"
+            }
+          },
+          {
+            "id": "ei_shen_yufei_trail",
+            "name": "追踪申玉菲",
+            "description": "调查指向了科学边界组织的核心人物——申玉菲。她与那个神秘的VR游戏有着直接联系，而且她的通讯中有无法解释的加密频道。",
+            "type": "timed",
+            "duration_turns": 5,
+            "requires": [
+              "ei_scientist_deaths"
+            ],
+            "on_complete_unlock": [
+              "ei_eto_contact"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.ETO暴露程度",
+                  "op": "add",
+                  "value": 10
+                }
+              ],
+              "inject_prompt": "对申玉菲的跟踪调查逐步深入。她的生活看似普通，但深夜的加密通讯和频繁出入某个废弃工厂暴露了她的另一面。"
+            }
+          },
+          {
+            "id": "ei_eto_contact",
+            "name": "接触ETO",
+            "description": "调查已经足够深入，是时候做出关键选择了：是通过渗透从内部瓦解ETO，还是直接发起正面打击？",
+            "type": "choice",
+            "requires": [
+              "ei_shen_yufei_trail"
+            ],
+            "on_complete_unlock": [
+              "ei_judgment_day"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.ETO暴露程度",
+                  "op": "add",
+                  "value": 15
+                }
+              ],
+              "inject_prompt": "ETO的面纱正在被揭开。一个遍布全球的秘密组织，信奉外星文明，甘愿出卖整个人类种族。现在的问题是如何彻底摧毁它。"
+            },
+            "choices": [
+              {
+                "id": "infiltrate_eto",
+                "label": "渗透ETO内部",
+                "description": "派人打入ETO内部，获取组织全貌和审判日号的位置。风险极高但收获也最大。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.情报网络",
+                      "op": "add",
+                      "value": 5
+                    },
+                    {
+                      "target": "player.生存直觉",
+                      "op": "add",
+                      "value": -3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "frontal_assault",
+                "label": "正面突击",
+                "description": "利用已有情报对ETO已知据点发起全面突击。速度快但可能打草惊蛇，让核心成员逃脱。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.生存直觉",
+                      "op": "add",
+                      "value": 3
+                    },
+                    {
+                      "target": "world.ETO暴露程度",
+                      "op": "add",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "ei_judgment_day",
+            "name": "审判日号",
+            "description": "所有线索指向太平洋上的一艘巨轮——审判日号。伊文斯在这艘船上建立了第二红岸基地，垄断了三体与地球之间的所有通讯。要获取那些数据，必须夺取这艘船。",
+            "type": "timed",
+            "duration_turns": 4,
+            "requires": [
+              "ei_eto_contact"
+            ],
+            "on_complete_unlock": [
+              "ei_operation_guzheng"
+            ],
+            "effects": {
+              "inject_prompt": "审判日号——一艘6万吨的巨轮，伊文斯的海上堡垒。三体文明发给地球的所有信息都存储在船上的服务器中。必须找到一种方法截获这些数据。"
+            }
+          },
+          {
+            "id": "ei_operation_guzheng",
+            "name": "古筝行动",
+            "description": "作战中心制定了一个大胆的计划：在巴拿马运河最窄处，用纳米飞刃将审判日号切割成薄片——确保数据不被销毁的同时消灭伊文斯。这是人类历史上最精密的军事行动。",
+            "type": "choice",
+            "requires": [
+              "ei_judgment_day"
+            ],
+            "on_complete_unlock": [],
+            "effects": {
+              "activate_state": [
+                "operation_guzheng"
+              ],
+              "set_var": [
+                {
+                  "target": "world.ETO暴露程度",
+                  "op": "add",
+                  "value": 20
+                }
+              ],
+              "inject_prompt": "古筝行动——纳米飞刃在运河水面下拉成一张网。当审判日号驶过时，它将被切成四十多片薄片。残酷，但这是唯一的方法。"
+            },
+            "choices": [
+              {
+                "id": "support_guzheng",
+                "label": "支持并参与行动",
+                "description": "积极支持古筝行动的执行，参与技术保障或现场指挥。这意味着亲眼见证一场惨烈的屠杀。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.意志力",
+                      "op": "add",
+                      "value": -3
+                    },
+                    {
+                      "target": "player.社会影响力",
+                      "op": "add",
+                      "value": 5
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "oppose_guzheng",
+                "label": "质疑行动的必要性",
+                "description": "对古筝行动的必要性提出质疑——是否有更人道的方式获取数据？这可能影响你在军方的信任度。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.意志力",
+                      "op": "add",
+                      "value": 3
+                    },
+                    {
+                      "target": "player.社会影响力",
+                      "op": "add",
+                      "value": -3
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "red_coast_truth",
+        "name": "红岸真相",
+        "description": "追溯三体危机的源头——红岸工程与叶文洁的选择",
+        "nodes": [
+          {
+            "id": "rc_ye_wenjie_clues",
+            "name": "叶文洁的线索",
+            "description": "多条调查线索都指向同一个人——清华大学退休教授叶文洁。她的女儿自杀、她与多名ETO成员有联系、她的过去笼罩在军事机密中。",
+            "type": "auto",
+            "requires": [],
+            "on_complete_unlock": [
+              "rc_archive_search"
+            ],
+            "effects": {
+              "inject_prompt": "叶文洁——这个名字不断出现在调查中。她是ETO多名成员共同敬仰的人物，她的过去被军事机密层层包裹。要理解三体危机的起源，必须理解这个女人。"
+            }
+          },
+          {
+            "id": "rc_archive_search",
+            "name": "红岸档案",
+            "description": "调查深入到了数十年前的绝密军事工程——红岸工程。在大兴安岭深处的废弃基地中，也许还保存着记录人类命运转折点的档案。",
+            "type": "quest",
+            "requires": [
+              "rc_ye_wenjie_clues"
+            ],
+            "on_complete_unlock": [
+              "rc_first_contact"
+            ],
+            "effects": {
+              "unlock_locations": [
+                "red_coast_archive",
+                "inner_mongolia",
+                "radio_peak"
+              ],
+              "inject_prompt": "红岸工程——1960年代启动的绝密项目。表面目的是搜寻外星信号(SETI)，但它还有另一个功能：向外太空发射信息。叶文洁曾在这里工作。"
+            }
+          },
+          {
+            "id": "rc_first_contact",
+            "name": "第一次接触",
+            "description": "红岸档案揭示了惊天真相：1971年，叶文洁利用太阳作为放大器，向半人马座α星发送了地球文明的信息。八年后，她收到了回复：「不要回答！不要回答！不要回答！」",
+            "type": "auto",
+            "requires": [
+              "rc_archive_search"
+            ],
+            "on_complete_unlock": [
+              "rc_ye_wenjie_confrontation"
+            ],
+            "effects": {
+              "set_var": [
+                {
+                  "target": "world.三体危机公开程度",
+                  "op": "add",
+                  "value": 15
+                }
+              ],
+              "inject_prompt": "真相令人窒息：1971年，叶文洁收到了来自三体文明的警告——\"不要回答！\"一个三体和平主义者冒死发出的信号。但叶文洁选择了回答：\"到这里来吧，我将帮助你们获得这个世界。\""
+            }
+          },
+          {
+            "id": "rc_ye_wenjie_confrontation",
+            "name": "面对叶文洁",
+            "description": "所有的谜底最终汇聚到一个人面前——叶文洁。是她，在文革的创伤中对人类文明彻底绝望，向三体文明发出了邀请。现在，是面对她的时刻。",
+            "type": "choice",
+            "requires": [
+              "rc_first_contact"
+            ],
+            "on_complete_unlock": [
+              "rc_legacy"
+            ],
+            "effects": {
+              "inject_prompt": "面对叶文洁——这个用一己之力改变了人类命运轨迹的女人。她不是怪物，只是一个被苦难彻底击碎了对人类信心的人。"
+            },
+            "choices": [
+              {
+                "id": "understand_ye",
+                "label": "试图理解她的选择",
+                "description": "在审判她之前，先试图理解是什么让一个人做出背叛全人类的决定。文革的创伤、对人性的绝望——也许我们都是推动她走向深渊的一部分。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.意志力",
+                      "op": "add",
+                      "value": 5
+                    },
+                    {
+                      "target": "player.社会影响力",
+                      "op": "add",
+                      "value": -2
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "condemn_ye",
+                "label": "作为人类的审判者",
+                "description": "无论动机如何，她的行为导致了整个人类文明面临灭绝威胁。她必须为此承担责任。历史不会因为苦难而赦免叛徒。",
+                "effects": {
+                  "set_var": [
+                    {
+                      "target": "player.社会影响力",
+                      "op": "add",
+                      "value": 5
+                    },
+                    {
+                      "target": "player.意志力",
+                      "op": "add",
+                      "value": -2
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "rc_legacy",
+            "name": "红岸遗产",
+            "description": "理解了过去，才能面对未来。红岸工程的真相和叶文洁的选择，将深刻影响人类如何应对接下来的450年。面壁计划的种子，就在这段历史中。",
+            "type": "auto",
+            "requires": [
+              "rc_ye_wenjie_confrontation"
+            ],
+            "on_complete_unlock": [],
+            "effects": {
+              "activate_state": [
+                "post_guzheng"
+              ],
+              "set_var": [
+                {
+                  "target": "world.三体危机公开程度",
+                  "op": "add",
+                  "value": 10
+                }
+              ],
+              "inject_prompt": "红岸工程的遗产不仅是创伤——它也是人类面对宇宙黑暗的第一课。在智子的全面监控下，人类唯一的避难所是自己的思想。面壁计划的构想，正是从这个认知中诞生。"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "lorebook": [
+    {
+      "id": "lore_trisolaran_civilization",
+      "keys": [
+        "三体文明",
+        "三体人",
+        "三体星系"
+      ],
+      "secondary_keys": [
+        "半人马座",
+        "恒纪元",
+        "乱纪元"
+      ],
+      "content": "三体文明来自半人马座α星系——距太阳系最近的恒星系统（4.22光年）。该星系有三颗恒星，其引力相互作用导致行星轨道极度混沌，产生不可预测的\"恒纪元\"（稳定期，文明繁荣）和\"乱纪元\"（混乱期，文明毁灭）。三体文明在数百次毁灭与重生中幸存下来，发展出了独特的生存策略：脱水（将身体水分排出进入休眠）和浸泡（重新吸水复活）。\n\n三体人的思维是透明的——他们无法说谎，这是他们与人类的根本区别。在收到叶文洁的信号后，三体文明决定入侵地球以逃离注定毁灭的母星。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 95,
+      "scan_depth": 3,
+      "comment": "三体文明核心设定",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_three_body_problem",
+      "keys": [
+        "三体问题",
+        "三体运动",
+        "混沌"
+      ],
+      "secondary_keys": [
+        "数学",
+        "天体力学"
+      ],
+      "content": "三体问题是经典力学中最著名的未解难题之一：三个质量、初始位置和速度都已知的天体，在相互间引力作用下的运动轨迹无法精确求解。这意味着三体星系中行星的轨道永远无法预测——文明随时可能被恒星吞噬。\n\n魏成（申玉菲的丈夫）曾试图用纯数学方法找到三体运动的特殊解，但这本质上是不可能的。三体问题的数学不可解性，正是三体文明苦难的根源——他们永远无法预测下一次乱纪元何时到来。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "三体问题科学背景",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_sophon",
+      "keys": [
+        "智子",
+        "质子",
+        "科技封锁"
+      ],
+      "secondary_keys": [
+        "封锁",
+        "展开",
+        "监控",
+        "二维"
+      ],
+      "content": "智子（Sophon）是三体文明的终极战略武器。原理：将一个质子（proton）从十一维展开到二维平面（面积可达行星级别），在这个巨大的二维表面上蚀刻超级计算机的电路结构，然后将质子重新折叠回微观尺度。折叠后的智子保持了超级计算机的全部功能，同时体积小到不可探测，可以以接近光速在宇宙中飞行。\n\n智子的能力：1）干扰地球所有粒子加速器的实验结果（通过参与碰撞过程）使人类无法进行基础物理研究；2）实时监控人类的一切通讯和行动；3）在人类视网膜上投射影像（如倒计时）；4）向三体舰队实时传输情报。\n\n三体文明共制造并发射了四枚智子，其中两枚到达地球。智子的存在意味着人类在三体文明面前没有任何秘密——除了人类的思想，因为智子无法读取大脑内部的思维活动。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 95,
+      "scan_depth": 3,
+      "comment": "智子核心机制",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_sophon_creation",
+      "keys": [
+        "质子展开",
+        "二维化",
+        "蚀刻"
+      ],
+      "secondary_keys": [
+        "制造",
+        "维度"
+      ],
+      "content": "智子的制造过程堪称宇宙工程的奇迹。三体科学家利用强相互作用力，将一个质子从其原本的十一维形态展开到二维。展开过程中，质子在二维平面上的面积扩展到了行星级别——一片闪耀的银色薄膜覆盖了整个三体星系。\n\n在这个巨大的二维表面上，三体人用纳米级精度蚀刻了超级计算机的电路。完成后将质子重新折叠回微观尺度。两次展开过程中第一次失败（二维质子不受控制地展开遮蔽了恒星），第二次成功。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "智子制造过程",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_red_coast",
+      "keys": [
+        "红岸",
+        "红岸基地",
+        "红岸工程"
+      ],
+      "secondary_keys": [
+        "大兴安岭",
+        "雷达峰",
+        "SETI"
+      ],
+      "content": "红岸工程是中国在1960年代至1980年代运行的绝密军事项目，基地位于大兴安岭山脊之上的雷达峰。表面目的是搜寻外星文明信号（SETI），但实际上该基地还具备向外太空发射高功率电磁波的能力——利用太阳作为信号放大器（太阳天线理论），可以将信号放大上亿倍发送到数十光年之外。\n\n红岸工程的存在是最高国家机密，直到2007年才被解密。基地已于1980年代末废弃，巨大的抛物面天线锈蚀倾斜，控制室的设备蒙着厚厚的灰尘。但在这个被遗忘的地方，保存着改变人类命运的那次发射的完整记录。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "红岸工程背景",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_first_contact",
+      "keys": [
+        "第一次接触",
+        "不要回答",
+        "太阳天线"
+      ],
+      "secondary_keys": [
+        "信号",
+        "回复",
+        "叶文洁发射"
+      ],
+      "content": "1971年，叶文洁在红岸基地利用太阳天线向半人马座α星发送了信号。1979年，她收到了回复——来自一个三体世界的和平主义者（1379号监听员）发出的警告：\"不要回答！不要回答！不要回答！你们的方向已被锁定。只要不回答，你们的文明就是安全的。\"\n\n然而叶文洁选择了回答。她发送了人类历史上最重要——也最致命——的一段信息：\"到这里来吧。我将帮助你们获得这个世界。我对这个世界已经绝望了。\"\n\n这条回复奠定了三体入侵地球的基础。从发送到三体舰队出发，中间经过了约二十年的准备。叶文洁的回应不是一时冲动，而是文化大革命创伤下对整个人类文明的审判。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 95,
+      "scan_depth": 3,
+      "comment": "人类命运转折点",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_ye_wenjie_past",
+      "keys": [
+        "叶文洁",
+        "文革",
+        "父亲"
+      ],
+      "secondary_keys": [
+        "叶哲泰",
+        "红卫兵",
+        "批斗",
+        "齐家屯"
+      ],
+      "content": "叶文洁的人生轨迹是理解三体危机起源的关键。她出生于知识分子家庭，父亲叶哲泰是清华大学物理系教授。文化大革命中，叶哲泰因坚持科学真理被批斗致死——他的学生们亲手将他打死在批斗台上。叶文洁亲眼目睹了这一切。\n\n此后叶文洁被下放到内蒙古生产建设兵团劳动，在齐家屯目睹了大规模砍伐森林的环境破坏。后因一本《寂静的春天》被卷入政治事件，差点被判刑。关键时刻，红岸基地的杨卫宁将她调入基地——因为她的天体物理学知识对红岸工程有用。\n\n这一系列创伤——父亲被杀、知识分子被迫害、环境被破坏——彻底摧毁了叶文洁对人类文明的信心。当她有机会联络外星文明时，她选择了邀请入侵。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "叶文洁背景故事",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_cultural_revolution",
+      "keys": [
+        "文化大革命",
+        "文革",
+        "批斗"
+      ],
+      "secondary_keys": [
+        "红卫兵",
+        "知识分子",
+        "迫害"
+      ],
+      "content": "文化大革命（1966-1976）是三体危机的间接起因。在这场政治运动中，知识分子被大规模迫害——教授被学生批斗、科学被视为反革命工具、理性思维被暴力取代。叶文洁的父亲叶哲泰就是在批斗中被打死的。\n\n文革对叶文洁的影响是毁灭性的：她亲眼见证了人类理性的彻底崩塌，见证了「群众」如何在疯狂中杀死最优秀的头脑。这种对人性的绝望，成为她日后背叛全人类的心理根基。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "文革与三体危机的联系",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_eto_founding",
+      "keys": [
+        "ETO创建",
+        "地球三体组织创建"
+      ],
+      "secondary_keys": [
+        "创建",
+        "起源"
+      ],
+      "content": "地球三体组织（Earth-Trisolaris Organization，简称ETO）由叶文洁在1980年代末创建。起初只是叶文洁和少数对人类文明绝望的知识分子之间的秘密通讯网络。伊文斯的加入带来了巨额资金和全球网络，使ETO从一个松散的读书会发展成了一个拥有数千名成员的跨国秘密组织。\n\n叶文洁是ETO的精神领袖和名义统帅（\"统帅\"），但伊文斯通过控制审判日号（第二红岸基地）和垄断三体通讯，实际上掌握了组织的实权。这种权力分裂导致了ETO内部派系的形成。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "ETO创建历史",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_eto_structure",
+      "keys": [
+        "ETO组织",
+        "ETO结构",
+        "地球三体组织"
+      ],
+      "secondary_keys": [
+        "组织架构",
+        "成员"
+      ],
+      "content": "ETO拥有严密的等级制度和全球化的组织网络。成员涵盖科学家、企业家、军人、政客和知识分子——他们的共同点是对人类文明的深度失望。组织通过\"科学边界\"等外围组织筛选潜在成员，再通过三体游戏进行意识形态考验。\n\nETO的日常运营依赖伊文斯的财富网络，通过数十个空壳公司和非政府组织转移资金。审判日号是ETO的移动指挥中心，也是与三体文明通讯的唯一渠道——叶文洁本人被排除在这条通讯链之外。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "ETO组织结构",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_eto_factions",
+      "keys": [
+        "降临派",
+        "拯救派",
+        "幸存派",
+        "派系"
+      ],
+      "secondary_keys": [
+        "ETO",
+        "内部"
+      ],
+      "content": "ETO内部分为三大派系，路线严重分裂：\n\n降临派：由伊文斯领导，主张三体文明彻底消灭人类。他们认为人类文明是宇宙的癌症，不配继续存在。降临派是最极端也是权力最大的派系，控制着审判日号。\n\n拯救派：由潘寒等人代表，希望三体文明以「更高级」的方式改造人类社会。他们天真地认为三体人是仁慈的神，会引导人类走上正途。三体游戏的最终关卡彻底粉碎了这种幻想。\n\n幸存派：最务实也最自私的派系。他们不关心人类命运，只想在三体到来后为自己谋求生存。愿意出卖同类以换取三体文明的庇护——但三体文明从未做出过任何承诺。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "ETO三大派系",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_eto_adventist",
+      "keys": [
+        "降临派",
+        "伊文斯",
+        "人类灭绝"
+      ],
+      "secondary_keys": [
+        "极端",
+        "消灭"
+      ],
+      "content": "降临派是ETO中最危险的力量。他们的核心信条是：人类文明从根本上是邪恶的，只有被外部力量彻底消灭才是对地球的拯救。伊文斯将这种理念推向了极端——他不仅要帮助三体入侵，还要确保人类没有任何反抗的机会。\n\n为此，伊文斯通过审判日号垄断了三体通讯，向叶文洁和其他ETO成员隐瞒了三体文明的真实意图——三体人视人类为「虫子」，根本没有区分对待的打算。降临派的成员们甘愿成为人类的掘墓人。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "降临派详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_eto_redemption",
+      "keys": [
+        "拯救派",
+        "改造人类",
+        "潘寒"
+      ],
+      "secondary_keys": [
+        "环保",
+        "理想主义"
+      ],
+      "content": "拯救派的成员大多是被潘寒感召的环保主义者和理想主义知识分子。他们将三体文明视为「更高级的存在」，认为三体人的到来将终结人类对地球的破坏，建立一个更美好的世界。\n\n然而当三体游戏的最终关卡揭示了三体文明的真实意图——入侵而非拯救——拯救派的信仰基础被彻底动摇。部分成员觉醒并试图脱离ETO，另一些则陷入更深的自我欺骗。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "拯救派详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_three_body_game",
+      "keys": [
+        "三体游戏",
+        "V装具",
+        "VR游戏"
+      ],
+      "secondary_keys": [
+        "游戏",
+        "关卡",
+        "文明周期",
+        "恒纪元"
+      ],
+      "content": "三体游戏是ETO开发的超高拟真度VR体验，使用远超当代技术的V装具（VR头显）。游戏将玩家带入三体世界，体验文明在恒纪元和乱纪元中的兴衰循环。\n\n游戏分为多个「文明周期」关卡，每关以不同历史时期为背景呈现三体世界：东方文明（周文王）、暴政文明（秦始皇）、欧洲中世纪（教廷）、科学革命、工业时代...每次文明都在乱纪元中毁灭。玩家需要找到预测三体运动的方法来拯救文明。\n\n游戏的真正目的是让玩家对三体文明产生同情和认同——这是ETO筛选和招募新成员的核心工具。通过第五关（最终关）的玩家会收到ETO的正式接触邀请。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "三体游戏机制",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_judgment_day",
+      "keys": [
+        "审判日号",
+        "审判日",
+        "第二红岸"
+      ],
+      "secondary_keys": [
+        "巨轮",
+        "伊文斯",
+        "通讯"
+      ],
+      "content": "审判日号（Judgment Day）是一艘6万吨级的巨型远洋轮船，名义上是伊文斯家族的私人游轮，实际上是ETO降临派的移动指挥中心和「第二红岸基地」。\n\n船上安装了大型天线阵列和超级计算机，能够接收和发送三体文明的通讯信号。伊文斯通过审判日号垄断了三体与地球之间的所有信息通道——三体文明发给地球的所有消息都先经过他的审查和筛选。\n\n审判日号长期在太平洋上游弋，很少靠岸。要获取船上存储的三体通讯数据——这是理解三体文明真实意图的关键——必须在不让船员销毁数据的情况下夺取这艘船。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "审判日号详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_second_red_coast",
+      "keys": [
+        "第二红岸基地",
+        "通讯基地"
+      ],
+      "secondary_keys": [
+        "伊文斯",
+        "通讯垄断"
+      ],
+      "content": "第二红岸基地是伊文斯在审判日号上建立的与三体文明的通讯设施，以区别于叶文洁最初使用的大兴安岭红岸基地。\n\n通过这个基地，伊文斯实现了对三体通讯的完全垄断。他得知了三体文明的真实计划——包括智子的部署、舰队的发射、以及三体人对人类的真实评价（\"虫子\"）——但他选择向其他ETO成员隐瞒这些信息，以维持自己在组织中的权力地位。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "第二红岸基地",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_guzheng_plan",
+      "keys": [
+        "古筝行动",
+        "古筝",
+        "飞刃",
+        "纳米丝"
+      ],
+      "secondary_keys": [
+        "运河",
+        "巴拿马",
+        "切割",
+        "纳米"
+      ],
+      "content": "古筝行动（Operation Guzheng）是PDC作战中心策划的军事行动，目标是截获审判日号上存储的三体通讯数据。\n\n行动方案：在巴拿马运河最窄处（盖拉德水道），横跨运河拉设数十根「飞刃」纳米丝。这种纳米丝由汪淼团队研发，直径仅为头发丝的百分之一，但强度超越任何已知材料。当审判日号通过运河时，纳米丝将以极高精度将整艘船切割成约四十片薄片。\n\n切割方式经过精心设计：确保数据存储服务器所在的船体区域被完整保留，同时消灭船上的ETO成员（包括伊文斯）以防数据被销毁。这是人类历史上最精密也最残酷的军事行动之一。行动名称来源于古筝的弦。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 90,
+      "scan_depth": 3,
+      "comment": "古筝行动详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_nanomaterial",
+      "keys": [
+        "纳米材料",
+        "纳米丝",
+        "飞刃"
+      ],
+      "secondary_keys": [
+        "汪淼",
+        "碳纳米管",
+        "材料"
+      ],
+      "content": "汪淼领导的纳米材料研究团队开发出了一种革命性的碳纳米管纤维——代号\"飞刃\"。这种纳米丝直径仅为头发丝的百分之一（约500纳米），但抗拉强度超越钢铁数百倍，几乎不可见。\n\n飞刃最初是作为工业材料研发的，但其军事应用价值很快被作战中心发现。在古筝行动中，飞刃被拉设在巴拿马运河水面之下，形成一张看不见的「古筝弦」网——任何通过的物体都会被无声地切割成薄片。\n\n这是智子无法封锁的技术——因为纳米材料属于应用工程而非基础物理研究。这也是为什么三体文明如此忌惮汪淼的研究，甚至用倒计时来恐吓他。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "纳米材料与飞刃",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_countdown",
+      "keys": [
+        "倒计时",
+        "幽灵",
+        "视网膜"
+      ],
+      "secondary_keys": [
+        "数字",
+        "恐吓",
+        "心理战"
+      ],
+      "content": "倒计时是智子对人类科学家实施心理战的手段之一。智子能在人类的视网膜上直接投射影像——一串精确到秒的倒计时数字。无论受害者睁眼闭眼、戴不戴眼镜，倒计时都清晰可见。\n\n倒计时的目的是恐吓科学家停止关键研究。汪淼在被倒计时困扰后暂停了纳米材料研究，倒计时随即消失——证实了这是三体文明有针对性的干预。对于那些不服从的科学家，智子会配合其他手段（如宇宙闪烁）加大心理压力，直到他们精神崩溃。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "倒计时现象",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_physics_crisis",
+      "keys": [
+        "物理学",
+        "物理定律",
+        "实验异常"
+      ],
+      "secondary_keys": [
+        "崩塌",
+        "射手假说",
+        "农场主假说",
+        "不可重复"
+      ],
+      "content": "所谓的\"物理学危机\"是智子对人类科学进行系统性封锁的结果。智子通过参与粒子加速器中的碰撞过程，人为制造随机化的实验结果——使得每次完全相同条件下的实验都得到不同的数据。\n\n这从根本上摧毁了粒子物理学的研究基础：如果实验不可重复，科学方法本身就失去了意义。多名物理学家在认识到这一点后精神崩溃，留下\"物理学不存在了\"的遗言后自杀。\n\n射手假说和农场主假说是两个理解这场危机的思想实验：射手假说——一个神枪手在靶子上每隔十厘米打一个洞，一只二维生物会认为\"宇宙每隔十厘米有一个洞\"是物理定律；农场主假说——火鸡在感恩节前每天都得到食物，它认为\"每天都有食物\"是自然规律——直到感恩节那天。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "物理学危机",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_accelerator",
+      "keys": [
+        "加速器",
+        "良湖",
+        "粒子碰撞"
+      ],
+      "secondary_keys": [
+        "实验",
+        "标准模型",
+        "丁仪"
+      ],
+      "content": "良湖粒子加速器是中国最大的高能物理实验设施。在智子干扰之前，它的碰撞实验结果一直精确符合标准模型的预测。但自从智子到达地球后，所有实验结果开始变得不可预测——完全相同条件下的碰撞产生完全不同的粒子喷射。\n\n丁仪教授是最后一批仍在良湖坚持实验的物理学家之一。他通过大量实验确认了一个关键事实：干扰不是随机噪声，而是有针对性的智能行为——某种东西在「回应」实验设计。这最终证实了智子的存在。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "良湖加速器",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_scientist_deaths",
+      "keys": [
+        "科学家自杀",
+        "连续自杀",
+        "遗言"
+      ],
+      "secondary_keys": [
+        "自杀",
+        "张绍英",
+        "死亡"
+      ],
+      "content": "2007年初至4月，至少五名中国顶尖物理学家相继自杀。所有死者都留下了内容相似的遗言，核心信息都是\"物理学不存在了\"或类似的绝望表述。\n\n表面上看是\"长期科研压力导致的抑郁\"，但调查发现所有死者都有共同的联系：参加了\"科学边界\"学术聚会、接触过三体游戏、或者在实验中观察到了不可解释的异常。他们不是因为抑郁而自杀——而是因为真正理解了物理学基础被颠覆的含义后精神崩溃。\n\n杨冬是第一个自杀的——她是最先通过理论推演发现物理常数波动的人，而非通过实验。这意味着即使不进实验室，纯理论研究也能触及智子封锁的边界。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "科学家自杀事件",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_yang_dong_suicide",
+      "keys": [
+        "杨冬",
+        "杨冬自杀",
+        "遗言"
+      ],
+      "secondary_keys": [
+        "自杀",
+        "弦理论",
+        "遗言"
+      ],
+      "content": "杨冬是叶文洁的女儿、丁仪的恋人，年轻而才华横溢的弦理论物理学家。她通过纯理论计算发现了物理常数在量子层面的异常波动——这意味着物理学的基础公理可能是错的。\n\n杨冬不知道母亲与三体文明的关系，也不知道智子的存在。她以为自己发现了宇宙的本质缺陷——在一个物理定律可以被篡改的宇宙中，科学本身失去了意义。\n\n她的遗言：\"一切的一切都导向这样一个结局：物理学从来就没有存在过，我们一直活在一个谎言中。\"她是连续自杀事件的第一位受害者，也是最让人心痛的一位——因为她死于真相的碎片，而非真相本身。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "杨冬之死",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_science_boundary",
+      "keys": [
+        "科学边界",
+        "学术沙龙",
+        "聚会"
+      ],
+      "secondary_keys": [
+        "招募",
+        "申玉菲",
+        "学术"
+      ],
+      "content": "科学边界是ETO运营的外围学术组织，表面上是讨论科学哲学和前沿研究的高端学术沙龙。聚会通常在五星级酒店举办，参与者都是各领域的顶尖科学家和知识分子。\n\n但在优雅的学术讨论之下，科学边界的真正目的是系统性地摧毁参与者对人类文明的信心。讨论话题被精心引导向\"人类文明的破坏性\"、\"科学发展的局限性\"、\"宇宙中可能存在更高级文明\"等方向。那些展现出对人类失望情绪的参与者会被进一步接触和评估。\n\n申玉菲是科学边界的实际运营者，负责筛选ETO招募对象。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "科学边界组织",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_pdc",
+      "keys": [
+        "PDC",
+        "行星防御",
+        "防御理事会"
+      ],
+      "secondary_keys": [
+        "联合国",
+        "防御",
+        "常伟思"
+      ],
+      "content": "行星防御理事会（Planetary Defense Council，PDC）是联合国安理会五个常任理事国秘密成立的国际机构，负责协调人类对三体入侵的整体防御。PDC直辖多个军事和科研机构，拥有调动各成员国军事资源的权力。\n\n在中国，PDC通过「作战中心」与解放军战略部队对接，常伟思将军是中方首席代表。PDC面临的核心困境是：智子的全面监控使得任何公开讨论的计划都等于在敌人面前亮牌。这一困境最终催生了面壁计划的构想。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 80,
+      "scan_depth": 3,
+      "comment": "PDC组织",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_wallfacer_preview",
+      "keys": [
+        "面壁计划",
+        "面壁者",
+        "面壁"
+      ],
+      "secondary_keys": [
+        "思维",
+        "智子",
+        "战略"
+      ],
+      "content": "面壁计划是PDC在三体危机后期酝酿的一项史无前例的战略构想。核心理念：既然智子可以监控人类的一切通讯和行动，唯一的安全空间就是人类的大脑内部——智子无法读取思维活动。\n\n面壁计划将选定若干名「面壁者」，赋予他们调动地球资源的不受限权力，让他们在自己的大脑中独自制定对三体的防御战略——不向任何人解释、不向任何人汇报。因为任何说出口的话、写下来的字、敲入电脑的数据，都会被智子即时传送给三体舰队。\n\n在本剧本的时间线中，面壁计划尚处于构想阶段，但种子已经播下。罗辑将是未来的面壁者之一。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "面壁计划预览",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_dark_forest_preview",
+      "keys": [
+        "黑暗森林",
+        "宇宙社会学",
+        "公理"
+      ],
+      "secondary_keys": [
+        "猜疑链",
+        "技术爆炸",
+        "罗辑",
+        "生存"
+      ],
+      "content": "黑暗森林理论是理解宇宙文明关系的核心框架，由叶文洁向罗辑暗示的两条公理推导而来：\n\n公理一：生存是文明的第一需要。\n公理二：文明不断增长和扩张，但宇宙中的物质总量保持不变。\n\n加上两个重要概念：猜疑链（文明之间无法确定对方是善意还是恶意，也无法确定对方是否认为自己是善意的）和技术爆炸（一个落后文明可能在极短时间内超越先进文明），可以推导出一个可怕的结论——\n\n在本剧本的时间线中，罗辑尚未完全理解这个理论。但种子已经播下，它将在未来成为人类对抗三体入侵的终极武器。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 85,
+      "scan_depth": 3,
+      "comment": "黑暗森林理论伏笔",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_dehydration",
+      "keys": [
+        "脱水",
+        "浸泡",
+        "三体生存"
+      ],
+      "secondary_keys": [
+        "休眠",
+        "生存策略",
+        "恒纪元",
+        "乱纪元"
+      ],
+      "content": "脱水和浸泡是三体文明独特的生存方式。在乱纪元来临时（三颗恒星的混沌引力导致行星环境剧变），三体人可以将体内的水分完全排出——身体变成干燥的薄片状物体，新陈代谢完全停止，类似于一种深度休眠。\n\n当恒纪元到来时，通过浸泡（将脱水体浸入水中）可以恢复活力。整个文明可以在脱水状态下保存数百年，等待下一个恒纪元。三体文明正是靠这种方式在数百次毁灭中幸存下来的。\n\n在三体游戏中，玩家会体验到整个文明脱水和浸泡的壮观场景——数十亿三体人在乱纪元前集体脱水成薄片，整齐地堆叠在仓库中。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "三体人脱水与浸泡",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_beijing_academy_detail",
+      "keys": [
+        "科学院",
+        "纳米中心",
+        "实验室"
+      ],
+      "secondary_keys": [
+        "中关村",
+        "研究",
+        "汪淼"
+      ],
+      "content": "中国科学院北京分院纳米材料研究中心位于中关村科学城核心区域。2007年的研究中心拥有国内最先进的纳米制造设备，汪淼教授领导的团队在碳纳米管纤维领域处于世界前沿。\n\n近来，中心的气氛异常压抑。多名同事的自杀让每个人都活在恐惧中。实验室的结果越来越不可靠——甚至纳米级别的制造工艺也开始受到不可解释的干扰。但汪淼的飞刃纳米丝项目——一种仅有头发丝百分之一粗细的超强纤维——依然在秘密推进中。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "科学院地点详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_military_base_detail",
+      "keys": [
+        "作战中心",
+        "西山",
+        "地下掩体"
+      ],
+      "secondary_keys": [
+        "军方",
+        "指挥所"
+      ],
+      "content": "PDC作战中心位于北京西山的深层地下掩体中。这个设施原本是冷战时期修建的核战争指挥所，在三体危机后被改造为人类防御的中枢神经系统。\n\n主控制大厅有一面覆盖整面墙壁的巨型显示屏，实时展示三体舰队的推算位置（基于截获的智子通讯数据）、全球加速器实验状态、ETO活动监控等信息。常伟思将军在这里统筹中国区域的一切三体相关事务。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "作战中心详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_shi_qiang_style",
+      "keys": [
+        "大史",
+        "史强风格"
+      ],
+      "secondary_keys": [
+        "刑警",
+        "直觉",
+        "虫子"
+      ],
+      "content": "史强（外号大史）是一个看似粗糙实则极其精明的老刑警。他的破案风格不依赖任何高科技手段——只靠直觉、经验和不要命的勇气。他说话粗俗但总能切中要害，抽廉价烟，喝二锅头，但这副市井外表下藏着对人性极为深刻的洞察。\n\n在三体危机中，大史是汪淼精神崩溃边缘的救命稻草。当汪淼被倒计时和宇宙闪烁折磨到几乎疯狂时，是大史用他那种粗犷而温暖的方式把他从深渊边拉了回来。大史的名言：\"虫子从来就没有被真正战胜过。\"",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "史强角色详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_ding_yi_character",
+      "keys": [
+        "丁仪",
+        "理论物理",
+        "古怪"
+      ],
+      "secondary_keys": [
+        "物理学家",
+        "杨冬",
+        "好奇"
+      ],
+      "content": "丁仪教授是中国最杰出的理论物理学家之一。他的研究涵盖弦理论、量子引力和粒子物理学。在学术上他极其严谨，但在生活中却是一个古怪散漫的人——衣着随意、作息混乱、说话不留情面。\n\n杨冬的自杀对他打击巨大——他不仅失去了恋人，更在科学层面理解了杨冬为何绝望。但与杨冬不同，丁仪面对物理学的崩塌感到的不是恐惧而是兴奋——终于遇到了真正未知的东西。他是少数几个在智子干扰下仍保持理智和好奇心的科学家。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 65,
+      "scan_depth": 3,
+      "comment": "丁仪角色详情",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_mike_evans_background",
+      "keys": [
+        "伊文斯",
+        "石油",
+        "物种灭绝"
+      ],
+      "secondary_keys": [
+        "财富",
+        "鸟类",
+        "褐燕",
+        "仇恨"
+      ],
+      "content": "迈克·伊文斯出生于美国最富有的石油家族之一。年轻时他是一个敏感的环保主义者，在中国西北地区目睹了一种珍稀鸟类（褐燕）的灭绝后，他对人类文明产生了根本性的仇恨。\n\n他的信念逐渐极端化：从\"保护自然\"到\"人类是地球的癌症\"，最终到\"人类必须被消灭\"。在接触叶文洁和ETO后，他将全部财富投入到降临派的事业中——建造审判日号、建立全球网络、垄断三体通讯。\n\n讽刺的是，伊文斯憎恨人类「背叛自然」的行为，却自己背叛了全人类。三体文明对他的评价只有四个字：\"你们是虫子。\"",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "伊文斯背景",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_luo_ji_potential",
+      "keys": [
+        "罗辑",
+        "社会学",
+        "面壁者"
+      ],
+      "secondary_keys": [
+        "公理",
+        "种子",
+        "懒散"
+      ],
+      "content": "罗辑看起来像是最不可能拯救人类的人——一个散漫的社会学教授，不做研究、不发论文、混吃等死。但叶文洁在他身上看到了一种独特的品质：他不像科学家那样受学科框架的束缚，拥有跨学科思考的天赋。\n\n叶文洁在生命的最后阶段选择向罗辑暗示宇宙社会学的两条公理，因为她知道只有这种不受传统科学思维限制的人才可能发现黑暗森林法则。罗辑目前还未理解这些公理的深意——但种子已经播下。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 70,
+      "scan_depth": 3,
+      "comment": "罗辑潜力",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    },
+    {
+      "id": "lore_cosmic_flicker",
+      "keys": [
+        "宇宙闪烁",
+        "星空闪烁",
+        "微波背景"
+      ],
+      "secondary_keys": [
+        "恐惧",
+        "CMB",
+        "底片"
+      ],
+      "content": "宇宙闪烁是智子向人类科学家展示力量的终极手段。智子可以影响宇宙微波背景辐射（CMB）在地球观测者眼中的呈现——让整个宇宙在一瞬间闪烁。\n\n当汪淼拒绝停止研究时，他在照片底片上发现了宇宙微波背景辐射的印记。更令人恐惧的是，这些辐射印记形成了一个倒计时。最终，智子让汪淼亲眼看到了宇宙闪烁——整个夜空中所有的星星在同一瞬间明灭了一次。\n\n这个信息是清晰的：控制你实验的力量，同样可以控制整个宇宙。在这种恐惧面前，大多数科学家的精神防线彻底崩溃。",
+      "position": "after_world",
+      "enabled": true,
+      "constant": false,
+      "priority": 75,
+      "scan_depth": 3,
+      "comment": "宇宙闪烁现象",
+      "related_entries": [],
+      "probability": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "group": "",
+      "group_weight": 100,
+      "depth": 4,
+      "role": "system"
+    }
+  ]
+}
