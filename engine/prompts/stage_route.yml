@@ -1,0 +1,48 @@
+name: stage_route
+description: "路由阶段: 分析玩家行动，判断涉及的游戏系统和检定需求"
+stage: "route"
+source: "game_session.py::_run_route_stage"
+max_tokens: 500
+
+system: |
+  你是场景分析器。根据玩家行动判断涉及的游戏系统和是否需要技能检定。只返回紧凑JSON，不要解释。
+
+user: |
+  位置: {location_line}
+  当前游戏时间: {old_time}
+  在场NPC: {npc_list_str}
+  角色属性: {attr_list_str}
+  玩家行动: {action_text}
+
+  返回: {"scene_type":"social|combat|exploration|trade|travel|rest",
+  "systems":["从npc/location/inventory/faction/moral/companion/deadline/clue/quest/combat/new_npc中选择相关的"],
+  "scope":"minor|moderate|major",
+  "focus_npcs":["填写npc_id（英文ID），不要填中文名"],
+  "skill_check":{"needed":true/false,"attr":"从角色属性中选择最相关的","difficulty":"easy|medium|hard|extreme"},
+  "expand_story":true/false,
+  "generate_image":true/false}
+
+  skill_check规则：
+  - 日常对话、简单移动、等待、休息等不需要检定(needed:false)
+  - 有风险或挑战性的行动需要检定(needed:true)，如潜行、说服、战斗、调查、偷窃等
+  - difficulty根据行动难度和环境判断
+
+  expand_story规则：
+  - 当剧情树大部分节点已完成、或剧情出现重大转折(scope=major)、或玩家进入全新区域时 → true
+  - 日常行动、推进中的剧情尚未完结时 → false
+
+  generate_image规则：
+  - 场景发生明显视觉变化时生成图像(true)：进入新地点、战斗场面、重大事件、环境剧变、初次见面
+  - 纯对话、等待、思考、小幅移动、重复场景等无明显视觉变化时不生成(false)
+
+  # 条件段落（当玩家有未完成计划时追加）：
+  # 注意: 玩家有未完成计划「{plan_goal}」，当前步骤: {current_step}
+
+variables:
+  - location_line     # "位置名（描述前40字）"
+  - old_time          # 当前游戏时间
+  - npc_list_str      # "npc_id(npc_name), ..." 或 "无"
+  - attr_list_str     # "力量/敏捷/智力/魅力" 等属性名斜杠分隔
+  - action_text       # 玩家行动文本
+  - plan_goal         # 未完成计划目标（条件出现）
+  - current_step      # 当前计划步骤（条件出现）
