@@ -25,6 +25,7 @@ import copy
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import asyncio
 from ai.openai_provider import OpenAIProvider
@@ -4029,9 +4030,15 @@ if __name__ == "__main__":
         allow_headers=["*"],
     )
 
+    static_dir = os.path.join(_BASE_DIR, "static")
+    if os.path.isdir(static_dir):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
     @app.get("/")
     async def root():
-        html_path = os.path.join(_BASE_DIR, "rpg_map_ui.html")
+        html_path = os.path.join(_BASE_DIR, "rpg_map_ui_v2.html")
+        if not os.path.exists(html_path):
+            html_path = os.path.join(_BASE_DIR, "rpg_map_ui.html")
         if os.path.exists(html_path):
             with open(html_path, "r", encoding="utf-8") as f:
                 return HTMLResponse(content=f.read())
