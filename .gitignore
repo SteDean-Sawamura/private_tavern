@@ -14,3 +14,4 @@ build/
 static/js/_all.js
 0.5.0
 electron/node_modules/
+logs/
