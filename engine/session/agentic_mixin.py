@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 
 from typing import TYPE_CHECKING
@@ -894,6 +895,7 @@ class AgenticMixin:
         """Agentic twin-loop pipeline. Async generator yielding the same items as
         _execute_pipeline: intermediate chunks (streaming) + a pipeline_result.
         """
+        _start = time.monotonic()
         _warnings: list[str] = []
         action_text = ctx.get("action_text") or player_action.get("text", "")
         ctx.setdefault("tool_results", [])
@@ -1024,6 +1026,51 @@ class AgenticMixin:
 
         self._audit_settlement(parsed)
 
+        # E1/E3: trace + performance for agentic pipeline
+        _total_prompt = (fg_holder.prompt_tokens if fg_holder else 0) + (bg_holder.prompt_tokens if bg_holder else 0)
+        _total_completion = (fg_holder.completion_tokens if fg_holder else 0) + (bg_holder.completion_tokens if bg_holder else 0)
+        elapsed_ms = int((time.monotonic() - _start) * 1000)
+        trace = {
+            "turn": self.turn_number,
+            "mode": "agentic",
+            "plan": "",
+            "reflection": "",
+            "rounds": [],
+            "total_tokens": {"prompt": _total_prompt, "completion": _total_completion},
+            "narrative_length": len(narrative),
+            "tools_count": len(fg_calls) + len(bg_calls),
+            "duration_ms": elapsed_ms,
+        }
+        for i, record in enumerate(fg_calls + bg_calls):
+            trace["rounds"].append({
+                "step": i + 1,
+                "tool": record["name"],
+                "args_summary": str(record.get("args", {}))[:100],
+                "result_summary": str(record.get("result", ""))[:100],
+            })
+        if not hasattr(self, '_agent_traces'):
+            self._agent_traces = []
+        self._agent_traces.append(trace)
+        if len(self._agent_traces) > 10:
+            self._agent_traces.pop(0)
+
+        if not hasattr(self, '_performance_stats'):
+            self._performance_stats = {
+                "total_turns": 0, "total_tokens": 0,
+                "avg_latency_ms": 0, "tool_usage": {},
+                "avg_narrative_length": 0, "mode_distribution": {},
+            }
+        ps = self._performance_stats
+        ps["total_turns"] += 1
+        ps["total_tokens"] += _total_prompt + _total_completion
+        n = ps["total_turns"]
+        ps["avg_latency_ms"] = int((ps["avg_latency_ms"] * (n - 1) + elapsed_ms) / n)
+        ps["avg_narrative_length"] = int((ps["avg_narrative_length"] * (n - 1) + len(narrative)) / n)
+        ps["mode_distribution"]["agentic"] = ps["mode_distribution"].get("agentic", 0) + 1
+        for r in fg_calls + bg_calls:
+            tool = r["name"]
+            ps["tool_usage"][tool] = ps["tool_usage"].get(tool, 0) + 1
+
         # 标记后处理已在 agentic 管线中完成
         ctx["_agentic_post_processed"] = True
         if self._turn_summary_override:
@@ -1041,16 +1088,13 @@ class AgenticMixin:
             "narrative_reasoning": _narrative_reasoning,
             "compose_msgs": [],
             "compose_sys": "",
+            "proactive_hint": ctx.get("_proactive_hint", ""),
             "token_usage": {
-                "prompt": (fg_holder.prompt_tokens if fg_holder else 0)
-                         + (bg_holder.prompt_tokens if bg_holder else 0),
-                "completion": (fg_holder.completion_tokens if fg_holder else 0)
-                             + (bg_holder.completion_tokens if bg_holder else 0),
-                "total": (fg_holder.prompt_tokens if fg_holder else 0)
-                        + (fg_holder.completion_tokens if fg_holder else 0)
-                        + (bg_holder.prompt_tokens if bg_holder else 0)
-                        + (bg_holder.completion_tokens if bg_holder else 0),
+                "prompt": _total_prompt,
+                "completion": _total_completion,
+                "total": _total_prompt + _total_completion,
             },
+            "agent_trace": trace,
         }
 
     # ================================================================
@@ -1192,6 +1236,12 @@ class AgenticMixin:
             if exp_lines:
                 parts.append("<agent_experience>\n" + "\n".join(exp_lines) + "\n</agent_experience>")
 
+        # C1: NPC 自主行为事件
+        npc_events = ctx.get("npc_autonomy_events", [])
+        if npc_events:
+            event_lines = [f"- {e['npc_name']}移动到{e['to']}（{e.get('activity', '')}）" for e in npc_events[:5]]
+            parts.append("<npc_movements>\n" + "\n".join(event_lines) + "\n</npc_movements>")
+
         return "\n\n".join(parts)
 
     def _build_unified_parsed(self, records: list[dict], ctx: dict) -> dict:
@@ -1214,6 +1264,7 @@ class AgenticMixin:
     async def _execute_unified_agent(self, ctx: dict, route: dict, player_action: dict,
                                      *, streaming: bool = False):
         """Unified Agent: single loop handles retrieval + narrative + settlement."""
+        _start = time.monotonic()
         _warnings: list[str] = []
         action_text = ctx.get("action_text") or player_action.get("text", "")
         ctx.setdefault("tool_results", [])
@@ -1231,11 +1282,18 @@ class AgenticMixin:
 
         tools = self._build_adaptive_tools(ctx)
 
+        async def _dispatch_and_record(name, args):
+            result = await self._dispatch_unified_tool(ctx, name, args)
+            # D1: 记录上一次工具调用（供 undo_my_last_action 使用）
+            if name != "undo_my_last_action":
+                self._last_tool_result = {"name": name, "args": args}
+            return result
+
         holder = _AgentResult()
         async for event in self._agent_loop(
             [{"role": "user", "content": user}],
             system, tools,
-            lambda name, args: self._dispatch_unified_tool(ctx, name, args),
+            _dispatch_and_record,
             max_rounds=10, label="统一Agent",
             result_holder=holder,
         ):
@@ -1324,6 +1382,50 @@ class AgenticMixin:
         if len(self._agent_experience) > 5:
             self._agent_experience.pop(0)
 
+        # E1: Agent Trace 可视化数据
+        elapsed_ms = int((time.monotonic() - _start) * 1000)
+        trace = {
+            "turn": self.turn_number,
+            "mode": "unified",
+            "plan": ctx.get("_agent_plan", ""),
+            "reflection": ctx.get("_reflection", ""),
+            "rounds": [],
+            "total_tokens": {"prompt": holder.prompt_tokens, "completion": holder.completion_tokens},
+            "narrative_length": len(narrative),
+            "tools_count": len(holder.records),
+            "duration_ms": elapsed_ms,
+        }
+        for i, record in enumerate(holder.records):
+            trace["rounds"].append({
+                "step": i + 1,
+                "tool": record["name"],
+                "args_summary": str(record.get("args", {}))[:100],
+                "result_summary": str(record.get("result", ""))[:100],
+            })
+        if not hasattr(self, '_agent_traces'):
+            self._agent_traces = []
+        self._agent_traces.append(trace)
+        if len(self._agent_traces) > 10:
+            self._agent_traces.pop(0)
+
+        # E3: 性能统计更新
+        if not hasattr(self, '_performance_stats'):
+            self._performance_stats = {
+                "total_turns": 0, "total_tokens": 0,
+                "avg_latency_ms": 0, "tool_usage": {},
+                "avg_narrative_length": 0, "mode_distribution": {},
+            }
+        ps = self._performance_stats
+        ps["total_turns"] += 1
+        ps["total_tokens"] += holder.prompt_tokens + holder.completion_tokens
+        n = ps["total_turns"]
+        ps["avg_latency_ms"] = int((ps["avg_latency_ms"] * (n - 1) + elapsed_ms) / n)
+        ps["avg_narrative_length"] = int((ps["avg_narrative_length"] * (n - 1) + len(narrative)) / n)
+        ps["mode_distribution"]["unified"] = ps["mode_distribution"].get("unified", 0) + 1
+        for r in holder.records:
+            tool = r["name"]
+            ps["tool_usage"][tool] = ps["tool_usage"].get(tool, 0) + 1
+
         yield {
             "type": "pipeline_result",
             "narrative": narrative,
@@ -1334,15 +1436,29 @@ class AgenticMixin:
             "narrative_reasoning": _narrative_reasoning,
             "compose_msgs": [],
             "compose_sys": "",
+            "proactive_hint": ctx.get("_proactive_hint", ""),
             "token_usage": {
                 "prompt": holder.prompt_tokens,
                 "completion": holder.completion_tokens,
                 "total": holder.prompt_tokens + holder.completion_tokens,
             },
+            "agent_trace": trace,
         }
 
     async def _dispatch_unified_tool(self, ctx: dict, name: str, args: dict):
         """Dispatch tool calls for the unified agent."""
+        # D1: undo_my_last_action — 自我回退
+        if name == "undo_my_last_action":
+            reason = args.get("reason", "")
+            if hasattr(self, '_last_tool_result') and self._last_tool_result:
+                undone = self._last_tool_result
+                logger.info("[统一Agent] 自我回退: %s (原因: %s)", undone.get("name", ""), reason)
+                if undone.get("name") == "add_choices":
+                    self._reset_stage45_tool_buffers()
+                self._last_tool_result = None
+                return f"已撤销上一个工具调用（{undone.get('name', '')}）。原因：{reason}"
+            return "没有可撤销的操作"
+
         # Plan tool
         if name == "submit_plan":
             plan = args.get("plan", "")
@@ -1398,6 +1514,58 @@ class AgenticMixin:
         if name == "peek_upcoming_events":
             return self._handle_peek_upcoming_events(args)
 
+        # --- C2 因果链追踪 ---
+        if name == "trace_causality":
+            entity = args.get("entity", "")
+            direction = args.get("direction", "both")
+            depth = args.get("depth", 3)
+            # 先按 ID 查，再按名字查
+            eid = entity
+            if entity not in self.narrative_graph.nodes:
+                for nid, ndata in self.narrative_graph.nodes.items():
+                    if ndata.get("name") == entity:
+                        eid = nid
+                        break
+            result = {}
+            if direction in ("causes", "both"):
+                result["causes"] = self.narrative_graph.trace_causes(eid, depth)
+            if direction in ("effects", "both"):
+                result["effects"] = self.narrative_graph.trace_effects(eid, depth)
+            return json.dumps(result, ensure_ascii=False, default=str)
+
+        # --- C3 分支预演 ---
+        if name == "preview_choice_outcome":
+            choice = args.get("choice_text", "")
+            # 规则推测风险
+            risk_words = {"冒险": "risky", "直接": "moderate", "等待": "safe", "观察": "safe",
+                          "追": "risky", "逃": "moderate", "询问": "moderate", "忽略": "safe"}
+            risk = "moderate"
+            for word, r in risk_words.items():
+                if word in choice:
+                    risk = r
+                    break
+            # 检查是否涉及已知 NPC
+            npcs_involved = []
+            for nid, ndata in self.current_state.get("npcs", {}).items():
+                if isinstance(ndata, dict) and ndata.get("name", "") in choice:
+                    att = ndata.get("attitude_toward_player", 50)
+                    npcs_involved.append(f"{ndata['name']}(态度{att})")
+            # 检查因果图
+            causal_hint = ""
+            if hasattr(self, 'narrative_graph'):
+                for node_id, node in self.narrative_graph.nodes.items():
+                    if node.get("name", "") in choice:
+                        effects = self.narrative_graph.trace_effects(node_id, 2)
+                        if effects:
+                            causal_hint = f"历史因果：{effects[0].get('effect_name', '')}可能受影响"
+                        break
+            return json.dumps({
+                "predicted_risk": risk,
+                "npcs_involved": npcs_involved,
+                "causal_hint": causal_hint,
+                "note": "规则预测，仅供参考"
+            }, ensure_ascii=False)
+
         return json.dumps({"error": f"未知工具: {name}"})
 
     def _handle_finalize_turn(self, ctx: dict, args: dict) -> str:
@@ -1430,6 +1598,11 @@ class AgenticMixin:
                 "style": args.get("image_style", "realistic"),
             }
 
+        # D2: proactive_hint
+        hint = args.get("proactive_hint", "")
+        if hint:
+            ctx["_proactive_hint"] = hint
+
         return "已同步完成本轮结算"
 
     async def _handle_delegate_settlement(self, ctx: dict, args: dict) -> str:
@@ -1441,6 +1614,11 @@ class AgenticMixin:
             for ch in choices:
                 self._run_choices_tool("add_choice", ch)
         self._turn_summary_override = args.get("summary", "")
+
+        # D2: proactive_hint
+        proactive = args.get("proactive_hint", "")
+        if proactive:
+            ctx["_proactive_hint"] = proactive
 
         self._delegated_settlement = True
 
@@ -1470,8 +1648,26 @@ class AgenticMixin:
 
             bg_calls = bg_holder.records if bg_holder else []
             logger.info("后台异步结算完成: %d 次工具调用", len(bg_calls))
+
+            # D3: 向前台发消息
+            settlement_summary = f"后台结算完成: {len(bg_calls)} 次工具调用"
+            if not hasattr(self, '_settlement_messages'):
+                self._settlement_messages = []
+            self._settlement_messages.append({
+                "type": "settlement_complete",
+                "summary": settlement_summary,
+                "tool_count": len(bg_calls),
+                "timestamp": self.current_state.get("game_time", ""),
+            })
         except Exception as e:
             logger.error("后台异步结算失败: %s", e)
+            if not hasattr(self, '_settlement_messages'):
+                self._settlement_messages = []
+            self._settlement_messages.append({
+                "type": "settlement_error",
+                "summary": f"后台结算失败: {e}",
+                "timestamp": self.current_state.get("game_time", ""),
+            })
 
     def _handle_consult_rules(self, args: dict) -> str:
         """纯规则检查（不调 LLM）：NPC 在场、物品持有等。"""

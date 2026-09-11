@@ -3439,6 +3439,17 @@ input[type="checkbox"] {
     font-style: italic;
 }
 
+/* D2: Agent proactive hint */
+.proactive-hint {
+    margin-top: var(--sp-sm);
+    padding: var(--sp-xs) var(--sp-sm);
+    font-size: var(--text-xs);
+    color: var(--text-1);
+    background: var(--brand-dim);
+    border-left: 3px solid var(--brand);
+    border-radius: var(--radius-sm);
+}
+
 /* Stop generation + inject input bar */
 .agent-controls {
     display: flex;

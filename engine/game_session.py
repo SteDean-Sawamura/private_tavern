@@ -31,6 +31,7 @@ from engine.data_bank import DataBank
 from engine.class_system import ClassRegistry
 from engine.story_tree import StoryTreeEngine
 from engine.narrative_graph import NarrativeGraph
+from engine.npc_autonomy import NPCAutonomy
 from engine.player_model import PlayerModel
 from engine.session.tools_mixin import ToolsMixin
 from engine.session.prepare_mixin import PrepareMixin
@@ -657,6 +658,7 @@ def _unified_tools() -> list[dict]:
                 "summary": {"type": "string", "description": "一句话摘要（必须）"},
                 "image_prompt": {"type": "string", "description": "场景图英文描述"},
                 "image_style": {"type": "string", "enum": ["realistic", "anime", "pixel"]},
+                "proactive_hint": {"type": "string", "description": "主动提示/建议（如'提醒：xxx 事件即将发生'）"},
             }, "required": ["choices", "summary"]},
         }},
         {"type": "function", "function": {
@@ -674,6 +676,7 @@ def _unified_tools() -> list[dict]:
                     }, "required": ["id", "text"]},
                 },
                 "summary": {"type": "string", "description": "一句话摘要"},
+                "proactive_hint": {"type": "string", "description": "主动提示/建议"},
             }, "required": ["choices", "summary"]},
         }},
     ]
@@ -705,6 +708,30 @@ def _unified_tools() -> list[dict]:
             "parameters": {"type": "object", "properties": {
                 "hours_ahead": {"type": "integer", "description": "向前看几小时（1-6）", "default": 3},
             }},
+        }},
+        {"type": "function", "function": {
+            "name": "undo_my_last_action",
+            "description": "撤销你在本轮中的上一个工具调用结果。用于发现自己犯错时自我修正。",
+            "parameters": {"type": "object", "properties": {
+                "reason": {"type": "string", "description": "为什么要撤销"},
+            }, "required": ["reason"]},
+        }},
+        {"type": "function", "function": {
+            "name": "trace_causality",
+            "description": "追溯某事件的因果链（向上追原因，向下追后果）",
+            "parameters": {"type": "object", "properties": {
+                "entity": {"type": "string", "description": "事件/实体名称或ID"},
+                "direction": {"type": "string", "enum": ["causes", "effects", "both"], "description": "追溯方向", "default": "both"},
+                "depth": {"type": "integer", "description": "追溯深度", "default": 3},
+            }, "required": ["entity"]},
+        }},
+        {"type": "function", "function": {
+            "name": "preview_choice_outcome",
+            "description": "快速预演某个选项的可能后果（用于生成更准确的 hint）",
+            "parameters": {"type": "object", "properties": {
+                "choice_text": {"type": "string", "description": "选项文本"},
+                "context": {"type": "string", "description": "当前场景摘要"},
+            }, "required": ["choice_text"]},
         }},
     ]
     return UNIFIED_TOOLS_SCHEMA
@@ -824,8 +851,20 @@ class GameSession(
         self._register_meta_events()
         self._opening_draft = None
         self.narrative_graph = NarrativeGraph()
+        self.npc_autonomy = NPCAutonomy(self.script.get("npcs", []), self.script.get("locations", []))
         self.player_model = PlayerModel()
         self._agent_experience: list[dict] = []  # 最近 5 轮的 Agent 工具调用摘要
+        self._last_tool_result: dict | None = None  # D1: 上一次工具调用记录（供 undo 回退）
+        self._settlement_messages: list[dict] = []  # D3: 后台→前台消息队列
+        # E1/E2/E3: 可观测性
+        from engine.ab_testing import ABTestRunner
+        self.ab_tester = ABTestRunner()
+        self._agent_traces: list[dict] = []
+        self._performance_stats: dict = {
+            "total_turns": 0, "total_tokens": 0,
+            "avg_latency_ms": 0, "tool_usage": {},
+            "avg_narrative_length": 0, "mode_distribution": {},
+        }
 
     def _stage_kwargs(self, stage: str) -> dict:
         model = self.stage_models.get(stage)
@@ -839,6 +878,11 @@ class GameSession(
         pm_data = self.current_state.pop("_player_model", None)
         if pm_data:
             self.player_model = PlayerModel.from_snapshot(pm_data)
+        na_data = self.current_state.pop("_npc_autonomy", None)
+        if na_data:
+            self.npc_autonomy = NPCAutonomy.from_snapshot(
+                self.script.get("npcs", []), self.script.get("locations", []), na_data
+            )
 
 
     def _build_logit_bias_hint(self) -> str:
@@ -2076,6 +2120,8 @@ class GameSession(
         parsed = {}
         _narrative_reasoning = ""
         _token_usage = None
+        _proactive_hint = ""
+        _agent_trace = None
         if self._agentic_unified_enabled():
             pipeline = self._execute_unified_agent(ctx, route, player_action, streaming=True)
         elif self._agentic_enabled():
@@ -2089,6 +2135,8 @@ class GameSession(
                 _warnings = item["warnings"]
                 _narrative_reasoning = item.get("narrative_reasoning", "")
                 _token_usage = item.get("token_usage")
+                _proactive_hint = item.get("proactive_hint", "")
+                _agent_trace = item.get("agent_trace")
             else:
                 yield item  # thinking/text/narrative_revised
 
@@ -2166,7 +2214,13 @@ class GameSession(
         else:
             result["scene_image"] = None
 
-        yield {"type": "final", **result, **({"token_usage": _token_usage} if _token_usage else {})}
+        yield {
+            "type": "final",
+            **result,
+            **({"token_usage": _token_usage} if _token_usage else {}),
+            **({"proactive_hint": _proactive_hint} if _proactive_hint else {}),
+            **({"agent_trace": _agent_trace} if _agent_trace else {}),
+        }
 
     async def branch_to_node(self, node_id: str) -> dict | None:
         """Switch to a different branch by loading a past node's state."""

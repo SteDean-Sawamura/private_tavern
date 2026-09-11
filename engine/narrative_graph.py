@@ -44,6 +44,58 @@ class NarrativeGraph:
             events = [e for e in events if entity_id in (e["from"], e["to"])]
         return sorted(events, key=lambda e: e.get("turn", 0))
 
+    def add_causal_link(self, cause_id: str, effect_id: str, turn: int, description: str = ""):
+        """记录因果关系：A 导致 B"""
+        self.edges.append({
+            "from": cause_id, "to": effect_id,
+            "relation": "caused",
+            "turn": turn, "description": description,
+        })
+
+    def trace_causes(self, entity_id: str, max_depth: int = 5) -> list[dict]:
+        """追溯某个事件/状态的因果链"""
+        chain = []
+        visited = set()
+        self._trace_back(entity_id, max_depth, visited, chain)
+        return chain
+
+    def _trace_back(self, eid, depth, visited, chain):
+        if depth <= 0 or eid in visited:
+            return
+        visited.add(eid)
+        for edge in self.edges:
+            if edge["to"] == eid and edge["relation"] == "caused":
+                chain.append({
+                    "cause": edge["from"],
+                    "cause_name": self.nodes.get(edge["from"], {}).get("name", edge["from"]),
+                    "effect": eid,
+                    "effect_name": self.nodes.get(eid, {}).get("name", eid),
+                    "turn": edge.get("turn", 0),
+                    "description": edge.get("description", ""),
+                })
+                self._trace_back(edge["from"], depth - 1, visited, chain)
+
+    def trace_effects(self, entity_id: str, max_depth: int = 5) -> list[dict]:
+        """追踪某个事件/状态的后续影响"""
+        chain = []
+        visited = set()
+        self._trace_forward(entity_id, max_depth, visited, chain)
+        return chain
+
+    def _trace_forward(self, eid, depth, visited, chain):
+        if depth <= 0 or eid in visited:
+            return
+        visited.add(eid)
+        for edge in self.edges:
+            if edge["from"] == eid and edge["relation"] == "caused":
+                chain.append({
+                    "cause": eid,
+                    "effect": edge["to"],
+                    "effect_name": self.nodes.get(edge["to"], {}).get("name", edge["to"]),
+                    "turn": edge.get("turn", 0),
+                })
+                self._trace_forward(edge["to"], depth - 1, visited, chain)
+
     def snapshot(self):
         return {"nodes": self.nodes, "edges": self.edges}
 

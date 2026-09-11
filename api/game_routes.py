@@ -567,6 +567,17 @@ async def inject_message(save_id: str, req: InjectMessageRequest):
     return {"ok": True}
 
 
+@router.get("/{save_id}/settlement-messages")
+async def get_settlement_messages(save_id: str):
+    """D3: Get pending settlement messages from background agent."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    messages = getattr(session, '_settlement_messages', [])
+    session._settlement_messages = []  # drain
+    return {"messages": messages}
+
+
 @router.get("/{save_id}/state")
 async def get_state(save_id: str):
     lock = _get_session_lock(save_id)
@@ -1622,6 +1633,55 @@ async def generate_scene_image_for_node(save_id: str, node_id: str):
                 await db.commit()
 
         return {"scene_image_path": scene_image_path, "prompt": img_prompt}
+
+
+# ================================================
+#  Observability endpoints (E1/E2/E3)
+# ================================================
+
+@router.get("/{save_id}/agent-traces")
+async def get_agent_traces(save_id: str):
+    """E1: Return recent agent traces for visualization."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    traces = getattr(session, '_agent_traces', [])
+    return {"traces": traces}
+
+
+@router.get("/{save_id}/performance")
+async def get_performance(save_id: str):
+    """E3: Return session-level performance statistics."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    return getattr(session, '_performance_stats', {})
+
+
+@router.post("/{save_id}/ab-test")
+async def run_ab_test(save_id: str, req: dict):
+    """E2: Run A/B test comparing two prompt variants."""
+    lock = _get_session_lock(save_id)
+    async with lock:
+        session = _sessions.get(save_id)
+        if not session:
+            session = await _restore_session(save_id)
+            if not session:
+                raise HTTPException(status_code=404, detail="Game session not found")
+        result = await session.ab_tester.run_comparison(
+            session, req.get("action", {}),
+            req.get("variant_a", {}), req.get("variant_b", {}),
+        )
+        return result
+
+
+@router.get("/{save_id}/ab-results")
+async def get_ab_results(save_id: str):
+    """E2: Return recent A/B test experiments."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    return {"experiments": session.ab_tester.get_experiments()}
 
 
 async def _save_node(session: GameSession, result: dict) -> str | None:

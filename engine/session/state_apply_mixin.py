@@ -284,6 +284,8 @@ class StateApplyMixin:
         # Persist narrative graph & player model into state for snapshot
         self.current_state["_narrative_graph"] = self.narrative_graph.snapshot()
         self.current_state["_player_model"] = self.player_model.snapshot()
+        if hasattr(self, 'npc_autonomy'):
+            self.current_state["_npc_autonomy"] = self.npc_autonomy.snapshot()
 
         # World tree node
         node_id = self.world_tree.add_node(

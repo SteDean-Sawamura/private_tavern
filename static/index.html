@@ -926,6 +926,7 @@
                 <button class="status-tab" data-page="sp-clues" onclick="switchStatusTab(this)">线索</button>
                 <button class="status-tab" data-page="sp-log" onclick="switchStatusTab(this)">日志</button>
                 <button class="status-tab" data-page="sp-chronicle" onclick="switchStatusTab(this)">编年史</button>
+                <button class="status-tab" data-page="sp-observ" onclick="switchStatusTab(this)">Agent</button>
             </div>
 
             <!-- Page: Character -->
@@ -1027,6 +1028,13 @@
                     <div id="chronicle-filters" class="chronicle-filters"></div>
                 </div>
                 <div id="chronicle-timeline"></div>
+            </div>
+            <!-- Page: Observability (Agent Trace + Performance) -->
+            <div id="sp-observ" class="status-page">
+                <h3>Agent Trace</h3>
+                <div id="agent-trace-content" class="agent-trace-content"></div>
+                <h3>Performance</h3>
+                <div id="perf-dashboard" class="perf-dashboard"></div>
             </div>
         </aside>
     </div>

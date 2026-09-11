@@ -297,6 +297,19 @@ async function submitActionStream(action) {
                                 });
                             }
                             if (parsed.game_over) _s('showGameOver', () => showGameOver(parsed.game_over, parsed.game_statistics));
+                            // E1: Agent Trace
+                            if (parsed.agent_trace) _s('renderAgentTrace', () => renderAgentTrace(parsed.agent_trace));
+                            // E3: Refresh performance dashboard
+                            _s('updatePerfDashboard', () => updatePerformanceDashboard());
+                            // D2: 显示 Agent 主动建议
+                            if (parsed.proactive_hint) {
+                                _s('showProactiveHint', () => {
+                                    const hint = document.createElement('div');
+                                    hint.className = 'proactive-hint';
+                                    hint.textContent = '💡 ' + parsed.proactive_hint;
+                                    block.appendChild(hint);
+                                });
+                            }
                         }
                     } catch (e) { console.warn('[stream-event]', e); }
                 }
@@ -691,4 +704,58 @@ async function feedbackRegen() {
     } finally {
         if (btn) { btn.disabled = false; }
     }
+}
+
+// ================================================
+// E1: Agent Trace rendering
+// ================================================
+
+function renderAgentTrace(trace) {
+    const container = document.getElementById('agent-trace-content');
+    if (!container) return;
+    const totalTokens = (trace.total_tokens.prompt || 0) + (trace.total_tokens.completion || 0);
+    let html = `<div class="trace-header">T${trace.turn} | ${trace.mode} | ${trace.tools_count} tools | ${totalTokens} tokens | ${trace.duration_ms}ms</div>`;
+    if (trace.plan) {
+        html += `<div class="trace-plan">${escapeHtml(trace.plan)}</div>`;
+    }
+    for (const step of trace.rounds) {
+        html += `<div class="trace-step">
+            <span class="trace-tool">${step.tool}</span>
+            <span class="trace-args">${escapeHtml(step.args_summary)}</span>
+            <span class="trace-result">${escapeHtml(step.result_summary)}</span>
+        </div>`;
+    }
+    if (trace.reflection) {
+        html += `<div class="trace-reflect">${escapeHtml(trace.reflection)}</div>`;
+    }
+    container.innerHTML = html;
+}
+
+// ================================================
+// E3: Performance dashboard rendering
+// ================================================
+
+async function updatePerformanceDashboard() {
+    if (!currentSaveId) return;
+    try {
+        const res = await fetch(`/api/game/${currentSaveId}/performance`);
+        const stats = await res.json();
+        const el = document.getElementById('perf-dashboard');
+        if (!el) return;
+        // Tool usage breakdown
+        let toolHtml = '';
+        if (stats.tool_usage) {
+            const entries = Object.entries(stats.tool_usage).sort((a, b) => b[1] - a[1]);
+            toolHtml = entries.map(([name, count]) =>
+                `<div class="perf-stat"><span>${name}</span><span>${count}</span></div>`
+            ).join('');
+        }
+        el.innerHTML = `
+            <div class="perf-stat"><span>Turns</span><span>${stats.total_turns || 0}</span></div>
+            <div class="perf-stat"><span>Tokens</span><span>${stats.total_tokens || 0}</span></div>
+            <div class="perf-stat"><span>Avg latency</span><span>${stats.avg_latency_ms || 0}ms</span></div>
+            <div class="perf-stat"><span>Avg narrative</span><span>${stats.avg_narrative_length || 0}</span></div>
+            ${toolHtml ? '<div class="perf-section-label">Tool usage</div>' + toolHtml : ''}
+        `;
+    } catch (_) { /* silent */ }
 }

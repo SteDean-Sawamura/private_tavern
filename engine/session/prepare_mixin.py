@@ -301,6 +301,11 @@ class PrepareMixin:
         )
         self._apply_event_result(event_engine_result)
 
+        # NPC 自主行为 tick
+        npc_autonomy_events = []
+        if hasattr(self, 'npc_autonomy'):
+            npc_autonomy_events = self.npc_autonomy.tick(new_time, self.current_state)
+
         self.current_state, expired = self.state_manager.check_expirations(
             self.current_state, new_time, inplace=True
         )
@@ -615,6 +620,7 @@ class PrepareMixin:
             "story_lore_ids": _story_lore_ids,
             "event_sections": _event_sections,
             "action_text": action_text,
+            "npc_autonomy_events": npc_autonomy_events,
         }
 
     def _roll_always_active_dice(self) -> list:

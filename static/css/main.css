@@ -1015,3 +1015,18 @@ body.in-game { overflow: hidden; height: 100vh; }
 .create-msg.system { background: var(--bg-card); color: var(--text-primary); align-self: flex-start; border: 1px solid var(--border); }
 .create-msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
 .create-msg.loading { opacity: 0.6; font-style: italic; }
+
+/* ================================================
+   E1: Agent Trace + E3: Performance Dashboard
+   ================================================ */
+.agent-trace-content, .perf-dashboard { padding: var(--sp-xs) 0; }
+.trace-header { font-size: var(--text-xs); color: var(--text-2); padding: var(--sp-xs) 0; border-bottom: 1px solid var(--border); }
+.trace-plan { font-size: var(--text-xs); color: var(--brand); padding: var(--sp-xs) 0; }
+.trace-step { font-size: var(--text-xs); padding: 2px 0; display: flex; gap: var(--sp-xs); }
+.trace-tool { color: var(--info); font-weight: 600; min-width: 100px; flex-shrink: 0; }
+.trace-args { color: var(--text-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trace-result { color: var(--text-1); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trace-reflect { font-size: var(--text-xs); color: var(--warning); padding: var(--sp-xs) 0; font-style: italic; }
+.perf-stat { display: flex; justify-content: space-between; font-size: var(--text-xs); padding: 2px 0; }
+.perf-stat span:last-child { color: var(--text-0); font-variant-numeric: tabular-nums; }
+.perf-section-label { font-size: var(--text-xs); color: var(--text-2); margin-top: var(--sp-xs); padding-top: var(--sp-xs); border-top: 1px solid var(--border); }
