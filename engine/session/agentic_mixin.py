@@ -154,9 +154,11 @@ class AgenticMixin:
         for round_num in range(max_rounds):
             # --- abort check ---
             if getattr(self, '_abort_flag', False):
+                logger.info("[%s] 用户中断", label)
                 yield {"type": "aborted", "round": round_num, "label": label}
                 break
 
+            logger.info("[%s:R%d] 调用 LLM (tools=%d, msgs=%d)", label, round_num + 1, len(tools), len(msgs))
             resp = await self.ai_provider.generate_with_tools(
                 msgs, system=system, tools=tools,
                 max_tokens=max_tokens, **self._stage_kwargs(stage_key),
@@ -165,7 +167,8 @@ class AgenticMixin:
             content = strip_think_tags(resp.get("content") or "")
 
             if not tc_list:
-                logger.info("[%s] 完成 (第%d轮)", label, round_num + 1)
+                text_preview = content[:80].replace('\n', ' ') if content else "(空)"
+                logger.info("[%s] 完成 (第%d轮, %d字): %s...", label, round_num + 1, len(content), text_preview)
                 holder.text = content
                 holder.records = records
                 yield {"type": "agent_done", "label": label,
@@ -195,7 +198,9 @@ class AgenticMixin:
                     logger.warning("[%s] 工具 %s 执行失败: %s", label, name, exc)
                     result = json.dumps({"error": str(exc)}, ensure_ascii=False)
                 records.append({"name": name, "args": args, "result": result})
-                logger.info("[%s:R%d] %s(%s)", label, round_num + 1, name, list(args.keys()))
+                result_preview = str(result)[:120].replace('\n', ' ')
+                logger.info("[%s:R%d] %s(%s) → %s", label, round_num + 1, name,
+                           ", ".join(f"{k}={repr(v)[:30]}" for k, v in args.items()), result_preview)
 
                 # Yield tool-call event for SSE consumers
                 yield {
@@ -462,7 +467,12 @@ class AgenticMixin:
         ctx.setdefault("tool_results", [])
         self._reset_stage45_tool_buffers()
 
+        logger.info("=" * 50)
+        logger.info("AGENTIC 模式开始 — 行动: %s", action_text[:60])
+        logger.info("=" * 50)
+
         # --- Foreground: retrieval + narration ---
+        logger.info(">>> 前台叙事 Agent 启动")
         fg_holder: _AgentResult | None = None
         async for event in self._run_foreground_agent(ctx, route, player_action, streaming=streaming):
             if event.get("type") == "_fg_result":
@@ -475,6 +485,7 @@ class AgenticMixin:
         if not narrative:
             raise RuntimeError("Agentic 前台叙事为空（工具调用后未输出文本）")
         ctx["tool_results"].extend(fg_calls)
+        logger.info(">>> 前台叙事完成 (%d字, %d次工具调用)", len(narrative), len(fg_calls))
 
         # 工具调用模式无法增量流式，叙事完成后整体下发一次
         if streaming:
@@ -486,6 +497,7 @@ class AgenticMixin:
         )
 
         # --- Background: state settlement ---
+        logger.info(">>> 后台结算 Agent 启动")
         bg_holder: _AgentResult | None = None
         async for event in self._run_background_agent(
             ctx, narrative, "", player_action, streaming=streaming,
@@ -497,6 +509,7 @@ class AgenticMixin:
 
         bg_calls = bg_holder.records if bg_holder else []
         ctx["tool_results"].extend(bg_calls)
+        logger.info(">>> 后台结算完成 (%d次工具调用)", len(bg_calls))
 
         # Reset abort flag after pipeline completes
         if hasattr(self, '_abort_flag'):
@@ -526,6 +539,14 @@ class AgenticMixin:
         for call in bg_calls:
             reasoning_parts.append(f"[结算] {call['name']}({call['args']})")
         _narrative_reasoning = "\n".join(reasoning_parts) if reasoning_parts else ""
+
+        choices_count = len(parsed.get("choices", []))
+        state_changes = len(parsed.get("state_changes", []))
+        npc_att = len(parsed.get("npc_attitude_changes", []))
+        logger.info("=" * 50)
+        logger.info("AGENTIC 完成 — 叙事%d字 | 选项%d | 状态变更%d | NPC态度%d | 工具调用%d+%d",
+                    len(narrative), choices_count, state_changes, npc_att, len(fg_calls), len(bg_calls))
+        logger.info("=" * 50)
 
         yield {
             "type": "pipeline_result",
