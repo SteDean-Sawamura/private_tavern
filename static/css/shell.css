@@ -1,27 +1,20 @@
 :root {
-  --brand: #9a622f;
-  --brand-hover: #a66b35;
-  --brand-dim: rgba(166, 107, 53, 0.10);
-  --brand-active: rgba(166, 107, 53, 0.22);
+  /* 迁移到 design-tokens.css，这里做别名兼容 */
+  --brand-active: var(--brand-active, rgba(166, 107, 53, 0.22));
 
-  --bg-base: #18181b;
-  --bg-surface: #1e1e22;
-  --bg-elevated: #27272c;
+  --bg-base: var(--bg-0);
+  --bg-surface: var(--bg-1);
+  --bg-elevated: var(--bg-2);
 
-  --text-primary: #e4e2df;
-  --text-secondary: #8e8e8e;
-  --text-muted: #5a5a5a;
+  --text-primary: var(--text-0);
+  --text-secondary: var(--text-1);
+  --text-muted: var(--text-2);
 
-  --border: #2a2a30;
-
-  --success: #4da66d;
-  --warning: #c68a3a;
-  --error: #c45f5f;
+  --error: var(--danger);
 
   --header-h: 40px;
   --sidebar-w: 56px;
   --status-h: 24px;
-  --ease: .18s ease;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

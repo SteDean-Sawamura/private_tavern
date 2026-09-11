@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>酒馆 - AI互动文字游戏</title>
+    <link rel="stylesheet" href="/static/css/design-tokens.css">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -14,8 +15,8 @@
             <span id="header-subtitle" class="subtitle">AI互动文字游戏</span>
         </div>
         <div class="header-right">
-            <button id="pipeline-mode-btn" onclick="togglePipelineMode()" title="切换推演模式" style="background:none;border:1px solid var(--border-color,#333);color:var(--text-muted,#888);padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;">⚡ workflow</button>
-            <a href="/shell" title="统一视图" style="color:var(--text-muted);text-decoration:none;font-size:12px;">⬡ 统一视图</a>
+            <button id="pipeline-mode-btn" onclick="togglePipelineMode()" title="切换推演模式" class="btn-mode-toggle">⚡ workflow</button>
+            <a href="/shell" title="统一视图" class="link-shell">⬡ 统一视图</a>
             <span id="game-time" class="game-time"></span>
             <span id="weather-badge" class="weather-badge"></span>
             <span id="pacing-badge" class="pacing-indicator" style="display:none"></span>

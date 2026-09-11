@@ -2,30 +2,23 @@
 /* Color design: muted dark theme, warm neutrals, subtle accents */
 
 :root {
-    /* Backgrounds — layered grays with warm undertone */
-    --bg-primary: #1b1b1f;
-    --bg-secondary: #222228;
-    --bg-card: #2a2a32;
+    /* 迁移到 design-tokens.css，这里做别名兼容 */
+    --bg-primary: var(--bg-1);
+    --bg-secondary: var(--bg-2);
+    --bg-card: var(--bg-3);
     --bg-card-alt: #2e2e38;
-    --bg-hover: #35353f;
-    --bg-inset: #18181c;
+    --bg-hover: var(--bg-4);
+    --bg-inset: var(--bg-0);
+    --bg-tertiary: var(--bg-3);
 
-    /* Text hierarchy */
-    --text-primary: #d8d8dc;
-    --text-secondary: #9e9eab;
-    --text-muted: #6b6b78;
+    --text-primary: var(--text-0);
+    --text-secondary: var(--text-1);
+    --text-muted: var(--text-2);
     --text-bright: #ececf0;
 
-    /* Accent: warm amber (low saturation) */
-    --accent: #c9935a;
-    --accent-hover: #daa76e;
-    --accent-dim: rgba(201, 147, 90, 0.15);
-
-    /* Semantic colors (desaturated) */
-    --success: #6dab6d;
-    --warning: #c9a44a;
-    --danger: #b85c5c;
-    --info: #6a9ab5;
+    --accent: var(--brand);
+    --accent-hover: var(--brand-hover);
+    --accent-dim: var(--brand-dim);
 
     /* Stat colors (soft) */
     --health: #c27070;
@@ -34,23 +27,18 @@
     --relation: #a87fc4;
 
     /* Borders & chrome */
-    --border: #333340;
-    --border-light: #3e3e4c;
-    --border-focus: var(--accent);
+    --border-light: var(--border-hover);
+    --border-focus: var(--brand);
     --scrollbar: #3a3a48;
 
     /* Gold (for special highlights) */
-    --gold: #c9a44a;
+    --gold: var(--brand);
 
     /* Radius tokens */
-    --radius-sm: 4px;
     --radius: 6px;
-    --radius-lg: 10px;
 
     /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
     --shadow: 0 2px 8px rgba(0,0,0,0.3);
-    --shadow-lg: 0 4px 20px rgba(0,0,0,0.35);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -182,8 +170,10 @@ header h1 {
    STATUS PANEL (right sidebar)
    ================================================ */
 #status-panel {
-    width: 520px;
-    min-width: 480px;
+    width: 400px;
+    min-width: 320px;
+    max-width: 480px;
+    flex-shrink: 1;
     background: var(--bg-secondary);
     border-left: 1px solid var(--border);
     padding: 0;
@@ -224,11 +214,12 @@ header h1 {
     background: var(--bg-secondary);
     flex-shrink: 0;
     overflow-x: auto;
+    scrollbar-width: none;
 }
 .status-tab {
     flex: 1;
-    padding: 0.45rem 0.3rem;
-    font-size: 0.75rem;
+    padding: var(--sp-xs) var(--sp-sm);
+    font-size: var(--text-xs);
     text-align: center;
     cursor: pointer;
     color: var(--text-muted);
@@ -236,6 +227,7 @@ header h1 {
     background: transparent;
     border-bottom: 2px solid transparent;
     transition: all 0.15s;
+    white-space: nowrap;
 }
 .status-tab:hover { color: var(--text-primary); }
 .status-tab.active {
@@ -496,6 +488,8 @@ header h1 {
 }
 .btn-primary:hover { background: var(--accent-hover); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .btn-secondary {
     padding: 0.45rem 1rem;
@@ -509,6 +503,8 @@ header h1 {
     white-space: nowrap;
 }
 .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-light); }
+.btn-secondary:active { transform: scale(0.97); }
+.btn-secondary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .btn-accent {
     padding: 0.45rem 1rem;
@@ -700,8 +696,9 @@ header h1 {
 #narrative-area {
     max-width: 780px;
     margin: 0 auto 1rem;
-    max-height: 55vh;
+    flex: 1;
     overflow-y: auto;
+    min-height: 200px;
     padding-right: 0.5rem;
     position: relative;
 }
@@ -4012,3 +4009,25 @@ input[type="checkbox"] {
 #game-play-screen.img-overlay-active #skill-check-hint {
     position: relative;
 }
+
+/* Header inline-style cleanup */
+.btn-mode-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--ease);
+}
+.btn-mode-toggle:hover { border-color: var(--brand); color: var(--brand); }
+.btn-mode-toggle.active { border-color: var(--brand); color: var(--brand); }
+
+.link-shell {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    transition: color var(--ease);
+}
+.link-shell:hover { color: var(--brand); }

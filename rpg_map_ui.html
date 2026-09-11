@@ -4,38 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多Agent RPG推演系统</title>
+<link rel="stylesheet" href="/static/css/design-tokens.css">
 <style>
 :root {
-  --bg-primary: #1b1b1f;
-  --bg-secondary: #222228;
-  --bg-card: #2a2a32;
-  --bg-hover: #35353f;
-  --bg-inset: #18181c;
+  /* 迁移到 design-tokens.css，这里做别名兼容 */
+  --bg-primary: var(--bg-1);
+  --bg-secondary: var(--bg-2);
+  --bg-card: var(--bg-3);
+  --bg-hover: var(--bg-4);
+  --bg-inset: var(--bg-0);
 
-  --text-primary: #d8d8dc;
-  --text-secondary: #9e9eab;
-  --text-muted: #6b6b78;
+  --text-primary: var(--text-0);
+  --text-secondary: var(--text-1);
+  --text-muted: var(--text-2);
   --text-bright: #ececf0;
 
-  --accent: #c9935a;
-  --accent-hover: #daa76e;
-  --accent-dim: rgba(201, 147, 90, 0.15);
+  --accent: var(--brand);
+  --accent-hover: var(--brand-hover);
+  --accent-dim: var(--brand-dim);
   --accent-rgb: 201,147,90;
 
-  --gold: #e6a817;
-
-  --success: #6dab6d;
-  --warning: #c9a44a;
-  --danger: #b85c5c;
-  --info: #6a9ab5;
+  --gold: var(--brand);
 
   --health: #c27070;
   --mood: #c9a44a;
   --relation: #a87fc4;
   --study: #6a9ab5;
 
-  --border: #333340;
-  --border-light: #3e3e4c;
+  --border-light: var(--border-hover);
   --radius: 6px;
   --shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
