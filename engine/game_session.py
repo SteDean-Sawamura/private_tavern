@@ -1060,9 +1060,15 @@ class GameSession(
                 open_action = {"type": "system", "text": "游戏开始"}
 
                 _narrative_reasoning = ""
-                async for item in self._execute_pipeline(
-                    opening_ctx, opening_route, open_action,
-                ):
+                if self._agentic_enabled():
+                    _opening_pipeline = self._execute_agentic_pipeline(
+                        opening_ctx, opening_route, open_action,
+                    )
+                else:
+                    _opening_pipeline = self._execute_pipeline(
+                        opening_ctx, opening_route, open_action,
+                    )
+                async for item in _opening_pipeline:
                     if item["type"] == "pipeline_result":
                         parsed = item["parsed"]
                         pipeline_narrative = parsed.get("narrative", "")
