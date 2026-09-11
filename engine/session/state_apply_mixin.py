@@ -231,6 +231,15 @@ class StateApplyMixin:
 
         # Finalize time and trackers
         self.current_state["game_time"] = new_time
+
+        # G3: 世界时钟推进 — NPC 后台日程事件
+        if ctx.get("old_time") and new_time and hasattr(self, 'world_clock'):
+            world_events = self.world_clock.advance(ctx["old_time"], new_time)
+            if world_events:
+                if not hasattr(self, '_pending_world_events'):
+                    self._pending_world_events = []
+                self._pending_world_events.extend(world_events)
+
         self._compute_time_atmosphere()
         self.current_state = self.event_scheduler.update_trackers(
             self.current_state, triggered_events, new_time, inplace=True

@@ -1349,7 +1349,7 @@ class PromptNarrativeMixin:
         if pc_name:
             pc_surname = pc_name[0] if pc_name else ""
             system += (
-                f'\n6. wrong_name: NPC在对话或称呼中是否叫错了主角的姓名？'
+                f'\n10. wrong_name: NPC在对话或称呼中是否叫错了主角的姓名？'
                 f'主角姓名是「{pc_name}」（姓{pc_surname}），'
                 f'NPC称呼主角时必须使用正确姓氏「{pc_surname}」。'
                 f'若叙事中NPC用其他姓氏+职务来称呼主角（如用在场其他NPC的姓氏），算违规。'

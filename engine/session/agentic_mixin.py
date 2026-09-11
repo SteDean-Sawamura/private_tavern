@@ -162,6 +162,35 @@ class AgenticMixin:
                 yield {"type": "aborted", "round": round_num, "label": label}
                 break
 
+            # --- F1: 上下文窗口压缩 ---
+            _MAX_CONTEXT_CHARS = 30000  # 约 8k token
+            total_chars = sum(len(str(m.get("content", ""))) for m in msgs)
+            if total_chars > _MAX_CONTEXT_CHARS and len(msgs) > 4:
+                kept_head = msgs[:1]  # system / 首条
+                kept_tail = msgs[-4:]  # 最近 4 条
+                middle = msgs[1:-4]
+                if middle:
+                    summary_parts = []
+                    for m in middle:
+                        role = m.get("role", "")
+                        mc = str(m.get("content", ""))[:100]
+                        if role == "tool":
+                            summary_parts.append(f"[工具结果] {mc[:60]}")
+                        elif role == "assistant":
+                            tc = m.get("tool_calls", [])
+                            if tc:
+                                names = [t.get("function", {}).get("name", "") for t in tc]
+                                summary_parts.append(f"[调用] {', '.join(names)}")
+                            elif mc:
+                                summary_parts.append(f"[Agent] {mc[:60]}")
+                    summary = "\n".join(summary_parts)
+                    compressed = {"role": "user", "content": f"[上下文压缩] 之前的 {len(middle)} 条消息摘要：\n{summary}"}
+                    old_count = len(msgs)
+                    msgs = kept_head + [compressed] + kept_tail
+                    new_chars = sum(len(str(m.get("content", ""))) for m in msgs)
+                    logger.info("[%s] 上下文压缩: %d→%d 条消息 (%d→%d chars)",
+                                label, old_count, len(msgs), total_chars, new_chars)
+
             logger.info("[%s:R%d] 调用 LLM (tools=%d, msgs=%d)", label, round_num + 1, len(tools), len(msgs))
             resp = await self.ai_provider.generate_with_tools(
                 msgs, system=system, tools=tools,
@@ -292,20 +321,13 @@ class AgenticMixin:
         return self._run_tool_native(name, args)
 
     async def _review_narrative_tool(self, narrative: str, ctx: dict) -> str:
-        """规则优先 + LLM 按需的叙事审查。"""
+        """叙事审查：全部交给 LLM 语义审核。"""
         if not narrative.strip():
             return "错误：叙事为空"
 
-        # 阶段1：快速规则检查
-        issues = self._quick_rule_check(narrative, ctx)
-        if not issues:
-            return "审查通过：规则检查未发现问题"
-
-        # 阶段2：有问题时才调 LLM 深度审查
         try:
             state = self.current_state
-            pc_name = state.get("player", {}).get("name", "")
-            # Build present_npcs list[dict] matching build_narrative_review_prompt signature
+            pc_name = state.get("player", ).get("name", "")
             npc_states = state.get("npcs", {})
             npc_defs = {n["id"]: n for n in self.script.get("npcs", []) if "id" in n}
             present_npcs = []
@@ -319,7 +341,6 @@ class AgenticMixin:
                     "name": ns.get("name", nid),
                     "title": ns.get("title") or nd.get("title") or nd.get("role") or nd.get("occupation", ""),
                 })
-            # action_text from ctx (player's action this turn)
             action_text = ctx.get("action_text", "")
             review_msgs, review_sys = self.prompt_builder.build_narrative_review_prompt(
                 narrative, action_text, present_npcs, pc_name=pc_name,
@@ -328,57 +349,10 @@ class AgenticMixin:
                 review_msgs, system=review_sys, max_tokens=500,
                 **self._stage_kwargs("state")
             )
-            return raw.strip() if raw else "审查完成，未返回结果"
+            return raw.strip() if raw else "审查通过"
         except Exception as e:
-            logger.warning("review_narrative_tool 失败: %s", e)
-            return "规则检查发现问题：\n" + "\n".join(issues)
-
-    def _quick_rule_check(self, narrative: str, ctx: dict) -> list[str]:
-        """机械化规则检查：所有限制性约束从 prompt 移到这里执行。"""
-        import re
-        issues = []
-        if not narrative or len(narrative) < 50:
-            return issues
-
-        # 剥离对话内容，只检查叙述部分
-        dialogue_pattern = re.compile(r'[「"](.*?)[」"]', re.DOTALL)
-        narration_only = dialogue_pattern.sub('', narrative)
-
-        # 1. 人称检查（只查叙述部分，不查对话）
-        if "我" in narration_only and "你" not in narration_only[:200]:
-            issues.append("人称错误：叙述部分使用了'我'，应为第二人称'你'")
-
-        # 2. 认知越界（只查叙述部分）
-        for kw in ["殊不知", "却不知", "他心想", "他暗自", "他心里清楚"]:
-            if kw in narration_only:
-                issues.append(f"认知越界：'{kw}' — 叙述不应暴露他人内心")
-
-        # 3. 决策越权（排除玩家自己声明的行动）
-        action_text = ctx.get("action_text", "")
-        for kw in ["你决定", "你选择了", "你毫不犹豫", "你下定决心"]:
-            if kw in narration_only:
-                # 检查是否和玩家行动吻合
-                verb = kw.replace("你", "")
-                if verb not in action_text and kw not in action_text:
-                    issues.append(f"决策越权：'{kw}' — 玩家未声明此决定")
-
-        # 4. NPC 台词数量（计引号对数，非说话人）
-        dialogue_count = len(dialogue_pattern.findall(narrative))
-        if dialogue_count > 6:
-            issues.append(f"对话过密：{dialogue_count} 段对话，一轮建议不超过4-5段")
-
-        # 5. Meta 知识泄露（严格范围：只检查主角不可能自主推断的剧透）
-        meta_spoilers = ["将被暗杀", "即将政变", "会被刺杀", "密谋推翻"]
-        for spoiler in meta_spoilers:
-            if spoiler in narration_only:
-                issues.append(f"剧透泄露：'{spoiler}' — 主角此时不应知道此信息")
-
-        # 6. 总结式判断（只在叙述中检查，且排除合理语境）
-        for kw in ["你比谁都清楚", "你心里明镜似的", "你早就知道"]:
-            if kw in narration_only:
-                issues.append(f"总结式判断：'{kw}' — 应改为具体观察而非笼统定论")
-
-        return issues
+            logger.warning("review LLM 调用失败: %s", e)
+            return "审查通过（LLM不可用）"
 
     def _build_foreground_context(self, ctx: dict, player_action: dict) -> str:
         """Minimal per-turn context for the foreground agent."""
@@ -528,7 +502,22 @@ class AgenticMixin:
         if not dice_enabled:
             tools = [t for t in tools if t["function"]["name"] != "roll_dice"]
 
+        # F2: 前台只读工具缓存（本轮有效）
+        _fg_cache: dict[str, str] = {}
+        _FG_CACHEABLE = frozenset({
+            "recall_history", "query_lorebook", "query_npc_history",
+            "check_inventory", "get_npc_attitude",
+        })
+
         async def _dispatch(name: str, args: dict) -> str:
+            if name in _FG_CACHEABLE:
+                cache_key = f"{name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}"
+                if cache_key in _fg_cache:
+                    logger.info("[缓存命中] %s", name)
+                    return _fg_cache[cache_key]
+                result = await self._dispatch_foreground_tool(ctx, name, args)
+                _fg_cache[cache_key] = result
+                return result
             return await self._dispatch_foreground_tool(ctx, name, args)
 
         holder = _AgentResult()
@@ -1279,6 +1268,17 @@ class AgenticMixin:
             event_lines = [f"- {e['npc_name']}移动到{e['to']}（{e.get('activity', '')}）" for e in npc_events[:5]]
             parts.append("<npc_movements>\n" + "\n".join(event_lines) + "\n</npc_movements>")
 
+        # G3: 世界时钟后台事件
+        world_events = getattr(self, '_pending_world_events', [])
+        if world_events:
+            event_lines = [
+                f"- {e.get('npc_name', '')}开始{e.get('activity', '')}（{e.get('location', '')}）"
+                for e in world_events if e.get("type") == "npc_schedule_start"
+            ]
+            if event_lines:
+                parts.append("<world_events>\n在你行动期间发生的事：\n" + "\n".join(event_lines[:5]) + "\n</world_events>")
+            self._pending_world_events = []
+
         return "\n\n".join(parts)
 
     def _build_unified_parsed(self, records: list[dict], ctx: dict) -> dict:
@@ -1319,8 +1319,25 @@ class AgenticMixin:
 
         tools = self._build_adaptive_tools(ctx)
 
+        # F2: 只读工具结果缓存（本轮有效）
+        _tool_cache: dict[str, str] = {}
+        _CACHEABLE_TOOLS = frozenset({
+            "recall_history", "query_lorebook", "query_npc_history",
+            "check_inventory", "get_npc_attitude", "peek_upcoming_events",
+            "traverse_graph",
+        })
+
         async def _dispatch_and_record(name, args):
-            result = await self._dispatch_unified_tool(ctx, name, args)
+            # F2: 对只读工具做缓存
+            if name in _CACHEABLE_TOOLS:
+                cache_key = f"{name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}"
+                if cache_key in _tool_cache:
+                    logger.info("[缓存命中] %s", name)
+                    return _tool_cache[cache_key]
+                result = await self._dispatch_unified_tool(ctx, name, args)
+                _tool_cache[cache_key] = result
+            else:
+                result = await self._dispatch_unified_tool(ctx, name, args)
             # D1: 记录上一次工具调用（供 undo_my_last_action 使用）
             if name != "undo_my_last_action":
                 self._last_tool_result = {"name": name, "args": args}

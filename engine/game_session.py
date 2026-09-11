@@ -33,6 +33,7 @@ from engine.story_tree import StoryTreeEngine
 from engine.narrative_graph import NarrativeGraph
 from engine.npc_autonomy import NPCAutonomy
 from engine.player_model import PlayerModel
+from engine.world_clock import WorldClock
 from engine.session.tools_mixin import ToolsMixin
 from engine.session.prepare_mixin import PrepareMixin
 from engine.session.shop_mixin import ShopMixin
@@ -853,6 +854,7 @@ class GameSession(
         self.narrative_graph = NarrativeGraph()
         self.npc_autonomy = NPCAutonomy(self.script.get("npcs", []), self.script.get("locations", []))
         self.player_model = PlayerModel()
+        self.world_clock = WorldClock()
         self._agent_experience: list[dict] = []  # 最近 5 轮的 Agent 工具调用摘要
         self._last_tool_result: dict | None = None  # D1: 上一次工具调用记录（供 undo 回退）
         self._settlement_messages: list[dict] = []  # D3: 后台→前台消息队列
@@ -1429,6 +1431,14 @@ class GameSession(
             loc_id = loc.get("id", "")
             if loc_id:
                 self.narrative_graph.add_entity(loc_id, "location", loc.get("name", loc_id))
+
+        # G3: 注册 NPC 日程到世界时钟
+        for npc in self.script.get("npcs", []):
+            schedule = npc.get("schedule")
+            if schedule and isinstance(schedule, list):
+                self.world_clock.register_npc_schedule(
+                    npc["id"], npc.get("name", npc["id"]), schedule,
+                )
 
         # 如果剧本有线性剧本块，初始化游标
         story_blocks = self.script.get("story_tree", {}).get("nodes", [])
