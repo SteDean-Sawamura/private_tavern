@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from dataclasses import dataclass, field
 
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,13 @@ if TYPE_CHECKING:
     from engine.game_session import GameSession
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _AgentResult:
+    """Holder for async-generator _agent_loop's final return value."""
+    text: str = ""
+    records: list = field(default_factory=list)
 
 # Foreground (narration) tools: retrieval + scene presentation. Mutating tools
 # are deliberately excluded -- the background agent owns all state changes.
@@ -129,16 +137,26 @@ class AgenticMixin:
         self, messages: list[dict], system: str, tools: list[dict],
         dispatch, *, max_rounds: int = 7, label: str = "agent",
         stage_key: str = "narrative", max_tokens: int = 8192,
-    ) -> tuple[str, list[dict]]:
-        """Run a tool-calling loop until the model stops requesting tools.
+        result_holder: _AgentResult | None = None,
+    ):
+        """ReAct loop as async generator. Yields intermediate events.
+
+        Final text + tool records are written into *result_holder* (since
+        Python async generators cannot ``return`` a value).
 
         dispatch(tool_name, args) -> str result fed back to the model.
-        Returns (final_text, tool_call_records).
         """
+        holder = result_holder or _AgentResult()
         msgs = list(messages)
         records: list[dict] = []
+        content = ""
 
         for round_num in range(max_rounds):
+            # --- abort check ---
+            if getattr(self, '_abort_flag', False):
+                yield {"type": "aborted", "round": round_num, "label": label}
+                break
+
             resp = await self.ai_provider.generate_with_tools(
                 msgs, system=system, tools=tools,
                 max_tokens=max_tokens, **self._stage_kwargs(stage_key),
@@ -148,7 +166,11 @@ class AgenticMixin:
 
             if not tc_list:
                 logger.info("[%s] 完成 (第%d轮)", label, round_num + 1)
-                return content, records
+                holder.text = content
+                holder.records = records
+                yield {"type": "agent_done", "label": label,
+                       "round": round_num + 1, "text": content}
+                return
 
             assistant_msg = {"role": "assistant", "content": resp.get("content") or None}
             reasoning = resp.get("reasoning_content")
@@ -174,6 +196,17 @@ class AgenticMixin:
                     result = json.dumps({"error": str(exc)}, ensure_ascii=False)
                 records.append({"name": name, "args": args, "result": result})
                 logger.info("[%s:R%d] %s(%s)", label, round_num + 1, name, list(args.keys()))
+
+                # Yield tool-call event for SSE consumers
+                yield {
+                    "type": "tool_call",
+                    "label": label,
+                    "round": round_num + 1,
+                    "tool_name": name,
+                    "tool_args": args,
+                    "tool_result": str(result)[:500],
+                }
+
                 msgs.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
@@ -181,8 +214,20 @@ class AgenticMixin:
                                else json.dumps(result, ensure_ascii=False),
                 })
 
-        logger.warning("[%s] 达到最大轮数 %d", label, max_rounds)
-        return "", records
+            # --- inject check: let the user inject a message between rounds ---
+            inject_queue = getattr(self, '_inject_queue', None)
+            if inject_queue:
+                injected = inject_queue.pop(0)
+                msgs.append({"role": "user", "content": injected})
+                yield {"type": "user_inject", "label": label, "message": injected}
+
+        else:
+            # Exhausted max_rounds without returning
+            logger.warning("[%s] 达到最大轮数 %d", label, max_rounds)
+            yield {"type": "agent_max_rounds", "label": label, "max_rounds": max_rounds}
+
+        holder.text = content
+        holder.records = records
 
     # ================================================================
     # Foreground agent -- retrieval + narration
@@ -285,8 +330,14 @@ class AgenticMixin:
         parts.append(f"<player_action>\n{player_action.get('text', '')}\n</player_action>")
         return "\n\n".join(parts)
 
-    async def _run_foreground_agent(self, ctx: dict, route: dict, player_action: dict) -> tuple[str, list[dict]]:
-        """Foreground agent: autonomous retrieval + narrative writing."""
+    async def _run_foreground_agent(self, ctx: dict, route: dict, player_action: dict,
+                                     *, streaming: bool = False):
+        """Foreground agent: autonomous retrieval + narrative writing.
+
+        When *streaming* is True, operates as an async generator that yields
+        intermediate tool-call / agent-done events.  The final (narrative, records)
+        are written into the returned _AgentResult.
+        """
         system = self._build_foreground_system()
         user = self._build_foreground_context(ctx, player_action)
         messages = [{"role": "user", "content": user}]
@@ -294,12 +345,18 @@ class AgenticMixin:
         async def _dispatch(name: str, args: dict) -> str:
             return await self._dispatch_foreground_tool(ctx, name, args)
 
-        narrative, records = await self._agent_loop(
+        holder = _AgentResult()
+        async for event in self._agent_loop(
             messages, system, FOREGROUND_TOOLS_SCHEMA, _dispatch,
             max_rounds=7, label="前台叙事",
             stage_key="narrative", max_tokens=8192,
-        )
-        return narrative, records
+            result_holder=holder,
+        ):
+            if streaming:
+                yield event
+        # When not streaming, caller accesses holder directly (no yield).
+        # Tag holder onto the last yield-cycle for the pipeline to read.
+        yield {"type": "_fg_result", "holder": holder}
 
     def _build_foreground_system(self) -> str:
         """Load the foreground agent system prompt from YAML."""
@@ -351,11 +408,12 @@ class AgenticMixin:
 
     async def _run_background_agent(
         self, ctx: dict, narrative_text: str, plot_decision: str, player_action: dict,
-    ) -> tuple[list[dict], str]:
+        *, streaming: bool = False,
+    ):
         """Background agent: autonomously settle all state via tool calls.
 
-        Returns (tool_call_records, agent_summary_text). State is NOT mutated
-        here -- the caller merges the records into the parsed dict.
+        When *streaming*, yields intermediate events.  Final records are in the
+        returned _AgentResult holder.
         """
         state = self.current_state
         system = self._build_settlement_system()
@@ -378,13 +436,17 @@ class AgenticMixin:
             )
         messages = [{"role": "user", "content": "\n\n".join(user_parts)}]
 
-        summary, records = await self._agent_loop(
+        holder = _AgentResult()
+        async for event in self._agent_loop(
             messages, system, _settlement_tools(), self._dispatch_settlement_tool,
             max_rounds=5, label="后台结算",
             stage_key="state", max_tokens=4096,
-        )
-        logger.info("[%s] 结算工具调用 %d 次", "background", len(records))
-        return records, summary
+            result_holder=holder,
+        ):
+            if streaming:
+                yield event
+        yield {"type": "_bg_result", "holder": holder}
+        logger.info("[%s] 结算工具调用 %d 次", "background", len(holder.records))
 
     # ================================================================
     # Pipeline entry (agentic)
@@ -401,8 +463,15 @@ class AgenticMixin:
         self._reset_stage45_tool_buffers()
 
         # --- Foreground: retrieval + narration ---
-        narrative, fg_calls = await self._run_foreground_agent(ctx, route, player_action)
-        narrative = (narrative or "").strip()
+        fg_holder: _AgentResult | None = None
+        async for event in self._run_foreground_agent(ctx, route, player_action, streaming=streaming):
+            if event.get("type") == "_fg_result":
+                fg_holder = event["holder"]
+            elif streaming:
+                yield event
+
+        narrative = (fg_holder.text if fg_holder else "").strip()
+        fg_calls = fg_holder.records if fg_holder else []
         if not narrative:
             raise RuntimeError("Agentic 前台叙事为空（工具调用后未输出文本）")
         ctx["tool_results"].extend(fg_calls)
@@ -417,10 +486,21 @@ class AgenticMixin:
         )
 
         # --- Background: state settlement ---
-        bg_calls, _summary = await self._run_background_agent(
-            ctx, narrative, "", player_action,
-        )
+        bg_holder: _AgentResult | None = None
+        async for event in self._run_background_agent(
+            ctx, narrative, "", player_action, streaming=streaming,
+        ):
+            if event.get("type") == "_bg_result":
+                bg_holder = event["holder"]
+            elif streaming:
+                yield event
+
+        bg_calls = bg_holder.records if bg_holder else []
         ctx["tool_results"].extend(bg_calls)
+
+        # Reset abort flag after pipeline completes
+        if hasattr(self, '_abort_flag'):
+            self._abort_flag = False
 
         # Merge settlement tool calls -> parsed (same shape as parse_split_v3)
         parsed = self._merge_state_tool_results(

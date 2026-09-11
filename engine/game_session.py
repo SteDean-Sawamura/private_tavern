@@ -458,6 +458,9 @@ class GameSession(
         self._4b_semaphore = asyncio.Semaphore(_settings.get("max_parallel_4b", 5))
         self._summary_fail_count = 0  # 摘要连续失败计数
         self._last_activity_time: float = 0.0  # 上次活跃时间戳（用于 play_time 计算）
+        # Agentic mode: abort / inject controls
+        self._abort_flag: bool = False
+        self._inject_queue: list[str] = []
         # Stage 4a/5 工具调用模式的每轮缓冲
         self._npc_reaction_tool_calls: list[dict] = []
         self._choices_tool_calls: list[dict] = []

@@ -505,6 +505,9 @@ async def game_action_stream(save_id: str, req: ActionRequest):
         async for chunk in session.process_action_stream(action):
             if chunk["type"] in ("text", "thinking", "narrative_revised"):
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            elif chunk["type"] in ("tool_call", "agent_done", "aborted",
+                                   "user_inject", "agent_max_rounds"):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
             elif chunk["type"] == "final":
                 final_result = chunk
                 logger.info("流式回复完成 — 选项数=%d, 状态变更=%d",
@@ -538,6 +541,30 @@ async def game_action_stream(save_id: str, req: ActionRequest):
             lock.release()
 
     return StreamingResponse(saving_event_stream(), media_type="text/event-stream")
+
+
+class InjectMessageRequest(BaseModel):
+    message: str
+
+
+@router.post("/{save_id}/abort")
+async def abort_generation(save_id: str):
+    """Signal the running agentic loop to stop after the current LLM call."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    session._abort_flag = True
+    return {"ok": True}
+
+
+@router.post("/{save_id}/inject")
+async def inject_message(save_id: str, req: InjectMessageRequest):
+    """Inject a user message into the running agentic loop between rounds."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    session._inject_queue.append(req.message)
+    return {"ok": True}
 
 
 @router.get("/{save_id}/state")

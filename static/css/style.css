@@ -3357,6 +3357,104 @@ input[type="checkbox"] {
     opacity: 0.85;
 }
 
+/* Agentic tool-call cards */
+.agent-tools-block {
+    margin: 0.4rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--bg-card) 60%, transparent);
+    font-size: 0.8rem;
+    overflow: hidden;
+}
+.agent-tools-header {
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.agent-tools-header:hover { color: var(--text-primary); }
+.agent-tools-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding: 0 0.6rem;
+}
+.agent-tools-block.open .agent-tools-body {
+    max-height: 800px;
+    overflow-y: auto;
+    padding: 0.4rem 0.6rem;
+}
+.agent-tool-card {
+    padding: 0.25rem 0.4rem;
+    margin-bottom: 0.3rem;
+    border-left: 2px solid var(--primary, #6c63ff);
+    background: color-mix(in srgb, var(--bg-surface) 40%, transparent);
+    border-radius: 3px;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+.agent-tool-card .tool-name { color: var(--primary, #6c63ff); font-weight: 600; }
+.agent-tool-card .tool-label { color: var(--text-muted, #888); font-size: 0.7rem; }
+.agent-tool-card .tool-result {
+    margin-top: 0.15rem;
+    color: var(--text-muted, #999);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 80px;
+    overflow: hidden;
+}
+.agent-status-msg {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-muted, #999);
+    font-style: italic;
+}
+
+/* Stop generation + inject input bar */
+.agent-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.4rem 0;
+    padding: 0.3rem 0;
+}
+.agent-controls .stop-btn {
+    background: var(--danger, #e74c3c);
+    color: #fff;
+    border: none;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+.agent-controls .stop-btn:hover { opacity: 0.85; }
+.agent-controls .inject-input {
+    flex: 1;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-surface, #1a1a1a);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+.agent-controls .inject-btn {
+    background: var(--primary, #6c63ff);
+    color: #fff;
+    border: none;
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+.agent-controls .inject-btn:hover { opacity: 0.85; }
+
 /* Swipe picker modal */
 .swipe-picker-content { max-width: 700px; }
 .swipe-picker-list {

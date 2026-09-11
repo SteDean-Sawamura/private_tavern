@@ -37,6 +37,57 @@ async function submitActionStream(action) {
     const textDiv = document.createElement('div');
     textDiv.className = 'narrative-text';
     block.appendChild(textDiv);
+
+    // Collapsible agent tool-call area (hidden until agentic events arrive)
+    const agentToolsWrap = document.createElement('div');
+    agentToolsWrap.className = 'agent-tools-block';
+    agentToolsWrap.style.display = 'none';
+    agentToolsWrap.innerHTML = '<div class="agent-tools-header" onclick="this.parentElement.classList.toggle(\'open\')">\u{1F527} Agent 工具调用 <span class="toggle-arrow">▾</span></div><div class="agent-tools-body"></div>';
+    block.insertBefore(agentToolsWrap, textDiv);
+
+    // Agent controls: stop button + inject input (shown during streaming)
+    const agentControls = document.createElement('div');
+    agentControls.className = 'agent-controls';
+    agentControls.style.display = 'none';
+    agentControls.innerHTML =
+        '<button class="stop-btn" title="停止生成">■ 停止</button>' +
+        '<input class="inject-input" placeholder="插话…" />' +
+        '<button class="inject-btn">发送</button>';
+    block.appendChild(agentControls);
+
+    // Wire up stop button
+    const stopBtn = agentControls.querySelector('.stop-btn');
+    stopBtn.addEventListener('click', async () => {
+        try {
+            const token = localStorage.getItem('tavern_api_token');
+            const hdrs = { 'Content-Type': 'application/json' };
+            if (token) hdrs['Authorization'] = 'Bearer ' + token;
+            await fetch('/api/game/' + currentSaveId + '/abort', { method: 'POST', headers: hdrs });
+            stopBtn.disabled = true;
+            stopBtn.innerHTML = '正在停止...';
+        } catch (_) {}
+    });
+
+    // Wire up inject button
+    const injectInput = agentControls.querySelector('.inject-input');
+    const injectBtn = agentControls.querySelector('.inject-btn');
+    const doInject = async () => {
+        const msg = injectInput.value.trim();
+        if (!msg) return;
+        injectInput.value = '';
+        try {
+            const token = localStorage.getItem('tavern_api_token');
+            const hdrs = { 'Content-Type': 'application/json' };
+            if (token) hdrs['Authorization'] = 'Bearer ' + token;
+            await fetch('/api/game/' + currentSaveId + '/inject', {
+                method: 'POST', headers: hdrs,
+                body: JSON.stringify({ message: msg }),
+            });
+        } catch (_) {}
+    };
+    injectBtn.addEventListener('click', doInject);
+    injectInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doInject(); });
+
     content.appendChild(block);
 
     // Remove "latest" from previous blocks
@@ -97,6 +148,49 @@ async function submitActionStream(action) {
                         if (parsed.type === 'thinking') {
                             thinkWrap.style.display = '';
                             thinkWrap.querySelector('.think-body').insertAdjacentHTML('beforeend', escapeHtml(parsed.content).replace(/\n/g, '<br>'));
+                        } else if (parsed.type === 'tool_call') {
+                            // Agentic: show tool-call card
+                            agentToolsWrap.style.display = '';
+                            agentControls.style.display = '';
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const card = document.createElement('div');
+                            card.className = 'agent-tool-card';
+                            card.innerHTML =
+                                '<span class="tool-label">[' + escapeHtml(parsed.label || '') + ' R' + (parsed.round || '') + ']</span> ' +
+                                '<span class="tool-name">' + escapeHtml(parsed.tool_name || '') + '</span>' +
+                                '(' + escapeHtml(JSON.stringify(parsed.tool_args || {}).slice(0, 120)) + ')' +
+                                '<div class="tool-result">' + escapeHtml((parsed.tool_result || '').slice(0, 300)) + '</div>';
+                            body.appendChild(card);
+                            // Update header counter
+                            const cnt = body.querySelectorAll('.agent-tool-card').length;
+                            agentToolsWrap.querySelector('.agent-tools-header').innerHTML =
+                                '\u{1F527} Agent 工具调用 (' + cnt + ') <span class="toggle-arrow">▾</span>';
+                            _scrollToBottom();
+                        } else if (parsed.type === 'agent_done') {
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const msg = document.createElement('div');
+                            msg.className = 'agent-status-msg';
+                            msg.textContent = (parsed.label || 'Agent') + ' 完成，共' + (parsed.round || '?') + '轮';
+                            body.appendChild(msg);
+                        } else if (parsed.type === 'aborted') {
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const msg = document.createElement('div');
+                            msg.className = 'agent-status-msg';
+                            msg.textContent = '已中断 (' + (parsed.label || '') + ')';
+                            body.appendChild(msg);
+                            agentControls.style.display = 'none';
+                        } else if (parsed.type === 'user_inject') {
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const msg = document.createElement('div');
+                            msg.className = 'agent-status-msg';
+                            msg.textContent = '用户插话: ' + (parsed.message || '').slice(0, 100);
+                            body.appendChild(msg);
+                        } else if (parsed.type === 'agent_max_rounds') {
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const msg = document.createElement('div');
+                            msg.className = 'agent-status-msg';
+                            msg.textContent = (parsed.label || 'Agent') + ' 达到最大轮数 (' + (parsed.max_rounds || '') + ')';
+                            body.appendChild(msg);
                         } else if (parsed.type === 'text') {
                             const span = document.createElement('span');
                             span.className = 'stream-fade-in';
@@ -107,6 +201,7 @@ async function submitActionStream(action) {
                             textDiv.innerHTML = escapeHtml(parsed.content).replace(/\n/g, '<br>');
                             _scrollToBottom();
                         } else if (parsed.type === 'final') {
+                            agentControls.style.display = 'none';
                             const _s = (label, fn) => { try { fn(); } catch(e) { console.error(`[stream:${label}]`, e); } };
                             _s('renderChoices', () => renderChoices(parsed.choices || []));
                             _s('renderDice', () => renderDice(parsed.dice_rolls));
