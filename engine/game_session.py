@@ -579,6 +579,97 @@ CONSOLIDATED_SETTLEMENT_TOOLS = [
     }},
 ]
 
+# Unified agent tools: info + settlement + output in one tool set.
+# Lazily assembled on first access via _unified_tools().
+UNIFIED_TOOLS_SCHEMA = None  # type: list[dict] | None
+
+
+def _unified_tools() -> list[dict]:
+    """Build and cache the unified tools schema (9 tools)."""
+    global UNIFIED_TOOLS_SCHEMA
+    if UNIFIED_TOOLS_SCHEMA is not None:
+        return UNIFIED_TOOLS_SCHEMA
+    from engine.session.agentic_mixin import FOREGROUND_TOOLS_SCHEMA
+
+    # 5 info tools (from foreground, excluding set_atmosphere/set_scene_image/review_narrative/roll_dice/get_time)
+    INFO_NAMES = {"recall_history", "query_lorebook", "query_npc_history", "check_inventory", "get_npc_attitude"}
+    info_tools = [t for t in FOREGROUND_TOOLS_SCHEMA if t["function"]["name"] in INFO_NAMES]
+
+    # 2 action tools (from consolidated settlement)
+    action_tools = [t for t in CONSOLIDATED_SETTLEMENT_TOOLS if t["function"]["name"] in ("update_state", "manage_npcs")]
+
+    # 2 output tools (new)
+    output_tools = [
+        {"type": "function", "function": {
+            "name": "finalize_turn",
+            "description": "同步完成本轮：提交状态变更+选项+摘要。适合简单场景。调用此工具后直接输出叙事文本。",
+            "parameters": {"type": "object", "properties": {
+                "end_time": {"type": "string", "description": "场景结束时间ISO"},
+                "state_changes": {
+                    "type": "array",
+                    "description": '属性变更。每项: {"target":"player.属性名","op":"add|subtract|set","value":数值,"reason":"原因"}',
+                    "items": {"type": "object", "properties": {
+                        "target": {"type": "string"}, "op": {"type": "string", "enum": ["add", "subtract", "set"]},
+                        "value": {}, "reason": {"type": "string"},
+                    }, "required": ["target", "op", "value"]},
+                },
+                "inventory_changes": {
+                    "type": "array",
+                    "description": '物品变更。每项: {"item":"物品名","action":"add|remove","quantity":1}',
+                    "items": {"type": "object", "properties": {
+                        "item": {"type": "string"}, "action": {"type": "string", "enum": ["add", "remove"]},
+                        "quantity": {"type": "integer", "default": 1},
+                    }, "required": ["item", "action"]},
+                },
+                "activate_states": {
+                    "type": "array",
+                    "description": '激活持续状态。每项: {"id":"状态ID","name":"中文名称","description":"描述"}',
+                    "items": {"type": "object", "properties": {
+                        "id": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"},
+                    }, "required": ["id", "name"]},
+                },
+                "location_change": {"type": "string", "description": "玩家所在位置ID（未移动则省略）"},
+                "npc_operations": {
+                    "type": "array",
+                    "description": "manage_npcs 的 operations 格式",
+                    "items": {"type": "object"},
+                },
+                "choices": {
+                    "type": "array",
+                    "description": "4个行动选项",
+                    "items": {"type": "object", "properties": {
+                        "id": {"type": "string"}, "text": {"type": "string"},
+                        "hint": {"type": "string"}, "risk": {"type": "string", "enum": ["safe", "moderate", "risky"]},
+                        "time_hint": {"type": "string"},
+                    }, "required": ["id", "text"]},
+                },
+                "summary": {"type": "string", "description": "一句话摘要（必须）"},
+                "image_prompt": {"type": "string", "description": "场景图英文描述"},
+                "image_style": {"type": "string", "enum": ["realistic", "anime", "pixel"]},
+            }, "required": ["choices", "summary"]},
+        }},
+        {"type": "function", "function": {
+            "name": "delegate_settlement",
+            "description": "将状态结算委托给后台异步处理。叙事立即返回玩家。适合复杂场景。调用后直接输出叙事。",
+            "parameters": {"type": "object", "properties": {
+                "hint": {"type": "string", "description": "给后台Agent的结算提示"},
+                "choices": {
+                    "type": "array",
+                    "description": "4个行动选项",
+                    "items": {"type": "object", "properties": {
+                        "id": {"type": "string"}, "text": {"type": "string"},
+                        "hint": {"type": "string"}, "risk": {"type": "string", "enum": ["safe", "moderate", "risky"]},
+                        "time_hint": {"type": "string"},
+                    }, "required": ["id", "text"]},
+                },
+                "summary": {"type": "string", "description": "一句话摘要"},
+            }, "required": ["choices", "summary"]},
+        }},
+    ]
+
+    UNIFIED_TOOLS_SCHEMA = info_tools + action_tools + output_tools
+    return UNIFIED_TOOLS_SCHEMA
+
 
 def _extract_reasoning(raw: str) -> str:
     """Extract content inside <think>...</think> tags. Returns empty string if none."""
@@ -1332,7 +1423,11 @@ class GameSession(
                 open_action = {"type": "system", "text": "游戏开始"}
 
                 _narrative_reasoning = ""
-                if self._agentic_enabled():
+                if self._agentic_unified_enabled():
+                    _opening_pipeline = self._execute_unified_agent(
+                        opening_ctx, opening_route, open_action,
+                    )
+                elif self._agentic_enabled():
                     _opening_pipeline = self._execute_agentic_pipeline(
                         opening_ctx, opening_route, open_action,
                     )
@@ -1795,10 +1890,30 @@ class GameSession(
         mode = getattr(config, "PIPELINE_MODE", "workflow")
         has_tools = hasattr(self.ai_provider, "generate_with_tools")
         ai_enabled = bool(self.script.get("settings", {}).get("ai_tools_enabled", True))
-        result = mode == "agentic" and has_tools and ai_enabled
-        if mode == "agentic" and not result:
+        result = mode in ("agentic", "agentic_dual") and has_tools and ai_enabled
+        if mode in ("agentic", "agentic_dual") and not result:
             logger.warning("agentic 模式未生效: mode=%s, has_tools=%s, ai_enabled=%s", mode, has_tools, ai_enabled)
         return result
+
+    def _agentic_unified_enabled(self) -> bool:
+        """True when PIPELINE_MODE == 'agentic_unified'."""
+        import config
+        mode = getattr(config, "PIPELINE_MODE", "workflow")
+        return mode == "agentic_unified" and hasattr(self.ai_provider, "generate_with_tools")
+
+    def _quick_intent_check(self, action_text: str) -> str:
+        """规则优先的意图预判，在 _prepare_turn 之前执行"""
+        lower = action_text.strip().lower()
+        REWRITE_KW = ["重写", "改一下", "重新写", "换个写法", "不满意", "再来一次", "重生成"]
+        QUERY_KW = ["现在几点", "我在哪", "我身上有什么", "查看状态", "背包"]
+        UNDO_KW = ["撤销", "回退", "undo", "取消上一轮"]
+        if any(kw in lower for kw in REWRITE_KW):
+            return "rewrite"
+        if any(kw in lower for kw in QUERY_KW):
+            return "query"
+        if any(kw in lower for kw in UNDO_KW):
+            return "undo"
+        return "action"
 
     async def process_action(self, player_action: dict) -> dict:
         """Process a player action and return the result.
@@ -1809,6 +1924,21 @@ class GameSession(
         if not self.ai_provider:
             raise RuntimeError("AI provider not configured")
         await self._drain_background_tasks()  # P0-3
+
+        # --- 意图预判（在 _prepare_turn 之前，不推进轮次） ---
+        action_text = player_action.get("text", "")
+        if self._agentic_unified_enabled():
+            intent = self._quick_intent_check(action_text)
+            if intent == "rewrite":
+                logger.info("意图预判: rewrite → 重写上一轮")
+                return await self._agent_rewrite(action_text)
+            if intent == "query":
+                logger.info("意图预判: query → 回答查询")
+                return await self._agent_query(action_text)
+            if intent == "undo":
+                logger.info("意图预判: undo → 撤销")
+                return await self.undo_last_turn()
+
         rollback_turn = self.turn_number
         rollback_state = None
         try:
@@ -1832,7 +1962,9 @@ class GameSession(
             narrative = ""
             parsed = {}
             _narrative_reasoning = ""
-            if self._agentic_enabled():
+            if self._agentic_unified_enabled():
+                pipeline = self._execute_unified_agent(ctx, route, player_action)
+            elif self._agentic_enabled():
                 pipeline = self._execute_agentic_pipeline(ctx, route, player_action)
             else:
                 pipeline = self._execute_pipeline(ctx, route, player_action)
@@ -1879,7 +2011,9 @@ class GameSession(
         narrative = ""
         parsed = {}
         _narrative_reasoning = ""
-        if self._agentic_enabled():
+        if self._agentic_unified_enabled():
+            pipeline = self._execute_unified_agent(ctx, route, player_action, streaming=True)
+        elif self._agentic_enabled():
             pipeline = self._execute_agentic_pipeline(ctx, route, player_action, streaming=True)
         else:
             pipeline = self._execute_pipeline(ctx, route, player_action, streaming=True)

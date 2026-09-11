@@ -91,8 +91,8 @@ async def shell_page():
 async def set_pipeline_mode(req: dict):
     import config
     mode = req.get("mode", "workflow")
-    if mode not in ("workflow", "agentic"):
-        raise HTTPException(400, "mode must be 'workflow' or 'agentic'")
+    if mode not in ("workflow", "agentic", "agentic_unified"):
+        raise HTTPException(400, "mode must be 'workflow', 'agentic', or 'agentic_unified'")
     config.PIPELINE_MODE = mode
     logger.info("Pipeline mode → %s", mode)
     return {"ok": True, "mode": mode}

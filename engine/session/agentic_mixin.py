@@ -1044,3 +1044,318 @@ class AgenticMixin:
             "warnings": [],
             "feedback_regen": True,  # 标记这是反馈重生成
         }
+
+    # ================================================================
+    # Unified Agent mode (single-loop: retrieval + narrative + settlement)
+    # ================================================================
+
+    def _build_unified_system(self) -> str:
+        """Build system prompt for the unified agent."""
+        from engine.prompt_loader import PromptLoader
+        system = PromptLoader.get().render_system(
+            "agentic_unified",
+            world_background=(self.script.get("world_background", "") or "")[:500],
+            player_name=self.current_state.get("player", {}).get("name", ""),
+        )
+        # Append dynamic section (same as foreground agent)
+        system += "\n\n" + self._build_foreground_dynamic_section()
+        return system
+
+    def _build_unified_context(self, ctx: dict, player_action: dict) -> str:
+        """Build per-turn user message for the unified agent (reuses foreground context)."""
+        return self._build_foreground_context(ctx, player_action)
+
+    def _build_unified_parsed(self, records: list[dict], ctx: dict) -> dict:
+        """Merge tool call records into a parsed dict for _apply_parsed_response."""
+        # Explode consolidated tool calls into old-style for _merge_state_tool_results
+        state_calls = []
+        for c in records:
+            if c["name"] == "update_state":
+                state_calls.extend(self._explode_update_state(c["args"]))
+            elif c["name"] == "manage_npcs":
+                state_calls.extend(self._explode_manage_npcs(c["args"]))
+        parsed = self._merge_state_tool_results(state_calls)
+        # NPC attitude + choices buffers (populated by _handle_finalize_turn / _dispatch_unified_tool)
+        self._merge_npc_reaction_tool_results(parsed)
+        self._merge_choices_tool_results(parsed)
+        if not parsed.get("choices"):
+            parsed["choices"] = self._generate_context_choices()
+        return parsed
+
+    async def _execute_unified_agent(self, ctx: dict, route: dict, player_action: dict,
+                                     *, streaming: bool = False):
+        """Unified Agent: single loop handles retrieval + narrative + settlement."""
+        _warnings: list[str] = []
+        action_text = ctx.get("action_text") or player_action.get("text", "")
+        ctx.setdefault("tool_results", [])
+        self._reset_stage45_tool_buffers()
+        self._turn_summary_override = ""
+        self._scene_image_prompt_override = None
+        self._delegated_settlement = False
+
+        logger.info("=" * 50)
+        logger.info("UNIFIED AGENT 开始 — 行动: %s", action_text[:60])
+        logger.info("=" * 50)
+
+        system = self._build_unified_system()
+        user = self._build_unified_context(ctx, player_action)
+
+        from engine.game_session import _unified_tools
+        tools = _unified_tools()
+
+        holder = _AgentResult()
+        async for event in self._agent_loop(
+            [{"role": "user", "content": user}],
+            system, tools,
+            lambda name, args: self._dispatch_unified_tool(ctx, name, args),
+            max_rounds=10, label="统一Agent",
+            result_holder=holder,
+        ):
+            if streaming:
+                yield event
+
+        narrative = (holder.text or "").strip()
+        if not narrative:
+            raise RuntimeError("统一Agent未输出叙事文本")
+
+        ctx["tool_results"].extend(holder.records)
+
+        # Streaming: emit complete narrative
+        if streaming:
+            yield {"type": "text", "content": narrative}
+
+        # NPC voice consistency
+        narrative = await self._maybe_fix_npc_voices(
+            narrative, self.current_state, ctx.get("present_npc_ids"),
+        )
+
+        # Record narrative facts to vector memory
+        self._record_narrative_facts(narrative, ctx)
+
+        # Build parsed result from tool call records
+        parsed = self._build_unified_parsed(holder.records, ctx)
+        parsed["narrative"] = narrative
+
+        # Reset abort flag
+        if hasattr(self, '_abort_flag'):
+            self._abort_flag = False
+
+        # Post-processing flags
+        ctx["_agentic_post_processed"] = True
+        ctx.setdefault("plot_decision", "")
+        ctx.setdefault("plot_reasoning", "")
+        if self._turn_summary_override:
+            ctx["turn_summary_override"] = self._turn_summary_override
+        if self._scene_image_prompt_override:
+            ctx["scene_image_prompt"] = self._scene_image_prompt_override
+
+        # Build reasoning trace
+        reasoning_parts = []
+        for c in holder.records:
+            reasoning_parts.append(f"[{c['name']}] {str(c.get('args', {}))[:100]}")
+        _narrative_reasoning = "\n".join(reasoning_parts)
+
+        # Stats logging
+        choices_count = len(parsed.get("choices", []))
+        state_changes = (
+            len(parsed.get("state_changes", []))
+            + len(parsed.get("activate_states", []))
+            + len(parsed.get("deactivate_states", []))
+            + len(parsed.get("inventory_changes", []))
+        )
+        npc_att = len(parsed.get("npc_attitude_changes", []))
+        logger.info("=" * 50)
+        logger.info("UNIFIED AGENT 完成 — 叙事%d字 | 选项%d | 状态变更%d | NPC态度%d | 工具%d",
+                    len(narrative), choices_count, state_changes, npc_att, len(holder.records))
+        logger.info("=" * 50)
+
+        self._audit_settlement(parsed)
+
+        yield {
+            "type": "pipeline_result",
+            "narrative": narrative,
+            "parsed": parsed,
+            "warnings": _warnings,
+            "plot_decision": "",
+            "plot_reasoning": "",
+            "narrative_reasoning": _narrative_reasoning,
+            "compose_msgs": [],
+            "compose_sys": "",
+        }
+
+    async def _dispatch_unified_tool(self, ctx: dict, name: str, args: dict):
+        """Dispatch tool calls for the unified agent."""
+        # Info tools
+        if name in ("recall_history", "query_lorebook", "query_npc_history",
+                     "check_inventory", "get_npc_attitude"):
+            return self._run_tool_native(name, args)
+
+        # Action tools
+        if name == "update_state":
+            return self._handle_update_state(args)
+        if name == "manage_npcs":
+            return self._handle_manage_npcs(args)
+
+        # Output tools
+        if name == "finalize_turn":
+            return self._handle_finalize_turn(ctx, args)
+        if name == "delegate_settlement":
+            return await self._handle_delegate_settlement(ctx, args)
+
+        return json.dumps({"error": f"未知工具: {name}"})
+
+    def _handle_finalize_turn(self, ctx: dict, args: dict) -> str:
+        """Synchronous settlement: state + choices + summary in one call."""
+        results = []
+
+        # State changes
+        state_args = {k: args[k] for k in ("end_time", "state_changes", "inventory_changes",
+                      "activate_states", "location_change") if k in args}
+        if state_args:
+            results.append(self._handle_update_state(state_args))
+
+        # NPC operations
+        npc_ops = args.get("npc_operations", [])
+        if npc_ops:
+            results.append(self._handle_manage_npcs({"operations": npc_ops}))
+
+        # Choices
+        choices = args.get("choices", [])
+        if choices:
+            self._reset_stage45_tool_buffers()
+            for ch in choices:
+                self._run_choices_tool("add_choice", ch)
+
+        # Summary and image
+        self._turn_summary_override = args.get("summary", "")
+        if args.get("image_prompt"):
+            self._scene_image_prompt_override = {
+                "prompt": args["image_prompt"],
+                "style": args.get("image_style", "realistic"),
+            }
+
+        return "已同步完成本轮结算"
+
+    async def _handle_delegate_settlement(self, ctx: dict, args: dict) -> str:
+        """Delegate settlement to background agent asynchronously."""
+        # Save choices and summary immediately
+        choices = args.get("choices", [])
+        if choices:
+            self._reset_stage45_tool_buffers()
+            for ch in choices:
+                self._run_choices_tool("add_choice", ch)
+        self._turn_summary_override = args.get("summary", "")
+
+        self._delegated_settlement = True
+
+        # Launch async background settlement (fire-and-forget)
+        hint = args.get("hint", "")
+        asyncio.create_task(self._run_delegated_settlement_task(ctx, hint))
+
+        return "已委托后台结算。叙事将立即返回。"
+
+    async def _run_delegated_settlement_task(self, ctx: dict, hint: str):
+        """Background async settlement task."""
+        try:
+            action_text = ctx.get("action_text", "")
+            bg_ctx = {
+                "action_text": action_text,
+                "old_time": ctx.get("old_time", ""),
+                "present_npc_ids": ctx.get("present_npc_ids", []),
+            }
+            bg_holder: _AgentResult | None = None
+            async for event in self._run_background_agent(
+                bg_ctx, ctx.get("_current_narrative", ""), "",
+                {"text": action_text},
+                streaming=False, skip_hints=hint,
+            ):
+                if event.get("type") == "_bg_result":
+                    bg_holder = event["holder"]
+
+            bg_calls = bg_holder.records if bg_holder else []
+            logger.info("后台异步结算完成: %d 次工具调用", len(bg_calls))
+        except Exception as e:
+            logger.error("后台异步结算失败: %s", e)
+
+    # ================================================================
+    # Intent shortcuts (rewrite / query) — no turn advancement
+    # ================================================================
+
+    async def _agent_rewrite(self, feedback: str) -> dict:
+        """Rewrite last turn narrative without advancing the turn."""
+        if not self.world_tree:
+            return {"error": "无可重写的回合"}
+        last_node = self.world_tree.get_node(self.world_tree.active_node_id)
+        if not last_node:
+            return {"error": "无可重写的回合"}
+
+        original = last_node.get("ai_response", "")
+        action_raw = last_node.get("player_action", {})
+        action_text = action_raw.get("text", "") if isinstance(action_raw, dict) else str(action_raw or "")
+
+        from engine.prompt_loader import PromptLoader
+        system = PromptLoader.get().render_system(
+            "agentic_unified",
+            world_background=(self.script.get("world_background", "") or "")[:500],
+            player_name=self.current_state.get("player", {}).get("name", ""),
+        )
+        system += (
+            f"\n\n## 重写模式\n"
+            f"用户对上一版叙事不满意。反馈：{feedback}\n"
+            "保持相同事件走向，改善用户指出的问题。只输出新版叙事文本。"
+        )
+
+        user = f"原版叙事（需修改）：\n{original[:2000]}\n\n玩家行动：{action_text}"
+
+        # Rewrite uses info tools only
+        from engine.game_session import _unified_tools
+        all_tools = _unified_tools()
+        info_tools = [t for t in all_tools if t["function"]["name"] in
+                      ("recall_history", "query_lorebook", "query_npc_history", "check_inventory")]
+
+        holder = _AgentResult()
+        async for _ in self._agent_loop(
+            [{"role": "user", "content": user}], system, info_tools,
+            lambda n, a: self._run_tool_native(n, a),
+            max_rounds=5, label="重写Agent", result_holder=holder,
+        ):
+            pass
+
+        new_narrative = holder.text
+        if not new_narrative:
+            return {"error": "重写失败"}
+
+        last_node["ai_response"] = new_narrative
+
+        state = self.current_state
+        return {
+            "ok": True,
+            "narrative": new_narrative,
+            "rewrite": True,
+            "choices": last_node.get("choices_presented", []),
+            "state": self._slim_snapshot(state),
+            "node_id": self.world_tree.active_node_id if self.world_tree else "",
+            "game_time": state.get("game_time", ""),
+            "dice_rolls": [],
+            "warnings": [],
+        }
+
+    async def _agent_query(self, query: str) -> dict:
+        """Answer a player query without advancing the turn."""
+        system = "你是游戏助手。回答玩家的查询，简洁明了。可以使用工具获取信息。"
+        user = f"查询：{query}"
+
+        from engine.game_session import _unified_tools
+        all_tools = _unified_tools()
+        info_tools = [t for t in all_tools if t["function"]["name"] in
+                      ("recall_history", "query_lorebook", "check_inventory", "get_npc_attitude")]
+
+        holder = _AgentResult()
+        async for _ in self._agent_loop(
+            [{"role": "user", "content": user}], system, info_tools,
+            lambda n, a: self._run_tool_native(n, a),
+            max_rounds=3, label="查询Agent", result_holder=holder,
+        ):
+            pass
+
+        return {"ok": True, "reply": holder.text, "query": True}

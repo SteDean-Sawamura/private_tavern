@@ -193,12 +193,12 @@ async def get_pipeline_mode():
 async def set_pipeline_mode(req: dict):
     """Switch pipeline mode at runtime.
 
-    Body: {"mode": "workflow" | "agentic"}
+    Body: {"mode": "workflow" | "agentic" | "agentic_unified"}
     """
     import config
     mode = req.get("mode", "workflow")
-    if mode not in ("workflow", "agentic"):
-        raise HTTPException(status_code=400, detail="mode must be 'workflow' or 'agentic'")
+    if mode not in ("workflow", "agentic", "agentic_unified"):
+        raise HTTPException(status_code=400, detail="mode must be 'workflow', 'agentic', or 'agentic_unified'")
     config.PIPELINE_MODE = mode
     logger.info("切换管线模式 — mode=%s", mode)
     return {"ok": True, "mode": mode}

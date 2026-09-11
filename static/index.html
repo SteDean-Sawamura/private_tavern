@@ -1081,13 +1081,15 @@
     <script src="/static/js/story_tree_editor.js"></script>
     <script src="/static/js/script_builder.js"></script>
     <script>
-    // Pipeline mode toggle
+    // Pipeline mode toggle (3-way: workflow -> agentic -> agentic_unified -> workflow)
+    const _PIPELINE_MODES = ['workflow', 'agentic', 'agentic_unified'];
     async function togglePipelineMode() {
       const btn = document.getElementById('pipeline-mode-btn');
       try {
         const res = await fetch('/api/config/pipeline-mode');
         const data = await res.json();
-        const newMode = data.mode === 'workflow' ? 'agentic' : 'workflow';
+        const idx = _PIPELINE_MODES.indexOf(data.mode);
+        const newMode = _PIPELINE_MODES[(idx + 1) % _PIPELINE_MODES.length];
         await fetch('/api/config/pipeline-mode', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1099,7 +1101,11 @@
     function updatePipelineModeBtn(mode) {
       const btn = document.getElementById('pipeline-mode-btn');
       if (!btn) return;
-      if (mode === 'agentic') {
+      if (mode === 'agentic_unified') {
+        btn.textContent = '✨ unified';
+        btn.style.borderColor = '#2f6a9a';
+        btn.style.color = '#3578a6';
+      } else if (mode === 'agentic') {
         btn.textContent = '🤖 agentic';
         btn.style.borderColor = '#9a622f';
         btn.style.color = '#a66b35';
