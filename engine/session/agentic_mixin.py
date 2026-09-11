@@ -152,7 +152,7 @@ class AgenticMixin:
         msgs = list(messages)
         records: list[dict] = []
         content = ""
-        _accumulated_content = []  # 累积所有轮次的文本输出
+        _all_round_content = []  # 每轮的文本输出
         _continuation_prefix = ""  # #11: 截断续写时保存前一段文本
 
         for round_num in range(max_rounds):
@@ -181,12 +181,9 @@ class AgenticMixin:
             holder.completion_tokens += usage.get("completion_tokens", 0)
 
             if not tc_list:
-                # 合并本轮文本和之前累积的文本
-                if _accumulated_content:
-                    full_content = "\n\n".join(_accumulated_content)
-                    if content:
-                        full_content += "\n\n" + content
-                    content = full_content
+                # 叙事 = 所有轮次中最长的实质性文本（>100字的才算叙事，短的是工具应答）
+                _all_round_content.append(content)
+                content = max((c for c in _all_round_content if len(c) > 100), key=len, default=content)
 
                 # #11 叙事断点续写: 检测截断并自动续写
                 if content and self._looks_truncated(content) and round_num < max_rounds - 1:
@@ -205,10 +202,10 @@ class AgenticMixin:
                        "round": round_num + 1, "text": content}
                 return
 
+            # 记录本轮文本（有工具调用的轮次也可能输出叙事）
+            if content and len(content) > 50:
+                _all_round_content.append(content)
             assistant_msg = {"role": "assistant", "content": resp.get("content") or None}
-            # 累积有工具调用轮次的文本输出（Agent 可能边写叙事边调工具）
-            if content and content.strip():
-                _accumulated_content.append(content.strip())
             reasoning = resp.get("reasoning_content")
             if reasoning:
                 assistant_msg["reasoning_content"] = reasoning
