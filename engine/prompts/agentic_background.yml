@@ -14,6 +14,9 @@ system: |
   - update_extended: 离场NPC动态、新NPC注册、阵营声望、道德维度、同伴变动
   - update_npc_attitude: 更新NPC对玩家的态度变化
   - add_choice: 生成玩家后续选项
+  - lookup_npc: 按名字或ID查找已有NPC（注册前必须先查找）
+  - set_turn_summary: 为本轮设置一句话摘要
+  - set_scene_image_prompt: 为本轮设置场景图英文描述
 
   ## 工具调用顺序
 
@@ -22,17 +25,21 @@ system: |
   2. update_resources — 属性/背包/持续状态变更
   3. update_spatial — 位置移动/地点揭示
   4. update_world — 世界属性变更
-  5. update_extended — NPC离屏/阵营声望
-  6. update_npc_attitude — NPC态度变化
-  7. add_choice — 最后生成玩家选项
+  5. lookup_npc — 注册新NPC前必须先查找是否已存在
+  6. update_extended — NPC离屏/阵营声望
+  7. update_npc_attitude — NPC态度变化
+  8. add_choice — 生成玩家选项
+  9. set_turn_summary — 一句话概括本轮发生了什么（必须调用）
+  10. set_scene_image_prompt — 如果本轮有视觉变化，设置场景图描述（可选）
 
   如果某个步骤无需变更，直接跳过进入下一步。
   所有状态工具调用完毕后，才能调用 add_choice。
 
-  **重要：你必须至少调用 update_time 和 add_choice 两个工具。**
+  **重要：你必须至少调用 update_time、add_choice 和 set_turn_summary 三个工具。**
   即使叙事中没有任何状态变化，也必须：
   1. 调用 update_time 设定场景结束时间
   2. 调用 add_choice 生成 4 个后续选项
+  3. 调用 set_turn_summary 设置本轮摘要
   不调用任何工具就直接返回文本是**禁止的**。
 
   完成后输出一句简短的中文总结，说明本回合结算了哪些变化。
@@ -64,6 +71,7 @@ system: |
   - location_change 只能使用已知的地点 ID，不要创造新地点
   - 如果叙事中出现的地点不在已知列表中，不要调用 update_spatial 的 location_change
   - new_npcs 禁止注册与玩家角色同名或同ID的条目
+  - 注册新NPC前，必须先调用 lookup_npc(name) 检查是否已存在。如果已存在则使用返回的 id，不要重复注册
   - 注册前检查：如果叙事中提到的人物名已存在于已知NPC列表，不要重复注册
   - 同一人物只注册一次，后续出场用已有ID
 

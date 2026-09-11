@@ -394,6 +394,53 @@ CHOICES_TOOLS = [
     }
 ]
 
+# 后台 Agent 实用工具：NPC查找、回合摘要、场景图
+SETTLEMENT_UTILITY_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_npc",
+            "description": "按名字或ID查找已有NPC。注册新NPC前必须先查找，避免重复",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "NPC名字或ID"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_turn_summary",
+            "description": "为本轮设置一句简短摘要（用于历史记录和存档列表）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string", "description": "一句话摘要，20字以内"}
+                },
+                "required": ["summary"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_scene_image_prompt",
+            "description": "为本轮设置场景图的英文描述（如果叙事有明显的视觉变化）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "description": "场景图描述（英文）"},
+                    "style": {"type": "string", "enum": ["realistic", "anime", "pixel"]}
+                },
+                "required": ["prompt"]
+            }
+        }
+    },
+]
+
 
 def _extract_reasoning(raw: str) -> str:
     """Extract content inside <think>...</think> tags. Returns empty string if none."""
@@ -1720,7 +1767,21 @@ class GameSession(
 
         # Scene image generation — only when route decides visual change is significant
         should_gen_image = ctx.get("route", {}).get("generate_image", False)
-        if should_gen_image and getattr(self, "_image_provider", None) and narrative:
+        # agentic 模式可通过 set_scene_image_prompt 工具直接提供 prompt，跳过 LLM 构建
+        agentic_img = ctx.get("scene_image_prompt")
+        if agentic_img and getattr(self, "_image_provider", None):
+            try:
+                img_prompt = agentic_img.get("prompt", "")
+                if img_prompt:
+                    scene_img = await self._image_provider.generate_image(img_prompt)
+                    scene_img["_prompt"] = img_prompt
+                    result["scene_image"] = scene_img
+                else:
+                    result["scene_image"] = None
+            except Exception as e:
+                logger.warning("Scene image generation failed (agentic prompt): %s", e)
+                result["scene_image"] = None
+        elif should_gen_image and getattr(self, "_image_provider", None) and narrative:
             try:
                 from ai.image_prompt_builder import build_image_prompt
                 loc = self.current_state.get("player", {}).get("location", "")

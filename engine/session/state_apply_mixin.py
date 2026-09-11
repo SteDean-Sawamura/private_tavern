@@ -302,6 +302,8 @@ class StateApplyMixin:
             node["check_result"] = ctx["check_result"]
             node["triggered_consequences"] = ctx["triggered_consequences"]
             node["achieved_milestones"] = ctx["achieved_milestones"]
+            if ctx.get("turn_summary_override"):
+                node["turn_summary"] = ctx["turn_summary_override"]
             if ctx.get("plot_reasoning"):
                 node["plot_reasoning"] = ctx["plot_reasoning"]
             if ctx.get("plot_decision"):
@@ -457,36 +459,37 @@ class StateApplyMixin:
         # Generate news from completed story nodes + triggered one-time events
         # Only use events from the initial time window (_prepare_turn), not from
         # AI time-jump re-checks, to prevent future events leaking into current news.
-        try:
-            news_sources = []
-            if st_result and st_result.newly_completed:
-                for n in st_result.newly_completed:
-                    news_sources.append({"type": "story_node", "name": n.get("name", n.get("id", "")), "description": n.get("description", "")})
-            ot_ids = {e["id"] for e in self.script.get("one_time_events", []) if isinstance(e, dict) and e.get("id")}
-            initial_count = ctx.get("initial_event_count", len(ctx.get("triggered_events") or []))
-            initial_events = (ctx.get("triggered_events") or [])[:initial_count]
-            for evt in initial_events:
-                eid = evt.get("event_id", "")
-                if eid in ot_ids:
-                    evt_def = self._event_def_by_id.get(eid)
-                    desc = evt.get("description", "")
-                    if not desc and isinstance(evt_def, dict):
-                        desc = evt_def.get("description", "")
-                    news_sources.append({"type": "one_time_event", "name": (evt_def or {}).get("name", eid), "description": desc})
-            if news_sources and self.ai_provider:
-                news = await self._generate_event_news(news_sources)
-                if news:
-                    feed = self.current_state.setdefault("news_feed", [])
-                    feed.append(news)
-                    if len(feed) > 50:
-                        self.current_state["news_feed"] = feed[-50:]
-                    result["news"] = [news]
-        except Exception:
-            pass
+        if not ctx.get("_agentic_post_processed"):
+            try:
+                news_sources = []
+                if st_result and st_result.newly_completed:
+                    for n in st_result.newly_completed:
+                        news_sources.append({"type": "story_node", "name": n.get("name", n.get("id", "")), "description": n.get("description", "")})
+                ot_ids = {e["id"] for e in self.script.get("one_time_events", []) if isinstance(e, dict) and e.get("id")}
+                initial_count = ctx.get("initial_event_count", len(ctx.get("triggered_events") or []))
+                initial_events = (ctx.get("triggered_events") or [])[:initial_count]
+                for evt in initial_events:
+                    eid = evt.get("event_id", "")
+                    if eid in ot_ids:
+                        evt_def = self._event_def_by_id.get(eid)
+                        desc = evt.get("description", "")
+                        if not desc and isinstance(evt_def, dict):
+                            desc = evt_def.get("description", "")
+                        news_sources.append({"type": "one_time_event", "name": (evt_def or {}).get("name", eid), "description": desc})
+                if news_sources and self.ai_provider:
+                    news = await self._generate_event_news(news_sources)
+                    if news:
+                        feed = self.current_state.setdefault("news_feed", [])
+                        feed.append(news)
+                        if len(feed) > 50:
+                            self.current_state["news_feed"] = feed[-50:]
+                        result["news"] = [news]
+            except Exception:
+                pass
 
         # Emotion classification (non-blocking: if it fails, no emotion label)
         narrative_text = result.get("narrative", "")
-        if narrative_text and self.ai_provider:
+        if not ctx.get("_agentic_post_processed") and narrative_text and self.ai_provider:
             try:
                 emotion = await self._classify_emotion(narrative_text)
                 if emotion:

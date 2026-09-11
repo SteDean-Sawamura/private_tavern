@@ -120,9 +120,9 @@ def _settlement_tools() -> list[dict]:
     global SETTLEMENT_TOOLS_SCHEMA
     if SETTLEMENT_TOOLS_SCHEMA is None:
         from engine.game_session import (
-            STATE_TOOLS_SCHEMA, NPC_REACTION_TOOLS, CHOICES_TOOLS,
+            STATE_TOOLS_SCHEMA, NPC_REACTION_TOOLS, CHOICES_TOOLS, SETTLEMENT_UTILITY_TOOLS,
         )
-        SETTLEMENT_TOOLS_SCHEMA = STATE_TOOLS_SCHEMA + NPC_REACTION_TOOLS + CHOICES_TOOLS
+        SETTLEMENT_TOOLS_SCHEMA = STATE_TOOLS_SCHEMA + NPC_REACTION_TOOLS + CHOICES_TOOLS + SETTLEMENT_UTILITY_TOOLS
     return SETTLEMENT_TOOLS_SCHEMA
 
 
@@ -570,6 +570,32 @@ class AgenticMixin:
             return self._run_npc_reaction_tool(name, args)
         if name == "add_choice":
             return self._run_choices_tool(name, args)
+        if name == "lookup_npc":
+            query = args.get("query", "").strip()
+            npcs = self.current_state.get("npcs", {})
+            # 按 ID 精确查找
+            if query in npcs:
+                npc = npcs[query]
+                return json.dumps({"found": True, "id": query, "name": npc.get("name", query)}, ensure_ascii=False)
+            # 按名字模糊查找
+            for nid, ndata in npcs.items():
+                if isinstance(ndata, dict) and query in (ndata.get("name", ""), nid):
+                    return json.dumps({"found": True, "id": nid, "name": ndata.get("name", nid)}, ensure_ascii=False)
+            # 在剧本 NPC 列表中查找
+            for npc in self.script.get("npcs", []):
+                if query in (npc.get("name", ""), npc.get("id", "")):
+                    return json.dumps({"found": True, "id": npc["id"], "name": npc.get("name", ""), "source": "script"}, ensure_ascii=False)
+            return json.dumps({"found": False}, ensure_ascii=False)
+        if name == "set_turn_summary":
+            summary = args.get("summary", "").strip()
+            if summary:
+                self._turn_summary_override = summary
+            return "摘要已设置: " + summary[:30]
+        if name == "set_scene_image_prompt":
+            prompt = args.get("prompt", "").strip()
+            if prompt:
+                self._scene_image_prompt_override = {"prompt": prompt, "style": args.get("style", "realistic")}
+            return "图片 prompt 已设置"
         # Bug 1 fix: 立即注册新 NPC 到 state，使同轮 update_npc_attitude 能找到
         if name == "update_extended":
             new_npcs = args.get("new_npcs", [])
@@ -697,6 +723,9 @@ class AgenticMixin:
         action_text = ctx.get("action_text") or player_action.get("text", "")
         ctx.setdefault("tool_results", [])
         self._reset_stage45_tool_buffers()
+        # 后台 Agent 后处理 override 初始化
+        self._turn_summary_override = ""
+        self._scene_image_prompt_override = None
 
         logger.info("=" * 50)
         logger.info("AGENTIC 模式开始 — 行动: %s", action_text[:60])
@@ -816,6 +845,13 @@ class AgenticMixin:
         logger.info("=" * 50)
 
         self._audit_settlement(parsed)
+
+        # 标记后处理已在 agentic 管线中完成
+        ctx["_agentic_post_processed"] = True
+        if self._turn_summary_override:
+            ctx["turn_summary_override"] = self._turn_summary_override
+        if self._scene_image_prompt_override:
+            ctx["scene_image_prompt"] = self._scene_image_prompt_override
 
         yield {
             "type": "pipeline_result",
