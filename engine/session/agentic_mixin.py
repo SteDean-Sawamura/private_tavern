@@ -152,6 +152,7 @@ class AgenticMixin:
         msgs = list(messages)
         records: list[dict] = []
         content = ""
+        _accumulated_content = []  # 累积所有轮次的文本输出
         _continuation_prefix = ""  # #11: 截断续写时保存前一段文本
 
         for round_num in range(max_rounds):
@@ -180,6 +181,13 @@ class AgenticMixin:
             holder.completion_tokens += usage.get("completion_tokens", 0)
 
             if not tc_list:
+                # 合并本轮文本和之前累积的文本
+                if _accumulated_content:
+                    full_content = "\n\n".join(_accumulated_content)
+                    if content:
+                        full_content += "\n\n" + content
+                    content = full_content
+
                 # #11 叙事断点续写: 检测截断并自动续写
                 if content and self._looks_truncated(content) and round_num < max_rounds - 1:
                     logger.info("[%s] 检测到叙事截断，自动续写 (第%d轮, %d字, 末尾: %s)",
@@ -198,6 +206,9 @@ class AgenticMixin:
                 return
 
             assistant_msg = {"role": "assistant", "content": resp.get("content") or None}
+            # 累积有工具调用轮次的文本输出（Agent 可能边写叙事边调工具）
+            if content and content.strip():
+                _accumulated_content.append(content.strip())
             reasoning = resp.get("reasoning_content")
             if reasoning:
                 assistant_msg["reasoning_content"] = reasoning
