@@ -4,6 +4,7 @@ Inspired by SillyTavern's World Info system. Entries are only injected into
 the AI prompt when their keywords appear in recent chat history or player input.
 """
 
+import hashlib
 import random
 import re
 from dataclasses import dataclass, field
@@ -59,6 +60,11 @@ class Lorebook:
         if cls._CJK_RE.search(k):
             return len(k) < 2
         return len(k) < 3
+
+    @staticmethod
+    def _content_fingerprint(content: str) -> str:
+        """Short hash of entry content — used to detect edits during cooldown."""
+        return hashlib.md5(content.encode()).hexdigest()[:8]
 
     @staticmethod
     def _check_secondary(sk: list[str], text_lower: str, logic: str) -> bool:
@@ -150,10 +156,17 @@ class Lorebook:
         )
 
         # Apply cooldown and probability filters to newly matched entries
+        fingerprints: dict[str, str] = dict(ts.get("fingerprints", {}))
         filtered_newly = {}
         for eid, entry in newly_activated.items():
             if cooldown_timers.get(eid, 0) > 0:
-                continue
+                # Content changed since cooldown started -> lift cooldown
+                old_fp = fingerprints.get(eid, "")
+                new_fp = self._content_fingerprint(entry.content or "")
+                if old_fp and old_fp != new_fp:
+                    cooldown_timers[eid] = 0
+                else:
+                    continue
             if entry.probability < 100 and random.randint(1, 100) > entry.probability:
                 continue
             filtered_newly[eid] = entry
@@ -174,7 +187,12 @@ class Lorebook:
             filtered_rec = {}
             for eid, entry in all_newly.items():
                 if cooldown_timers.get(eid, 0) > 0:
-                    continue
+                    old_fp = fingerprints.get(eid, "")
+                    new_fp = self._content_fingerprint(entry.content or "")
+                    if old_fp and old_fp != new_fp:
+                        cooldown_timers[eid] = 0
+                    else:
+                        continue
                 if entry.probability < 100 and random.randint(1, 100) > entry.probability:
                     continue
                 filtered_rec[eid] = entry
@@ -467,8 +485,9 @@ class Lorebook:
             result.insert(idx, {"role": role, "content": content})
         return result
 
-    @staticmethod
+    @classmethod
     def _update_timed_effects(
+        cls,
         sticky_timers: dict[str, int],
         cooldown_timers: dict[str, int],
         activated: dict[str, LorebookEntry],
@@ -477,6 +496,7 @@ class Lorebook:
         """Tick down timers and set new ones for freshly activated entries."""
         new_sticky = {}
         new_cooldown = {}
+        new_fingerprints = {}
 
         # Process sticky entries: decrement existing, start new
         for eid, entry in entry_by_id.items():
@@ -501,4 +521,9 @@ class Lorebook:
             if remaining > 0:
                 new_cooldown[eid] = remaining
 
-        return {"sticky": new_sticky, "cooldown": new_cooldown}
+        # Record content fingerprints for activated entries with cooldown
+        for eid, entry in activated.items():
+            if entry.cooldown > 0:
+                new_fingerprints[eid] = cls._content_fingerprint(entry.content or "")
+
+        return {"sticky": new_sticky, "cooldown": new_cooldown, "fingerprints": new_fingerprints}

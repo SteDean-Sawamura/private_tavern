@@ -26,6 +26,7 @@ from engine.vector_memory import VectorMemory, _VECTOR_AVAILABLE
 from engine.script_variables import ScriptVariables
 from engine.triggers import TriggerEngine
 from engine.regex_scripts import RegexScriptEngine
+from engine.ledger import Ledger
 from engine.data_bank import DataBank
 from engine.class_system import ClassRegistry
 from engine.story_tree import StoryTreeEngine
@@ -440,6 +441,7 @@ class GameSession(
         self.script_variables = ScriptVariables(script.get("variables", []))
         self.trigger_engine = TriggerEngine(script.get("triggers", []), self.script_variables)
         self.regex_engine = RegexScriptEngine(script.get("regex_scripts", []))
+        self.ledger = Ledger()
         _class_system = _settings.get("class_system")
         self.class_registry = ClassRegistry(_class_system) if _class_system else None
         _story_tree_def = script.get("story_tree", {})
@@ -461,6 +463,7 @@ class GameSession(
         # Agentic mode: abort / inject controls
         self._abort_flag: bool = False
         self._inject_queue: list[str] = []
+        self._stable_prefix: str | None = None  # Frozen foreground system prompt (agentic mode)
         # Stage 4a/5 工具调用模式的每轮缓冲
         self._npc_reaction_tool_calls: list[dict] = []
         self._choices_tool_calls: list[dict] = []

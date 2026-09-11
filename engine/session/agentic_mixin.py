@@ -383,7 +383,9 @@ class AgenticMixin:
         yield {"type": "_fg_result", "holder": holder}
 
     def _build_foreground_system(self) -> str:
-        """Load the foreground agent system prompt from YAML."""
+        """Load the foreground agent system prompt from YAML. Frozen after first build."""
+        if self._stable_prefix is not None:
+            return self._stable_prefix
         from engine.prompt_loader import PromptLoader
         system = PromptLoader.get().render_system(
             "agentic_foreground",
@@ -393,7 +395,8 @@ class AgenticMixin:
         ctx_note = self._build_foreground_context_note()
         if ctx_note:
             system += "\n\n" + ctx_note
-        return system
+        self._stable_prefix = system
+        return self._stable_prefix
 
     def _build_foreground_context_note(self) -> str:
         """Compact world/state briefing appended to the foreground system prompt."""
