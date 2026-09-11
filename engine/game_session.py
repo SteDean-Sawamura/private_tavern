@@ -1540,6 +1540,7 @@ class GameSession(
         # Reset PC-specific transient state
         state["npc_chat_history"] = {}
         state["play_style_summary"] = ""
+        self._stable_prefix = None  # 新 PC 需要重建冻结前缀
         pacing = state.get("pacing_state")
         if pacing:
             pacing["tension"] = 40

@@ -432,6 +432,18 @@ class ToolsMixin:
                                 break
                         if len(results) >= max_results:
                             break
+            # 最终 fallback — 搜索 _narrative_buffer（agentic 模式同轮缓存）
+            if not results and hasattr(self, '_narrative_buffer'):
+                query_lower_nb = query.lower()
+                for buf in reversed(self._narrative_buffer):
+                    if query_lower_nb in buf.get("text", "").lower():
+                        results.append({
+                            "turn": buf.get("turn", "?"),
+                            "summary": buf["text"][:200],
+                            "relevance": 0.4,
+                        })
+                    if len(results) >= max_results:
+                        break
             return json.dumps({"results": results}, ensure_ascii=False)
         if name == "query_lorebook":
             keyword = args.get("keyword", "")

@@ -417,29 +417,20 @@ class AgenticMixin:
     def _record_narrative_facts(self, narrative: str, ctx: dict):
         """将叙事中的新事实写入向量记忆，使未来 recall_history 能检索到。
 
-        世界树节点由下游 _apply_parsed_response 统一创建，此处仅提前写入
-        向量存储，确保后台结算或同轮检索即可命中叙事内容。
+        世界树节点由下游 _apply_parsed_response 统一创建，此处不写 world_tree
+        （避免产生重复的 prefetch 节点）。仅写入 vector_memory（异步，无重复
+        问题）并缓存到 ctx._narrative_buffer 供同轮 recall_history 使用。
         """
         if not narrative:
             return
-        # Bug 5 fix: 即使 vector_memory 为 None，也将叙事写入 world_tree
-        # 使 recall_history 的 world_tree fallback 能搜到最近叙事
-        if self.world_tree is not None:
-            try:
-                action_text = ctx.get("action_text", "")
-                # 写一个临时节点，下游 _apply_parsed_response 会创建正式节点
-                # 此处用 add_node 提前让 world_tree 有最新叙事可搜
-                parent_id = self.world_tree.active_node_id or self.world_tree.root_node_id
-                self.world_tree.add_node(
-                    parent_id=parent_id,
-                    game_time=self.current_state.get("game_time", ""),
-                    turn_number=self.turn_number,
-                    player_action={"text": action_text, "type": "narrative_prefetch"},
-                    ai_response=narrative,
-                    state_snapshot=None,
-                )
-            except Exception as e:
-                logger.warning("叙事预写入 world_tree 失败: %s", e)
+        # 缓存到 self，供同轮 recall_history fallback 使用
+        if not hasattr(self, '_narrative_buffer'):
+            self._narrative_buffer = []
+        self._narrative_buffer.append({
+            "turn": self.turn_number,
+            "text": narrative[:1000],
+        })
+        # 写入 vector_memory（异步，不阻塞）
         if not self.vector_memory:
             return
         try:
@@ -490,7 +481,7 @@ class AgenticMixin:
 
     async def _run_background_agent(
         self, ctx: dict, narrative_text: str, plot_decision: str, player_action: dict,
-        *, streaming: bool = False,
+        *, streaming: bool = False, skip_hints: str = "",
     ):
         """Background agent: autonomously settle all state via tool calls.
 
@@ -524,6 +515,9 @@ class AgenticMixin:
                 "<known_locations>\n只能使用以下地点ID，不要创造新的：\n"
                 + "\n".join(loc_lines) + "\n</known_locations>"
             )
+
+        if skip_hints:
+            user_parts.append(skip_hints)
 
         messages = [{"role": "user", "content": "\n\n".join(user_parts)}]
 
@@ -606,20 +600,41 @@ class AgenticMixin:
         self._record_narrative_facts(narrative, ctx)
 
         # --- Background: state settlement ---
-        bg_ctx = copy.deepcopy(ctx)  # Frame 隔离：后台不影响前台上下文
-        logger.info(">>> 后台结算 Agent 启动")
-        bg_holder: _AgentResult | None = None
-        async for event in self._run_background_agent(
-            bg_ctx, narrative, "", player_action, streaming=streaming,
-        ):
-            if event.get("type") == "_bg_result":
-                bg_holder = event["holder"]
-            elif streaming:
-                yield event
+        _skip_settlement = route.get("skip_state_settlement", False)
+        _skip_npc = route.get("skip_npc_reaction", False)
+        _skip_choices = route.get("skip_choices", False)
 
-        bg_calls = bg_holder.records if bg_holder else []
-        ctx["tool_results"].extend(bg_calls)
-        logger.info(">>> 后台结算完成 (%d次工具调用)", len(bg_calls))
+        bg_calls: list[dict] = []
+        if _skip_settlement and _skip_npc and _skip_choices:
+            logger.info(">>> 路由指示跳过全部后台结算")
+        else:
+            # 构造 skip hints 供后台 Agent 参考
+            skip_notes: list[str] = []
+            if _skip_settlement:
+                skip_notes.append("本轮无需修改任何状态（skip_state_settlement=true）")
+            if _skip_npc:
+                skip_notes.append("本轮无需修改NPC态度（skip_npc_reaction=true）")
+            if _skip_choices:
+                skip_notes.append("本轮无需生成选项（skip_choices=true）")
+            skip_hint_text = ""
+            if skip_notes:
+                skip_hint_text = "<skip_hints>\n" + "\n".join(skip_notes) + "\n</skip_hints>"
+
+            bg_ctx = copy.deepcopy(ctx)  # Frame 隔离：后台不影响前台上下文
+            logger.info(">>> 后台结算 Agent 启动")
+            bg_holder: _AgentResult | None = None
+            async for event in self._run_background_agent(
+                bg_ctx, narrative, "", player_action,
+                streaming=streaming, skip_hints=skip_hint_text,
+            ):
+                if event.get("type") == "_bg_result":
+                    bg_holder = event["holder"]
+                elif streaming:
+                    yield event
+
+            bg_calls = bg_holder.records if bg_holder else []
+            ctx["tool_results"].extend(bg_calls)
+            logger.info(">>> 后台结算完成 (%d次工具调用)", len(bg_calls))
 
         # Reset abort flag after pipeline completes
         if hasattr(self, '_abort_flag'):
@@ -722,4 +737,16 @@ class AgenticMixin:
         # 更新世界树节点的叙事文本
         last_node["ai_response"] = new_narrative
 
-        return {"ok": True, "narrative": new_narrative}
+        # 补充完整返回值，使调用方（process_action 早返回路径）拿到与正常管线一致的 dict
+        state = self.current_state
+        return {
+            "ok": True,
+            "narrative": new_narrative,
+            "choices": last_node.get("choices_presented", []),
+            "state": self._slim_snapshot(state),
+            "node_id": self.world_tree.active_node_id if self.world_tree else "",
+            "game_time": state.get("game_time", ""),
+            "dice_rolls": [],
+            "warnings": [],
+            "feedback_regen": True,  # 标记这是反馈重生成
+        }

@@ -657,6 +657,9 @@ class StateApplyMixin:
         # 5) Generate choices for new PC
         choices = self._generate_context_choices()
 
+        # POV 切换后旧的冻结前缀不再有效（player_name 等已变）
+        self._stable_prefix = None
+
         return {
             "narrative": narrative,
             "player": state["player"],
