@@ -263,9 +263,24 @@ class AgenticMixin:
         try:
             state = self.current_state
             pc_name = state.get("player", {}).get("name", "")
-            present_ids = ctx.get("present_npc_ids", [])
+            # Build present_npcs list[dict] matching build_narrative_review_prompt signature
+            npc_states = state.get("npcs", {})
+            npc_defs = {n["id"]: n for n in self.script.get("npcs", []) if "id" in n}
+            present_npcs = []
+            for nid in (ctx.get("present_npc_ids") or [])[:6]:
+                ns = npc_states.get(nid, {})
+                nd = npc_defs.get(nid, {})
+                if not isinstance(ns, dict):
+                    continue
+                present_npcs.append({
+                    "id": nid,
+                    "name": ns.get("name", nid),
+                    "title": ns.get("title") or nd.get("title") or nd.get("role") or nd.get("occupation", ""),
+                })
+            # action_text from ctx (player's action this turn)
+            action_text = ctx.get("action_text", "")
             review_msgs, review_sys = self.prompt_builder.build_narrative_review_prompt(
-                narrative, state, present_npc_ids=present_ids, pc_name=pc_name,
+                narrative, action_text, present_npcs, pc_name=pc_name,
             )
             raw = await self.ai_provider.generate(
                 review_msgs, system=review_sys, max_tokens=500,
@@ -306,18 +321,18 @@ class AgenticMixin:
             if isinstance(it, dict)
         ) if inv else "无"
 
-        # Last round tail only -- the agent pulls older context via tools
-        tail = ""
+        # Full previous-round narrative for continuity (truncated to 1500 chars)
+        prev_round_text = ""
         recent = ctx.get("recent_nodes", [])
         if recent:
             rn = recent[-1]
+            prev_narrative = rn.get("ai_response", "") or rn.get("narrative", "")
             action_raw = rn.get("player_action")
             prev_action = action_raw.get("text", "") if isinstance(action_raw, dict) else str(action_raw or "")
-            prev_narrative = rn.get("ai_response", "")
-            tail = (
-                f"上一轮玩家行动：{prev_action[:120]}\n"
-                f"上一轮结尾：{prev_narrative[-150:] if prev_narrative else '无'}"
-            )
+            if prev_action:
+                prev_round_text = f"[玩家行动] {prev_action}\n\n{prev_narrative}"
+            else:
+                prev_round_text = prev_narrative
 
         parts = [
             f"<current_scene>\n位置：{loc_name}（{loc_id}）\n"
@@ -329,8 +344,8 @@ class AgenticMixin:
         ]
         if npc_lines:
             parts.append("<npcs_present>\n" + "\n".join(npc_lines) + "\n</npcs_present>")
-        if tail:
-            parts.append("<previous_round>\n" + tail + "\n</previous_round>")
+        if prev_round_text:
+            parts.append(f"<previous_round>\n{prev_round_text[-1500:]}\n</previous_round>")
 
         parts.append(f"<player_action>\n{player_action.get('text', '')}\n</player_action>")
         return "\n\n".join(parts)

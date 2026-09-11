@@ -415,17 +415,23 @@ class ToolsMixin:
             return json.dumps({"results": results}, ensure_ascii=False)
         if name == "query_lorebook":
             keyword = args.get("keyword", "")
-            kw_lower = keyword.lower()
+            # Split by whitespace so "金载圭 车智澈 矛盾" matches any individual word
+            keywords = [k.strip().lower() for k in keyword.split() if k.strip()]
+            if not keywords:
+                return json.dumps({"entries": []}, ensure_ascii=False)
             entries = []
             lb = getattr(self.prompt_builder, "lorebook", None)
             if lb is not None:
                 for e in lb.entries:
                     if not e.enabled:
                         continue
-                    if (kw_lower in (e.comment or "").lower()
-                            or kw_lower in e.content[:500].lower()
-                            or any(kw_lower in k.lower() for k in e.keys)
-                            or any(kw_lower in k.lower() for k in getattr(e, "secondary_keys", []))):
+                    searchable = (
+                        (e.comment or "").lower() + " "
+                        + " ".join(k.lower() for k in e.keys) + " "
+                        + " ".join(k.lower() for k in getattr(e, "secondary_keys", [])) + " "
+                        + e.content[:500].lower()
+                    )
+                    if any(kw in searchable for kw in keywords):
                         entries.append({
                             "title": e.comment or e.id,
                             "content": e.content[:500],
