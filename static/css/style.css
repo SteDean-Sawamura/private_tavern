@@ -4068,3 +4068,63 @@ input[type="checkbox"] {
 
 /* 主要容器圆角统一 */
 .card { border-radius: var(--radius-lg); }
+
+/* ================================================
+   #9 Agent Plan Card (计划确认/修改)
+   ================================================ */
+.agent-plan-card {
+    background: var(--bg-card);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    margin: 0.4rem 0;
+}
+.agent-plan-card .plan-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--brand);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+}
+.agent-plan-card .plan-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin-bottom: 0.5rem;
+}
+.agent-plan-card .plan-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.agent-plan-card .plan-edit-input {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-inset);
+    color: var(--text-primary);
+}
+.agent-plan-card .plan-edit-input:focus {
+    outline: none;
+    border-color: var(--brand);
+}
+
+/* ================================================
+   #10 Token Usage Badge (成本追踪)
+   ================================================ */
+.token-usage-badge {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: default;
+    font-variant-numeric: tabular-nums;
+}

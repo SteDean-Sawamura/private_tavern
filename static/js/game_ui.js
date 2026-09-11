@@ -179,6 +179,51 @@ async function submitActionStream(action) {
                             msg.textContent = '已中断 (' + (parsed.label || '') + ')';
                             body.appendChild(msg);
                             agentControls.style.display = 'none';
+                        } else if (parsed.type === 'agent_plan') {
+                            // #9 计划可编辑: 显示计划确认/修改界面
+                            agentToolsWrap.style.display = '';
+                            agentControls.style.display = '';
+                            const body = agentToolsWrap.querySelector('.agent-tools-body');
+                            const planCard = document.createElement('div');
+                            planCard.className = 'agent-plan-card';
+                            planCard.innerHTML =
+                                '<div class="plan-label">Agent 计划</div>' +
+                                '<div class="plan-text">' + escapeHtml(parsed.plan || '') + '</div>' +
+                                '<div class="plan-actions">' +
+                                    '<button class="btn-primary btn-small plan-confirm-btn">确认执行</button>' +
+                                    '<input type="text" class="plan-edit-input" placeholder="修改计划..." />' +
+                                    '<button class="btn-secondary btn-small plan-edit-btn">修改后执行</button>' +
+                                '</div>';
+                            body.appendChild(planCard);
+                            // Wire confirm
+                            planCard.querySelector('.plan-confirm-btn').addEventListener('click', async () => {
+                                try {
+                                    const token = localStorage.getItem('tavern_api_token');
+                                    const hdrs = { 'Content-Type': 'application/json' };
+                                    if (token) hdrs['Authorization'] = 'Bearer ' + token;
+                                    await fetch('/api/game/' + currentSaveId + '/inject', {
+                                        method: 'POST', headers: hdrs,
+                                        body: JSON.stringify({ message: '确认，按计划执行' }),
+                                    });
+                                    planCard.querySelector('.plan-actions').innerHTML = '<span style="color:var(--success);font-size:0.8rem">已确认</span>';
+                                } catch (_) {}
+                            });
+                            // Wire edit
+                            planCard.querySelector('.plan-edit-btn').addEventListener('click', async () => {
+                                const editText = planCard.querySelector('.plan-edit-input').value.trim();
+                                if (!editText) return;
+                                try {
+                                    const token = localStorage.getItem('tavern_api_token');
+                                    const hdrs = { 'Content-Type': 'application/json' };
+                                    if (token) hdrs['Authorization'] = 'Bearer ' + token;
+                                    await fetch('/api/game/' + currentSaveId + '/inject', {
+                                        method: 'POST', headers: hdrs,
+                                        body: JSON.stringify({ message: '修改计划：' + editText }),
+                                    });
+                                    planCard.querySelector('.plan-actions').innerHTML = '<span style="color:var(--accent);font-size:0.8rem">已修改</span>';
+                                } catch (_) {}
+                            });
+                            _scrollToBottom();
                         } else if (parsed.type === 'user_inject') {
                             const body = agentToolsWrap.querySelector('.agent-tools-body');
                             const msg = document.createElement('div');
@@ -239,6 +284,18 @@ async function submitActionStream(action) {
                             _s('showMemoryEchoes', () => showMemoryEchoes(currentState));
                             _s('updateHeader', () => updateHeader());
                             _s('updateTurnIndicator', () => updateTurnIndicator());
+                            // #10 成本追踪: 显示 token 用量
+                            if (parsed.token_usage && parsed.token_usage.total > 0) {
+                                _s('showTokenUsage', () => {
+                                    const el = document.getElementById('token-usage');
+                                    if (el) {
+                                        const u = parsed.token_usage;
+                                        el.textContent = u.total + ' tokens';
+                                        el.title = 'Prompt: ' + u.prompt + ' / Completion: ' + u.completion;
+                                        el.style.display = '';
+                                    }
+                                });
+                            }
                             if (parsed.game_over) _s('showGameOver', () => showGameOver(parsed.game_over, parsed.game_statistics));
                         }
                     } catch (e) { console.warn('[stream-event]', e); }

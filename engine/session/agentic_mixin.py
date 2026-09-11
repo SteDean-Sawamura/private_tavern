@@ -31,6 +31,8 @@ class _AgentResult:
     """Holder for async-generator _agent_loop's final return value."""
     text: str = ""
     records: list = field(default_factory=list)
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 # Foreground (narration) tools: retrieval + scene presentation. Mutating tools
 # are deliberately excluded -- the background agent owns all state changes.
@@ -149,6 +151,7 @@ class AgenticMixin:
         msgs = list(messages)
         records: list[dict] = []
         content = ""
+        _continuation_prefix = ""  # #11: 截断续写时保存前一段文本
 
         for round_num in range(max_rounds):
             # --- abort check ---
@@ -165,7 +168,26 @@ class AgenticMixin:
             tc_list = resp.get("tool_calls") or []
             content = strip_think_tags(resp.get("content") or "")
 
+            # #11: 如果是续写轮次，拼接前段文本
+            if _continuation_prefix:
+                content = _continuation_prefix.rstrip("…——,，") + content
+                _continuation_prefix = ""
+
+            # #10 成本追踪: 累加 token 用量
+            usage = resp.get("usage") or {}
+            holder.prompt_tokens += usage.get("prompt_tokens", 0)
+            holder.completion_tokens += usage.get("completion_tokens", 0)
+
             if not tc_list:
+                # #11 叙事断点续写: 检测截断并自动续写
+                if content and self._looks_truncated(content) and round_num < max_rounds - 1:
+                    logger.info("[%s] 检测到叙事截断，自动续写 (第%d轮, %d字, 末尾: %s)",
+                                label, round_num + 1, len(content), repr(content[-10:]))
+                    _continuation_prefix = content
+                    msgs.append({"role": "assistant", "content": content})
+                    msgs.append({"role": "user", "content": "请继续完成叙事，直接续写。"})
+                    continue
+
                 text_preview = content[:80].replace('\n', ' ') if content else "(空)"
                 logger.info("[%s] 完成 (第%d轮, %d字): %s...", label, round_num + 1, len(content), text_preview)
                 holder.text = content
@@ -186,25 +208,28 @@ class AgenticMixin:
             ]
             msgs.append(assistant_msg)
 
-            for tc in tc_list:
-                name = tc.get("name", "")
-                args = tc.get("arguments") or {}
+            # 并行执行同一轮的多个工具调用
+            async def _execute_tool(tc_item):
+                t_name = tc_item.get("name", "")
+                t_args = tc_item.get("arguments") or {}
                 try:
-                    result = dispatch(name, args)
-                    if asyncio.iscoroutine(result):
-                        result = await result
+                    t_result = dispatch(t_name, t_args)
+                    if asyncio.iscoroutine(t_result):
+                        t_result = await t_result
                 except Exception as exc:
-                    logger.warning("[%s] 工具 %s 执行失败: %s — 返回错误让模型修正", label, name, exc)
+                    logger.warning("[%s] 工具 %s 执行失败: %s", label, t_name, exc)
                     error_ctx = {"error": str(exc)}
-                    if name.startswith("update_"):
+                    if t_name.startswith("update_"):
                         error_ctx["hint"] = "请检查参数格式和值范围后重试"
-                    result = json.dumps(error_ctx, ensure_ascii=False)
+                    t_result = json.dumps(error_ctx, ensure_ascii=False)
+                return tc_item, t_name, t_args, t_result
+
+            gather_results = await asyncio.gather(*[_execute_tool(tc) for tc in tc_list])
+
+            for tc, name, args, result in gather_results:
                 records.append({"name": name, "args": args, "result": result})
                 result_preview = str(result)[:120].replace('\n', ' ')
-                logger.info("[%s:R%d] %s(%s) → %s", label, round_num + 1, name,
-                           ", ".join(f"{k}={repr(v)[:30]}" for k, v in args.items()), result_preview)
-
-                # Yield tool-call event for SSE consumers
+                logger.info("[%s:R%d] %s → %s", label, round_num + 1, name, result_preview)
                 yield {
                     "type": "tool_call",
                     "label": label,
@@ -213,7 +238,6 @@ class AgenticMixin:
                     "tool_args": args,
                     "tool_result": str(result)[:500],
                 }
-
                 msgs.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
@@ -826,6 +850,22 @@ class AgenticMixin:
         logger.info("[%s] 结算工具调用 %d 次", "background", len(holder.records))
 
     # ================================================================
+    # Truncation detection (#11)
+    # ================================================================
+
+    @staticmethod
+    def _looks_truncated(text: str) -> bool:
+        """保守检测叙事是否被 max_tokens 截断。"""
+        text = (text or "").rstrip()
+        if not text or len(text) < 200:
+            return False
+        last_char = text[-1]
+        # 正常结尾字符
+        if last_char in "。！？」）…\n\"'":
+            return False
+        return True
+
+    # ================================================================
     # Audit helper
     # ================================================================
 
@@ -1001,6 +1041,16 @@ class AgenticMixin:
             "narrative_reasoning": _narrative_reasoning,
             "compose_msgs": [],
             "compose_sys": "",
+            "token_usage": {
+                "prompt": (fg_holder.prompt_tokens if fg_holder else 0)
+                         + (bg_holder.prompt_tokens if bg_holder else 0),
+                "completion": (fg_holder.completion_tokens if fg_holder else 0)
+                             + (bg_holder.completion_tokens if bg_holder else 0),
+                "total": (fg_holder.prompt_tokens if fg_holder else 0)
+                        + (fg_holder.completion_tokens if fg_holder else 0)
+                        + (bg_holder.prompt_tokens if bg_holder else 0)
+                        + (bg_holder.completion_tokens if bg_holder else 0),
+            },
         }
 
     # ================================================================
@@ -1131,7 +1181,18 @@ class AgenticMixin:
 
     def _build_unified_context(self, ctx: dict, player_action: dict) -> str:
         """Build per-turn user message for the unified agent (reuses foreground context)."""
-        return self._build_foreground_context(ctx, player_action)
+        parts = [self._build_foreground_context(ctx, player_action)]
+
+        # #5 注入跨轮经验
+        if hasattr(self, '_agent_experience') and self._agent_experience:
+            exp_lines = []
+            for exp in self._agent_experience[-3:]:
+                tools = ", ".join(exp.get("tools_used", [])[:5])
+                exp_lines.append(f"T{exp.get('turn', '?')}: {exp.get('plan', '无计划')[:50]} [{tools}]")
+            if exp_lines:
+                parts.append("<agent_experience>\n" + "\n".join(exp_lines) + "\n</agent_experience>")
+
+        return "\n\n".join(parts)
 
     def _build_unified_parsed(self, records: list[dict], ctx: dict) -> dict:
         """Merge tool call records into a parsed dict for _apply_parsed_response."""
@@ -1251,6 +1312,18 @@ class AgenticMixin:
 
         self._audit_settlement(parsed)
 
+        # #5 跨轮经验记录
+        experience = {
+            "turn": self.turn_number,
+            "plan": ctx.get("_agent_plan", ""),
+            "tools_used": [r["name"] for r in holder.records],
+            "reflection": ctx.get("_reflection", ""),
+            "narrative_length": len(narrative),
+        }
+        self._agent_experience.append(experience)
+        if len(self._agent_experience) > 5:
+            self._agent_experience.pop(0)
+
         yield {
             "type": "pipeline_result",
             "narrative": narrative,
@@ -1261,6 +1334,11 @@ class AgenticMixin:
             "narrative_reasoning": _narrative_reasoning,
             "compose_msgs": [],
             "compose_sys": "",
+            "token_usage": {
+                "prompt": holder.prompt_tokens,
+                "completion": holder.completion_tokens,
+                "total": holder.prompt_tokens + holder.completion_tokens,
+            },
         }
 
     async def _dispatch_unified_tool(self, ctx: dict, name: str, args: dict):
@@ -1269,8 +1347,13 @@ class AgenticMixin:
         if name == "submit_plan":
             plan = args.get("plan", "")
             ctx["_agent_plan"] = plan
-            logger.info("[统一Agent] 计划: %s", plan[:100])
-            return "计划已记录。请继续执行。"
+            ctx["_plan_awaiting_confirmation"] = True
+            logger.info("[统一Agent] 计划待确认: %s", plan[:100])
+            return (
+                f"计划已提交，等待用户确认。用户可能会修改计划。\n\n"
+                f"你的计划：{plan}\n\n"
+                "请等待用户响应后再继续。如果下一条消息是用户的修改意见，按修改后的方向执行。"
+            )
 
         # Info tools
         if name in ("recall_history", "query_lorebook", "query_npc_history",
@@ -1310,6 +1393,10 @@ class AgenticMixin:
         # --- #6 规则咨询 ---
         if name == "consult_rules":
             return self._handle_consult_rules(args)
+
+        # --- #8 事件预演 ---
+        if name == "peek_upcoming_events":
+            return self._handle_peek_upcoming_events(args)
 
         return json.dumps({"error": f"未知工具: {name}"})
 
@@ -1414,6 +1501,56 @@ class AgenticMixin:
             answers.append("无法确定，请根据叙事自行判断")
 
         return json.dumps({"answers": answers}, ensure_ascii=False)
+
+    def _handle_peek_upcoming_events(self, args: dict) -> str:
+        """预览即将触发的事件（hint 级别，不剧透）。"""
+        hours = min(args.get("hours_ahead", 3), 6)
+        game_time = self.current_state.get("game_time", "")
+        events = []
+
+        if game_time:
+            try:
+                from datetime import datetime, timedelta
+                current = datetime.fromisoformat(game_time.replace("Z", "+00:00"))
+                deadline = current + timedelta(hours=hours)
+
+                # 检查 one_time_events
+                for evt in self.script.get("one_time_events", []):
+                    trigger = evt.get("trigger_time", "")
+                    if not trigger:
+                        continue
+                    try:
+                        trigger_dt = datetime.fromisoformat(trigger.replace("Z", "+00:00"))
+                        if current < trigger_dt <= deadline:
+                            events.append({
+                                "name": evt.get("name", ""),
+                                "hint": evt.get("description", "")[:100],
+                                "time": trigger,
+                            })
+                    except Exception:
+                        pass
+
+                # 检查 cyclic_events
+                for evt in self.script.get("cyclic_events", []):
+                    next_trigger = evt.get("first_trigger", "")
+                    if not next_trigger:
+                        continue
+                    try:
+                        trigger_dt = datetime.fromisoformat(next_trigger.replace("Z", "+00:00"))
+                        if current < trigger_dt <= deadline:
+                            events.append({
+                                "name": evt.get("name", ""),
+                                "hint": f"循环事件（{evt.get('frequency_unit', '')}）",
+                                "time": next_trigger,
+                            })
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        if not events:
+            return json.dumps({"events": [], "note": "未来几小时无重大事件"}, ensure_ascii=False)
+        return json.dumps({"events": events[:5]}, ensure_ascii=False)
 
     # ================================================================
     # Intent shortcuts (rewrite / query) — no turn advancement

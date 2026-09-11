@@ -202,8 +202,16 @@ class OpenAIProvider(AIProvider):
         if reasoning and "<think>" not in content.lower():
             content = f"<think>{reasoning}</think>{content}"
 
+        # Extract usage if available
+        usage_data = {}
+        raw_usage = getattr(response, "usage", None)
+        if raw_usage:
+            usage_data["prompt_tokens"] = getattr(raw_usage, "prompt_tokens", 0) or 0
+            usage_data["completion_tokens"] = getattr(raw_usage, "completion_tokens", 0) or 0
+
         return {
             "content": strip_think_tags(content),
             "reasoning_content": reasoning,
             "tool_calls": tool_calls,
+            "usage": usage_data,
         }

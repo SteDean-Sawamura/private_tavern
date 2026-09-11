@@ -698,7 +698,15 @@ def _unified_tools() -> list[dict]:
         }},
     ]
 
-    UNIFIED_TOOLS_SCHEMA = plan_tool + info_tools + action_tools + output_tools + graph_tools
+    UNIFIED_TOOLS_SCHEMA = plan_tool + info_tools + action_tools + output_tools + graph_tools + [
+        {"type": "function", "function": {
+            "name": "peek_upcoming_events",
+            "description": "预览接下来 1-6 小时内即将触发的游戏事件（用于叙事铺垫，不暴露具体内容给主角）",
+            "parameters": {"type": "object", "properties": {
+                "hours_ahead": {"type": "integer", "description": "向前看几小时（1-6）", "default": 3},
+            }},
+        }},
+    ]
     return UNIFIED_TOOLS_SCHEMA
 
 
@@ -817,6 +825,7 @@ class GameSession(
         self._opening_draft = None
         self.narrative_graph = NarrativeGraph()
         self.player_model = PlayerModel()
+        self._agent_experience: list[dict] = []  # 最近 5 轮的 Agent 工具调用摘要
 
     def _stage_kwargs(self, stage: str) -> dict:
         model = self.stage_models.get(stage)
@@ -2066,6 +2075,7 @@ class GameSession(
         narrative = ""
         parsed = {}
         _narrative_reasoning = ""
+        _token_usage = None
         if self._agentic_unified_enabled():
             pipeline = self._execute_unified_agent(ctx, route, player_action, streaming=True)
         elif self._agentic_enabled():
@@ -2078,6 +2088,7 @@ class GameSession(
                 parsed = item["parsed"]
                 _warnings = item["warnings"]
                 _narrative_reasoning = item.get("narrative_reasoning", "")
+                _token_usage = item.get("token_usage")
             else:
                 yield item  # thinking/text/narrative_revised
 
@@ -2155,7 +2166,7 @@ class GameSession(
         else:
             result["scene_image"] = None
 
-        yield {"type": "final", **result}
+        yield {"type": "final", **result, **({"token_usage": _token_usage} if _token_usage else {})}
 
     async def branch_to_node(self, node_id: str) -> dict | None:
         """Switch to a different branch by loading a past node's state."""
