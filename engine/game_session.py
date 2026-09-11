@@ -1513,11 +1513,13 @@ class GameSession(
     def _agentic_enabled(self) -> bool:
         """True when PIPELINE_MODE == 'agentic' and the provider supports native tools."""
         import config
-        if getattr(config, "PIPELINE_MODE", "workflow") != "agentic":
-            return False
-        if not hasattr(self.ai_provider, "generate_with_tools"):
-            return False
-        return bool(self.script.get("settings", {}).get("ai_tools_enabled", True))
+        mode = getattr(config, "PIPELINE_MODE", "workflow")
+        has_tools = hasattr(self.ai_provider, "generate_with_tools")
+        ai_enabled = bool(self.script.get("settings", {}).get("ai_tools_enabled", True))
+        result = mode == "agentic" and has_tools and ai_enabled
+        if mode == "agentic" and not result:
+            logger.warning("agentic 模式未生效: mode=%s, has_tools=%s, ai_enabled=%s", mode, has_tools, ai_enabled)
+        return result
 
     async def process_action(self, player_action: dict) -> dict:
         """Process a player action and return the result.
