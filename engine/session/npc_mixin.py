@@ -946,6 +946,26 @@ class NpcMixin:
             if new_att is None:
                 continue
             if npc_id not in old_attitudes:
+                # 新 NPC：不产生"降至/升至"通知，改为"建立关系"
+                npc_name = self._get_npc_display_name(npc_id)
+                reason = reason_map.get(npc_id, "")
+                for threshold, above_label, below_label in self._ATTITUDE_THRESHOLDS:
+                    if new_att >= threshold:
+                        level = above_label
+                        break
+                else:
+                    level = "冷淡"
+                msg = f"与{npc_name}建立了联系（{level}）"
+                if reason:
+                    msg += f"（{reason}）"
+                notifications.append({
+                    "npc_id": npc_id,
+                    "npc_name": npc_name,
+                    "direction": "up",
+                    "new_level": level,
+                    "reason": reason,
+                    "message": msg,
+                })
                 continue
             old_att = old_attitudes[npc_id]
             if old_att == new_att:
