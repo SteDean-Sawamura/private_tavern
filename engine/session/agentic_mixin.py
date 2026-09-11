@@ -94,6 +94,13 @@ FOREGROUND_TOOLS_SCHEMA = [
             "style": {"type": "string", "enum": ["realistic", "anime", "pixel"], "description": "风格"},
         }, "required": ["prompt"]},
     }},
+    {"type": "function", "function": {
+        "name": "review_narrative",
+        "description": "审查你刚写的叙事文本，检查认知越界/人称错误/NPC声线偏差/决策越权等问题。在输出最终叙事前调用此工具做自查",
+        "parameters": {"type": "object", "properties": {
+            "narrative": {"type": "string", "description": "要审查的叙事文本"},
+        }, "required": ["narrative"]},
+    }},
 ]
 
 # Background (settlement) tools: state mutation + NPC reaction + choices.
@@ -160,7 +167,9 @@ class AgenticMixin:
                 args = tc.get("arguments") or {}
                 try:
                     result = dispatch(name, args)
-                except Exception as exc:  # tool errors must not kill the turn
+                    if asyncio.iscoroutine(result):
+                        result = await result
+                except Exception as exc:
                     logger.warning("[%s] 工具 %s 执行失败: %s", label, name, exc)
                     result = json.dumps({"error": str(exc)}, ensure_ascii=False)
                 records.append({"name": name, "args": args, "result": result})
@@ -179,7 +188,7 @@ class AgenticMixin:
     # Foreground agent -- retrieval + narration
     # ================================================================
 
-    def _dispatch_foreground_tool(self, ctx: dict, name: str, args: dict) -> str:
+    async def _dispatch_foreground_tool(self, ctx: dict, name: str, args: dict) -> str:
         """Execute a foreground tool. Scene tools record into ctx, no state mutation."""
         if name == "set_atmosphere":
             ctx["atmosphere"] = args
@@ -192,8 +201,30 @@ class AgenticMixin:
                 return "错误: prompt 为空，已忽略"
             ctx["scene_image_prompt"] = args
             return "场景图生成已记录"
+        if name == "review_narrative":
+            return await self._review_narrative_tool(args.get("narrative", ""), ctx)
         # Retrieval / dice tools reuse the native executor
         return self._run_tool_native(name, args)
+
+    async def _review_narrative_tool(self, narrative: str, ctx: dict) -> str:
+        """LLM-based narrative review. Calls the same review prompt as Stage 3.5."""
+        if not narrative.strip():
+            return "错误：叙事为空"
+        try:
+            state = self.current_state
+            pc_name = state.get("player", {}).get("name", "")
+            present_ids = ctx.get("present_npc_ids", [])
+            review_msgs, review_sys = self.prompt_builder.build_narrative_review_prompt(
+                narrative, state, present_npc_ids=present_ids, pc_name=pc_name,
+            )
+            raw = await self.ai_provider.generate(
+                review_msgs, system=review_sys, max_tokens=500,
+                **self._stage_kwargs("state")
+            )
+            return raw.strip() if raw else "审查完成，未返回结果"
+        except Exception as e:
+            logger.warning("review_narrative_tool 失败: %s", e)
+            return f"审查调用失败: {e}"
 
     def _build_foreground_context(self, ctx: dict, player_action: dict) -> str:
         """Minimal per-turn context for the foreground agent."""
@@ -260,8 +291,8 @@ class AgenticMixin:
         user = self._build_foreground_context(ctx, player_action)
         messages = [{"role": "user", "content": user}]
 
-        def _dispatch(name: str, args: dict) -> str:
-            return self._dispatch_foreground_tool(ctx, name, args)
+        async def _dispatch(name: str, args: dict) -> str:
+            return await self._dispatch_foreground_tool(ctx, name, args)
 
         narrative, records = await self._agent_loop(
             messages, system, FOREGROUND_TOOLS_SCHEMA, _dispatch,
