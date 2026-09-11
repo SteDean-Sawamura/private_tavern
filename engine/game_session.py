@@ -441,6 +441,144 @@ SETTLEMENT_UTILITY_TOOLS = [
     },
 ]
 
+# ── Agentic 路径：合并后的 4 工具（原 10 工具合并，workflow 路径不受影响）──
+
+CONSOLIDATED_SETTLEMENT_TOOLS = [
+    # 1. update_state — 合并 time + resources + spatial + world
+    {"type": "function", "function": {
+        "name": "update_state",
+        "description": "更新游戏状态（所有字段可选，只填需要变更的）",
+        "parameters": {"type": "object", "properties": {
+            "end_time": {
+                "type": "string",
+                "description": "场景结束时间，ISO 8601格式（如1979-10-26T10:00:00）。每轮必填",
+            },
+            "state_changes": {
+                "type": "array",
+                "description": '属性变更。每项: {"target":"player.属性名","op":"add|subtract|set","value":数值,"reason":"原因(add/subtract时必填)"}',
+                "items": {"type": "object", "properties": {
+                    "target": {"type": "string"}, "op": {"type": "string", "enum": ["add", "subtract", "set"]},
+                    "value": {}, "reason": {"type": "string"},
+                }, "required": ["target", "op", "value"]},
+            },
+            "inventory_changes": {
+                "type": "array",
+                "description": '物品变更。每项: {"item":"物品名","action":"add|remove","quantity":1}。add限制：只能添加叙事中明确描写获取的物品',
+                "items": {"type": "object", "properties": {
+                    "item": {"type": "string"}, "action": {"type": "string", "enum": ["add", "remove"]},
+                    "quantity": {"type": "integer", "default": 1}, "description": {"type": "string"},
+                }, "required": ["item", "action"]},
+            },
+            "activate_states": {
+                "type": "array",
+                "description": '激活持续状态。每项: {"id":"状态ID","name":"中文显示名称（必填）","description":"一句话描述"}',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "name": {"type": "string"}, "description": {"type": "string"},
+                }, "required": ["id", "name"]},
+            },
+            "deactivate_states": {
+                "type": "array", "description": "要移除的状态ID列表",
+                "items": {"type": "string"},
+            },
+            "game_over": {
+                "type": "object", "description": '游戏结束时填写: {"reason":"","ending_type":""}',
+                "properties": {"reason": {"type": "string"}, "ending_type": {"type": "string"}},
+            },
+            "location_change": {
+                "type": "string",
+                "description": "玩家回合结束时所在位置ID（必须从已知地点列表复制，未移动则省略）",
+            },
+            "reveal_locations": {
+                "type": "array", "description": '新发现地点: [{"id":"位置ID","name":"显示名称"}]',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "name": {"type": "string"},
+                }, "required": ["id", "name"]},
+            },
+            "npc_location_changes": {
+                "type": "array",
+                "description": '本回合在场NPC位置变动: [{"npc_id":"","new_location":"位置ID","reason":"原因"}]',
+                "items": {"type": "object", "properties": {
+                    "npc_id": {"type": "string"}, "new_location": {"type": "string"}, "reason": {"type": "string"},
+                }, "required": ["npc_id", "new_location"]},
+            },
+            "room_changes": {
+                "type": "array",
+                "description": '同一建筑内房间级移动: [{"id":"npc_id或player","new_room":"房间名","reason":"原因"}]',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "new_room": {"type": "string"}, "reason": {"type": "string"},
+                }, "required": ["id", "new_room"]},
+            },
+            "scene_details": {
+                "type": "object",
+                "description": '场景描写: {"atmosphere":"","sensory":"","key_objects":[]}',
+                "properties": {
+                    "atmosphere": {"type": "string"}, "sensory": {"type": "string"},
+                    "key_objects": {"type": "array", "items": {"type": "string"}},
+                    "physical": {"type": "object", "properties": {
+                        "lighting": {"type": "string"}, "floor": {"type": "string"}, "spatial_note": {"type": "string"},
+                    }},
+                },
+            },
+            "world_property_changes": {
+                "type": "array",
+                "description": '世界属性变更: [{"id":"属性ID","value":"新值"}]。只写宏观世界级变量，不写物件状态',
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"}, "value": {"type": "string"},
+                }, "required": ["id", "value"]},
+            },
+        }},
+    }},
+    # 2. manage_npcs — 合并 lookup + extended + attitude
+    {"type": "function", "function": {
+        "name": "manage_npcs",
+        "description": "NPC管理：查找、注册、更新态度、记录离屏动态、阵营声望。用operations数组按顺序执行",
+        "parameters": {"type": "object", "properties": {
+            "operations": {
+                "type": "array",
+                "description": (
+                    '操作列表。每个操作的op字段决定类型：\n'
+                    '- lookup: {"op":"lookup","name":"NPC名字或ID"} — 注册前必须先查找\n'
+                    '- register: {"op":"register","id":"英文蛇形ID","name":"全名","bio":"...","location":"..."} — 注册新NPC\n'
+                    '- attitude: {"op":"attitude","npc_id":"","dimension":"trust|affection|fear","change":±数值,"reason":"..."}\n'
+                    '- offscreen: {"op":"offscreen","name":"NPC全名","action":"简述行动","location":"当前位置"}\n'
+                    '- faction: {"op":"faction","faction":"阵营ID","delta":±数值,"reason":"..."}\n'
+                    '- moral: {"op":"moral","axis":"mercy_vs_cruelty|honesty_vs_deception|order_vs_chaos","change":±数值,"reason":"..."}\n'
+                    '- recruit: {"op":"recruit","npc_id":"加入队伍的NPC ID"}\n'
+                    '- dismiss: {"op":"dismiss","npc_id":"离队的NPC ID"}'
+                ),
+                "items": {"type": "object"},
+            },
+        }, "required": ["operations"]},
+    }},
+    # 3. add_choices — 批量版
+    {"type": "function", "function": {
+        "name": "add_choices",
+        "description": "批量添加玩家选项（必须恰好4个行动选项）",
+        "parameters": {"type": "object", "properties": {
+            "choices": {
+                "type": "array",
+                "items": {"type": "object", "properties": {
+                    "id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "hint": {"type": "string"},
+                    "risk": {"type": "string", "enum": ["safe", "moderate", "risky"]},
+                    "time_hint": {"type": "string"},
+                }, "required": ["id", "text"]},
+            },
+        }, "required": ["choices"]},
+    }},
+    # 4. set_turn_meta — 合并 summary + image
+    {"type": "function", "function": {
+        "name": "set_turn_meta",
+        "description": "设置本轮元数据：摘要（必须）和场景图（可选）",
+        "parameters": {"type": "object", "properties": {
+            "summary": {"type": "string", "description": "一句话摘要，20字以内（必须）"},
+            "image_prompt": {"type": "string", "description": "场景图英文描述（可选）"},
+            "image_style": {"type": "string", "enum": ["realistic", "anime", "pixel"]},
+        }, "required": ["summary"]},
+    }},
+]
+
 
 def _extract_reasoning(raw: str) -> str:
     """Extract content inside <think>...</think> tags. Returns empty string if none."""

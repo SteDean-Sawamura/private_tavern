@@ -116,13 +116,11 @@ SETTLEMENT_TOOLS_SCHEMA = None  # resolved lazily from engine.game_session
 
 
 def _settlement_tools() -> list[dict]:
-    """State / NPC-reaction / choices schemas (imported lazily to avoid cycles)."""
+    """Consolidated 4-tool schema for agentic settlement (imported lazily to avoid cycles)."""
     global SETTLEMENT_TOOLS_SCHEMA
     if SETTLEMENT_TOOLS_SCHEMA is None:
-        from engine.game_session import (
-            STATE_TOOLS_SCHEMA, NPC_REACTION_TOOLS, CHOICES_TOOLS, SETTLEMENT_UTILITY_TOOLS,
-        )
-        SETTLEMENT_TOOLS_SCHEMA = STATE_TOOLS_SCHEMA + NPC_REACTION_TOOLS + CHOICES_TOOLS + SETTLEMENT_UTILITY_TOOLS
+        from engine.game_session import CONSOLIDATED_SETTLEMENT_TOOLS
+        SETTLEMENT_TOOLS_SCHEMA = CONSOLIDATED_SETTLEMENT_TOOLS
     return SETTLEMENT_TOOLS_SCHEMA
 
 
@@ -565,61 +563,185 @@ class AgenticMixin:
     # ================================================================
 
     def _dispatch_settlement_tool(self, name: str, args: dict) -> str:
-        """Execute a settlement tool. State tools buffer + validate; NPC/choice tools buffer."""
-        if name == "update_npc_attitude":
-            return self._run_npc_reaction_tool(name, args)
-        if name == "add_choice":
-            return self._run_choices_tool(name, args)
-        if name == "lookup_npc":
-            query = args.get("query", "").strip()
-            npcs = self.current_state.get("npcs", {})
-            # 按 ID 精确查找
-            if query in npcs:
-                npc = npcs[query]
-                return json.dumps({"found": True, "id": query, "name": npc.get("name", query)}, ensure_ascii=False)
-            # 按名字模糊查找
-            for nid, ndata in npcs.items():
-                if isinstance(ndata, dict) and query in (ndata.get("name", ""), nid):
-                    return json.dumps({"found": True, "id": nid, "name": ndata.get("name", nid)}, ensure_ascii=False)
-            # 在剧本 NPC 列表中查找
-            for npc in self.script.get("npcs", []):
-                if query in (npc.get("name", ""), npc.get("id", "")):
-                    return json.dumps({"found": True, "id": npc["id"], "name": npc.get("name", ""), "source": "script"}, ensure_ascii=False)
-            return json.dumps({"found": False}, ensure_ascii=False)
-        if name == "set_turn_summary":
-            summary = args.get("summary", "").strip()
-            if summary:
-                self._turn_summary_override = summary
-            return "摘要已设置: " + summary[:30]
-        if name == "set_scene_image_prompt":
-            prompt = args.get("prompt", "").strip()
-            if prompt:
-                self._scene_image_prompt_override = {"prompt": prompt, "style": args.get("style", "realistic")}
-            return "图片 prompt 已设置"
-        # Bug 1 fix: 立即注册新 NPC 到 state，使同轮 update_npc_attitude 能找到
-        if name == "update_extended":
-            new_npcs = args.get("new_npcs", [])
-            player_id = self.current_state.get("player", {}).get("id", "player")
-            player_name = self.current_state.get("player", {}).get("name", "")
-            for npc in new_npcs:
-                npc_id = npc.get("id", "")
-                npc_name = npc.get("name", "")
-                # 跳过玩家角色
-                if npc_id == player_id or (player_name and npc_name == player_name):
-                    logger.warning("跳过注册玩家角色为NPC: %s/%s", npc_id, npc_name)
-                    continue
-                # 跳过已存在的 NPC
-                if npc_id and npc_id in self.current_state.get("npcs", {}):
-                    logger.info("NPC %s 已存在，跳过重复注册", npc_id)
-                    continue
-                if npc_id:
-                    self.current_state.setdefault("npcs", {})[npc_id] = {
-                        "name": npc.get("name", npc_id),
-                        "bio": npc.get("bio", ""),
-                        "attitude_toward_player": npc.get("attitude_toward_player", 50),
-                    }
-                    self._npc_by_id[npc_id] = self.current_state["npcs"][npc_id]
-        return self._run_state_tool(name, args)
+        """Execute a consolidated settlement tool. Routes to existing validators."""
+        if name == "update_state":
+            return self._handle_update_state(args)
+        if name == "manage_npcs":
+            return self._handle_manage_npcs(args)
+        if name == "add_choices":
+            return self._handle_add_choices(args)
+        if name == "set_turn_meta":
+            return self._handle_set_turn_meta(args)
+        return f"未知工具: {name}"
+
+    # ── update_state: 拆分到原有 _run_state_tool 验证 ──
+
+    _UPDATE_STATE_RES_KEYS = ("state_changes", "inventory_changes", "activate_states", "deactivate_states", "game_over")
+    _UPDATE_STATE_SPATIAL_KEYS = ("location_change", "reveal_locations", "npc_location_changes", "room_changes", "scene_details")
+
+    def _handle_update_state(self, args: dict) -> str:
+        results = []
+        if "end_time" in args:
+            results.append(self._run_state_tool("update_time", {"end_time": args["end_time"]}))
+        res_args = {k: args[k] for k in self._UPDATE_STATE_RES_KEYS if k in args}
+        if res_args:
+            results.append(self._run_state_tool("update_resources", res_args))
+        sp_args = {k: args[k] for k in self._UPDATE_STATE_SPATIAL_KEYS if k in args}
+        if sp_args:
+            results.append(self._run_state_tool("update_spatial", sp_args))
+        if "world_property_changes" in args:
+            results.append(self._run_state_tool("update_world", {"world_property_changes": args["world_property_changes"]}))
+        return " | ".join(results) if results else "无状态变更"
+
+    # ── manage_npcs: 遍历 operations 分发 ──
+
+    def _handle_manage_npcs(self, args: dict) -> str:
+        results = []
+        for op in args.get("operations", []):
+            op_type = op.get("op", "")
+            if op_type == "lookup":
+                results.append(self._dispatch_npc_lookup(op.get("name", "")))
+            elif op_type == "register":
+                results.append(self._dispatch_npc_register(op))
+            elif op_type == "attitude":
+                results.append(self._run_npc_reaction_tool("update_npc_attitude", {
+                    "npc_id": op.get("npc_id", ""),
+                    "dimension": op.get("dimension", ""),
+                    "change": op.get("change", 0),
+                    "reason": op.get("reason", ""),
+                }))
+            elif op_type == "offscreen":
+                results.append(self._run_state_tool("update_extended", {
+                    "offscreen_npc_updates": [{
+                        "name": op.get("name", ""),
+                        "action": op.get("action", ""),
+                        "location": op.get("location", ""),
+                    }],
+                }))
+            elif op_type == "faction":
+                results.append(f"已记录阵营 {op.get('faction', '?')} 声望变化: {op.get('delta', 0):+d}")
+            elif op_type == "moral":
+                results.append(f"已记录道德维度 {op.get('axis', '?')} 变化: {op.get('change', 0):+d}")
+            elif op_type == "recruit":
+                results.append(f"已记录 {op.get('npc_id', '?')} 加入队伍")
+            elif op_type == "dismiss":
+                results.append(f"已记录 {op.get('npc_id', '?')} 离队")
+            else:
+                results.append(f"未知操作类型: {op_type}")
+        return " | ".join(results) if results else "无NPC操作"
+
+    def _dispatch_npc_lookup(self, query: str) -> str:
+        """NPC lookup by name or ID (same logic as old lookup_npc tool)."""
+        query = query.strip()
+        npcs = self.current_state.get("npcs", {})
+        if query in npcs:
+            npc = npcs[query]
+            return json.dumps({"found": True, "id": query, "name": npc.get("name", query)}, ensure_ascii=False)
+        for nid, ndata in npcs.items():
+            if isinstance(ndata, dict) and query in (ndata.get("name", ""), nid):
+                return json.dumps({"found": True, "id": nid, "name": ndata.get("name", nid)}, ensure_ascii=False)
+        for npc in self.script.get("npcs", []):
+            if query in (npc.get("name", ""), npc.get("id", "")):
+                return json.dumps({"found": True, "id": npc["id"], "name": npc.get("name", ""), "source": "script"}, ensure_ascii=False)
+        return json.dumps({"found": False}, ensure_ascii=False)
+
+    def _dispatch_npc_register(self, op: dict) -> str:
+        """Immediately register a new NPC so same-turn attitude changes work."""
+        npc_id = op.get("id", "")
+        npc_name = op.get("name", "")
+        player_id = self.current_state.get("player", {}).get("id", "player")
+        player_name = self.current_state.get("player", {}).get("name", "")
+        if npc_id == player_id or (player_name and npc_name == player_name):
+            logger.warning("跳过注册玩家角色为NPC: %s/%s", npc_id, npc_name)
+            return f"跳过: {npc_name} 是玩家角色"
+        if npc_id and npc_id in self.current_state.get("npcs", {}):
+            logger.info("NPC %s 已存在，跳过重复注册", npc_id)
+            return json.dumps({"registered": False, "id": npc_id, "reason": "already_exists"}, ensure_ascii=False)
+        if npc_id:
+            self.current_state.setdefault("npcs", {})[npc_id] = {
+                "name": npc_name or npc_id,
+                "bio": op.get("bio", ""),
+                "attitude_toward_player": op.get("attitude_toward_player", 50),
+            }
+            self._npc_by_id[npc_id] = self.current_state["npcs"][npc_id]
+        return json.dumps({"registered": True, "id": npc_id}, ensure_ascii=False)
+
+    # ── add_choices: 批量 ──
+
+    def _handle_add_choices(self, args: dict) -> str:
+        results = []
+        for choice in args.get("choices", []):
+            results.append(self._run_choices_tool("add_choice", choice))
+        return " | ".join(results) if results else "无选项"
+
+    # ── set_turn_meta: summary + image ──
+
+    def _handle_set_turn_meta(self, args: dict) -> str:
+        parts = []
+        summary = args.get("summary", "").strip()
+        if summary:
+            self._turn_summary_override = summary
+            parts.append("摘要已设置: " + summary[:30])
+        image_prompt = args.get("image_prompt", "").strip()
+        if image_prompt:
+            self._scene_image_prompt_override = {
+                "prompt": image_prompt,
+                "style": args.get("image_style", "realistic"),
+            }
+            parts.append("图片 prompt 已设置")
+        return " | ".join(parts) if parts else "无元数据"
+
+    # ── 合并工具 → 旧工具格式转换（供 _merge_state_tool_results 复用）──
+
+    @staticmethod
+    def _explode_update_state(args: dict) -> list[dict]:
+        """Convert one update_state call into old-style tool calls for merging."""
+        calls = []
+        if "end_time" in args:
+            calls.append({"name": "update_time", "args": {"end_time": args["end_time"]}})
+        _res_keys = ("state_changes", "inventory_changes", "activate_states", "deactivate_states", "game_over")
+        res_args = {k: args[k] for k in _res_keys if k in args}
+        if res_args:
+            calls.append({"name": "update_resources", "args": res_args})
+        _sp_keys = ("location_change", "reveal_locations", "npc_location_changes", "room_changes", "scene_details")
+        sp_args = {k: args[k] for k in _sp_keys if k in args}
+        if sp_args:
+            calls.append({"name": "update_spatial", "args": sp_args})
+        if "world_property_changes" in args:
+            calls.append({"name": "update_world", "args": {"world_property_changes": args["world_property_changes"]}})
+        return calls
+
+    @staticmethod
+    def _explode_manage_npcs(args: dict) -> list[dict]:
+        """Extract state-level operations from manage_npcs into old-style update_extended calls."""
+        ext: dict = {}
+        for op in args.get("operations", []):
+            op_type = op.get("op", "")
+            if op_type == "register":
+                npc_entry = {k: op[k] for k in ("id", "name", "title", "bio", "personality",
+                             "location", "trust", "affection", "fear") if k in op}
+                ext.setdefault("new_npcs", []).append(npc_entry)
+            elif op_type == "offscreen":
+                ext.setdefault("offscreen_npc_updates", []).append({
+                    "name": op.get("name", ""), "action": op.get("action", ""),
+                    "location": op.get("location", ""),
+                })
+            elif op_type == "faction":
+                ext.setdefault("faction_reputation_changes", []).append({
+                    "faction_id": op.get("faction", ""), "change": op.get("delta", 0),
+                    "reason": op.get("reason", ""),
+                })
+            elif op_type == "moral":
+                ext.setdefault("moral_alignment_changes", []).append({
+                    "axis": op.get("axis", ""), "change": op.get("change", 0),
+                    "reason": op.get("reason", ""),
+                })
+            elif op_type == "recruit":
+                ext.setdefault("recruit_companions", []).append(op.get("npc_id", ""))
+            elif op_type == "dismiss":
+                ext.setdefault("dismiss_companions", []).append(op.get("npc_id", ""))
+            # lookup / attitude are handled during dispatch (buffered), not in merge
+        return [{"name": "update_extended", "args": ext}] if ext else []
 
     def _build_settlement_system(self) -> str:
         """Load the settlement agent system prompt from YAML."""
@@ -671,12 +793,9 @@ class AgenticMixin:
         messages = [{"role": "user", "content": "\n\n".join(user_parts)}]
 
         # 按 route skip 标志裁剪后台工具集
+        # 合并工具后，NPC态度是 manage_npcs 的子操作，不再单独移除工具
+        # skip 标志通过 skip_hints 文本传递给 Agent
         tools = list(_settlement_tools())
-        if route:
-            if route.get("skip_npc_reaction"):
-                tools = [t for t in tools if t["function"]["name"] != "update_npc_attitude"]
-            # add_choice 永远保留——route 的 skip_choices 判断常不准确
-            # skip_choices 只作为 hint 传给 Agent，不移除工具
 
         holder = _AgentResult()
         async for event in self._agent_loop(
@@ -806,11 +925,14 @@ class AgenticMixin:
             self._abort_flag = False
 
         # Merge settlement tool calls -> parsed (same shape as parse_split_v3)
-        parsed = self._merge_state_tool_results(
-            [{"name": c["name"], "args": c["args"]} for c in bg_calls
-            if c["name"] in ("update_resources", "update_spatial", "update_time",
-                             "update_world", "update_extended")]
-        )
+        # Explode consolidated tools into old-style calls for _merge_state_tool_results
+        state_calls = []
+        for c in bg_calls:
+            if c["name"] == "update_state":
+                state_calls.extend(self._explode_update_state(c["args"]))
+            elif c["name"] == "manage_npcs":
+                state_calls.extend(self._explode_manage_npcs(c["args"]))
+        parsed = self._merge_state_tool_results(state_calls)
         # NPC attitude + choices buffers
         self._merge_npc_reaction_tool_results(parsed)
         self._merge_choices_tool_results(parsed)
