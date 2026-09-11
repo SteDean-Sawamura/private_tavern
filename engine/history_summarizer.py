@@ -1,5 +1,6 @@
 """History summarizer: compresses old game turns into layered summaries to save tokens."""
 
+import asyncio
 import json
 import re
 
@@ -151,3 +152,61 @@ class HistorySummarizer:
             current_state["history_summary"] = narrative
 
         return current_state
+
+    async def compress_dual_channel(self, narrative_history: list, state_history: list,
+                                     ai_provider, turn_number: int) -> dict:
+        """双通道压缩：叙事和状态分别压缩
+
+        Returns: {
+            "narrative_summary": str,   # 叙事摘要（人物/剧情/关系）
+            "state_summary": str,       # 状态摘要（属性变化/事件/位置）
+            "compressed_turns": int,    # 压缩了多少轮
+        }
+        """
+        # 通道1：叙事压缩
+        narrative_texts = [h.get("narrative", "") for h in narrative_history if h.get("narrative")]
+        narrative_prompt = (
+            "请概括以下叙事历史的关键信息：\n"
+            "1. 主要人物形象、性格、关系变化\n"
+            "2. 重要剧情发展和结果\n"
+            "3. 未解的悬念和伏笔\n"
+            "合并重复，省略琐碎，摘要应显著短于原文。\n\n"
+            + "\n---\n".join(narrative_texts[-10:])
+        )
+
+        # 通道2：状态压缩
+        state_texts = []
+        for h in state_history[-10:]:
+            changes = h.get("state_changes", [])
+            if changes:
+                state_texts.append(f"T{h.get('turn', '?')}: " +
+                                 ", ".join(f"{c.get('target')}={c.get('value')}" for c in changes[:5]))
+
+        state_prompt = (
+            ("请概括以下游戏状态变化历史：\n"
+             "1. 属性趋势（上升/下降/稳定）\n"
+             "2. 重要事件触发\n"
+             "3. 位置移动轨迹\n"
+             "4. NPC 关系变化趋势\n\n"
+             + "\n".join(state_texts)) if state_texts else "无状态变化"
+        )
+
+        # 并行压缩两个通道
+        narrative_task = ai_provider.generate(
+            [{"role": "user", "content": narrative_prompt}],
+            system="你是叙事摘要专家。输出精炼的摘要。",
+            max_tokens=1000,
+        )
+        state_task = ai_provider.generate(
+            [{"role": "user", "content": state_prompt}],
+            system="你是游戏状态分析师。输出结构化的状态趋势摘要。",
+            max_tokens=500,
+        )
+
+        narrative_summary, state_summary = await asyncio.gather(narrative_task, state_task)
+
+        return {
+            "narrative_summary": (narrative_summary or "").strip(),
+            "state_summary": (state_summary or "").strip(),
+            "compressed_turns": len(narrative_history),
+        }

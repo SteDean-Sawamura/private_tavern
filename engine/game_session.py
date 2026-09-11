@@ -504,8 +504,10 @@ class GameSession(
                 _oid = _om.get("org_id", "")
                 if _oid:
                     self._org_members.setdefault(_oid, []).append(_npc_def["id"])
+        self.script_cursor = None  # 剧本游标（script 模式时初始化）
         self.meta_event_bus = MetaEventBus()
         self._register_meta_events()
+        self._opening_draft = None
 
     def _stage_kwargs(self, stage: str) -> dict:
         model = self.stage_models.get(stage)
@@ -964,12 +966,91 @@ class GameSession(
                     self._apply_trigger_updates({"update": [upd_data]})
         return state_log
 
+    async def prepare_opening_draft(self) -> dict:
+        """准备开场 draft：预览开场白 + 初始化世界书/变量，但不正式开始游戏
+
+        Returns: {
+            "draft_id": str,
+            "openings": list[dict],  # 可选的开场白列表
+            "initial_state": dict,   # 预览的初始状态
+            "expires_at": str,       # 2小时过期
+        }
+        """
+        from datetime import datetime, timedelta
+
+        draft_id = str(uuid.uuid4())[:8]
+
+        # 收集可选开场白
+        openings = []
+        first_mes = self.script.get("player_character", {}).get("first_mes", "")
+        if first_mes:
+            openings.append({"id": "default", "text": first_mes, "label": "默认开场"})
+
+        # 预设角色的开场
+        for preset in self.script.get("player_presets", []):
+            opening_text = preset.get("opening_text", "")
+            if opening_text:
+                openings.append({
+                    "id": preset.get("id", ""),
+                    "text": opening_text,
+                    "label": preset.get("name", ""),
+                })
+
+        # 剧本的通用开场
+        script_opening = self.script.get("opening", {}).get("text", "")
+        if script_opening and not any(o["text"] == script_opening for o in openings):
+            openings.append({"id": "script", "text": script_opening, "label": "剧本开场"})
+
+        # 预览初始状态（不写入）
+        initial_state = {
+            "location": self.current_state.get("player", {}).get("location", ""),
+            "time": self.current_state.get("game_time", ""),
+            "attributes": {k: v for k, v in self.current_state.get("player", {}).get("attributes", {}).items()},
+        }
+
+        self._opening_draft = {
+            "draft_id": draft_id,
+            "openings": openings,
+            "created_at": datetime.now().isoformat(),
+            "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
+        }
+
+        return {
+            "draft_id": draft_id,
+            "openings": openings,
+            "initial_state": initial_state,
+            "expires_at": self._opening_draft["expires_at"],
+        }
+
+    def select_opening(self, draft_id: str, opening_id: str) -> dict | None:
+        """从 draft 中选择一个开场白"""
+        draft = getattr(self, '_opening_draft', None)
+        if not draft or draft.get("draft_id") != draft_id:
+            return None
+
+        # 检查过期
+        from datetime import datetime
+        expires = datetime.fromisoformat(draft["expires_at"])
+        if datetime.now() > expires:
+            self._opening_draft = None
+            return None
+
+        selected = next((o for o in draft["openings"] if o["id"] == opening_id), None)
+        self._opening_draft = None  # 使用后清除
+        return selected
+
     async def initialize(self) -> dict:
         """Initialize a new game, returning the opening data."""
         self.current_state = ScriptLoader.create_initial_state(self.script)
         self.script_variables.init_state(self.current_state)
         self._init_shop_inventories()
         self.turn_number = 0
+
+        # 如果剧本有线性剧本块，初始化游标
+        story_blocks = self.script.get("story_tree", {}).get("nodes", [])
+        if story_blocks and isinstance(story_blocks, list):
+            from engine.script_cursor import ScriptCursor
+            self.script_cursor = ScriptCursor(story_blocks)
 
         # Build opening base text and choices (synchronous, from script data)
         settings = self.script.get("settings", {})
