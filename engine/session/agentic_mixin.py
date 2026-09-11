@@ -335,62 +335,48 @@ class AgenticMixin:
 
     def _quick_rule_check(self, narrative: str, ctx: dict) -> list[str]:
         """机械化规则检查：所有限制性约束从 prompt 移到这里执行。"""
+        import re
         issues = []
         if not narrative or len(narrative) < 50:
             return issues
 
-        # 1. 人称检查
-        if "我" in narrative and "你" not in narrative[:200]:
-            issues.append("人称错误：使用了第一人称'我'，应为第二人称'你'")
+        # 剥离对话内容，只检查叙述部分
+        dialogue_pattern = re.compile(r'[「"](.*?)[」"]', re.DOTALL)
+        narration_only = dialogue_pattern.sub('', narrative)
 
-        # 2. 认知越界（全知视角关键词）
-        for kw in ["殊不知", "却不知", "事实上", "他心想", "他暗自", "他知道这意味着", "他心里清楚"]:
-            if kw in narrative:
-                issues.append(f"认知越界：'{kw}' 暗示了主角不可能知道的信息")
+        # 1. 人称检查（只查叙述部分，不查对话）
+        if "我" in narration_only and "你" not in narration_only[:200]:
+            issues.append("人称错误：叙述部分使用了'我'，应为第二人称'你'")
 
-        # 3. 决策越权（替玩家做决定）
+        # 2. 认知越界（只查叙述部分）
+        for kw in ["殊不知", "却不知", "他心想", "他暗自", "他心里清楚"]:
+            if kw in narration_only:
+                issues.append(f"认知越界：'{kw}' — 叙述不应暴露他人内心")
+
+        # 3. 决策越权（排除玩家自己声明的行动）
         action_text = ctx.get("action_text", "")
-        for kw in ["你决定", "你选择了", "你毫不犹豫", "你立刻决定", "你下定决心"]:
-            if kw in narrative and kw not in action_text:
-                issues.append(f"决策越权：'{kw}' — 玩家未声明此决定")
+        for kw in ["你决定", "你选择了", "你毫不犹豫", "你下定决心"]:
+            if kw in narration_only:
+                # 检查是否和玩家行动吻合
+                verb = kw.replace("你", "")
+                if verb not in action_text and kw not in action_text:
+                    issues.append(f"决策越权：'{kw}' — 玩家未声明此决定")
 
-        # 4. 玩家指令违反（说归档但没归档）
-        if action_text:
-            if "归档" in action_text and ("忘了" in narrative or "没忘" in narrative or "还揣在" in narrative):
-                issues.append("违反玩家指令：玩家说'归档'但叙事中角色未执行")
+        # 4. NPC 台词数量（计引号对数，非说话人）
+        dialogue_count = len(dialogue_pattern.findall(narrative))
+        if dialogue_count > 6:
+            issues.append(f"对话过密：{dialogue_count} 段对话，一轮建议不超过4-5段")
 
-        # 5. NPC 数量过多（有台词的 NPC >2）
-        import re
-        dialogue_speakers = set()
-        for m in re.finditer(r'[「"](.*?)[」"]', narrative):
-            # 往前找说话人
-            pos = m.start()
-            before = narrative[max(0, pos - 30):pos]
-            # 简单提取：最后一个中文名
-            names = re.findall(r'[一-鿿]{2,4}', before)
-            if names:
-                dialogue_speakers.add(names[-1])
-        if len(dialogue_speakers) > 3:
-            issues.append(f"NPC过多：{len(dialogue_speakers)} 个角色有台词（{', '.join(list(dialogue_speakers)[:4])}），建议控制在1-2个")
+        # 5. Meta 知识泄露（严格范围：只检查主角不可能自主推断的剧透）
+        meta_spoilers = ["将被暗杀", "即将政变", "会被刺杀", "密谋推翻"]
+        for spoiler in meta_spoilers:
+            if spoiler in narration_only:
+                issues.append(f"剧透泄露：'{spoiler}' — 主角此时不应知道此信息")
 
-        # 6. 剧情堆砌（场景切换过多）
-        scene_breaks = narrative.count("——") + narrative.count("……")
-        if scene_breaks > 10:
-            issues.append(f"剧情可能过密：{scene_breaks} 个长破折号/省略号，一轮内可能包含过多剧情点")
-
-        # 7. Meta 知识暗示
-        meta_hints = ["磁带", "录音带", "暗杀", "政变", "刺杀"]
-        for hint in meta_hints:
-            if hint in narrative:
-                # 检查是否来自 lorebook 查询（ctx 中有 activated_lore）
-                lore_text = " ".join(str(e) for e in ctx.get("activated_lore", []))
-                if hint not in lore_text and hint not in action_text:
-                    issues.append(f"可能的 meta 知识泄露：'{hint}' — 主角此时不应知道此信息")
-
-        # 8. 总结式内心判断
-        for kw in ["他知道", "她明白", "你清楚", "你比谁都", "你心里明镜似的"]:
-            if kw in narrative:
-                issues.append(f"总结式判断：'{kw}' — 应改为感官观察而非内心定论")
+        # 6. 总结式判断（只在叙述中检查，且排除合理语境）
+        for kw in ["你比谁都清楚", "你心里明镜似的", "你早就知道"]:
+            if kw in narration_only:
+                issues.append(f"总结式判断：'{kw}' — 应改为具体观察而非笼统定论")
 
         return issues
 
