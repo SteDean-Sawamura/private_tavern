@@ -1631,6 +1631,16 @@ class GameSession(
 
             route = await self._enrich_and_route(player_action, ctx)
 
+            # --- 意图分流 ---
+            route_intent = route.get("intent", "action")
+            if route_intent == "feedback_regen" and self._agentic_enabled():
+                feedback = route.get("feedback_target", "") or player_action.get("text", "")
+                logger.info("路由识别为反馈重生成: %s", feedback[:60])
+                result = await self.regenerate_with_feedback(feedback)
+                if result.get("ok"):
+                    return result
+                # 反馈重生成失败则 fallback 到正常管线
+
             # --- Stage 1→5 via shared pipeline ---
             _warnings = []
             narrative = ""

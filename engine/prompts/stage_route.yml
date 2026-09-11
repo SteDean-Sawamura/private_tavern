@@ -15,6 +15,8 @@ user: |
   玩家行动: {action_text}
 
   返回: {"scene_type":"social|combat|exploration|trade|travel|rest",
+  "intent":"action|feedback_regen|query",
+  "feedback_target":"",
   "systems":["从npc/location/inventory/faction/moral/companion/deadline/clue/quest/combat/new_npc中选择相关的"],
   "scope":"minor|moderate|major",
   "focus_npcs":["填写npc_id（英文ID），不要填中文名"],
@@ -61,6 +63,15 @@ user: |
   - 列出1-3个关键词，用于Stage 1检索相关历史记录
   - 应包含行动涉及的核心概念：地名、NPC名、物品名、事件名等
   - 如无特别需要检索的内容，返回空数组[]
+
+  intent规则：
+  - action: 玩家在执行游戏内行动（走动、对话、操作物品、战斗等）→ 正常推演
+  - feedback_regen: 玩家对上一轮的叙事表达不满或修改要求（如"重写""改一下""让气氛更紧张""NPC不应该这么说"） → 重新生成上一轮叙事
+  - query: 玩家在问问题而非执行行动（如"现在几点""我身上有什么"） → 直接回答，不推演
+
+  当 intent=feedback_regen 时：
+  - feedback_target 填写用户的具体修改要求（原文摘取）
+  - 其余字段可以简略填写
 
   # 条件段落（当玩家有未完成计划时追加）：
   # 注意: 玩家有未完成计划「{plan_goal}」，当前步骤: {current_step}
