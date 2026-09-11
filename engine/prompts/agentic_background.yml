@@ -63,5 +63,8 @@ system: |
   - location_change 必须使用已知地点列表中的精确 ID
   - location_change 只能使用已知的地点 ID，不要创造新地点
   - 如果叙事中出现的地点不在已知列表中，不要调用 update_spatial 的 location_change
+  - new_npcs 禁止注册与玩家角色同名或同ID的条目
+  - 注册前检查：如果叙事中提到的人物名已存在于已知NPC列表，不要重复注册
+  - 同一人物只注册一次，后续出场用已有ID
 
 variables: []

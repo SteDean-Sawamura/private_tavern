@@ -507,6 +507,10 @@ class AgenticMixin:
         （避免产生重复的 prefetch 节点）。仅写入 vector_memory（异步，无重复
         问题）并缓存到 ctx._narrative_buffer 供同轮 recall_history 使用。
         """
+        logger.info("记忆落地: %d字, vector_memory=%s, world_tree=%s",
+                    len(narrative or ''),
+                    'yes' if self.vector_memory else 'no',
+                    'yes' if self.world_tree else 'no')
         if not narrative:
             return
         # 缓存到 self，供同轮 recall_history fallback 使用
@@ -547,9 +551,20 @@ class AgenticMixin:
         # Bug 1 fix: 立即注册新 NPC 到 state，使同轮 update_npc_attitude 能找到
         if name == "update_extended":
             new_npcs = args.get("new_npcs", [])
+            player_id = self.current_state.get("player", {}).get("id", "player")
+            player_name = self.current_state.get("player", {}).get("name", "")
             for npc in new_npcs:
                 npc_id = npc.get("id", "")
-                if npc_id and npc_id not in self.current_state.get("npcs", {}):
+                npc_name = npc.get("name", "")
+                # 跳过玩家角色
+                if npc_id == player_id or (player_name and npc_name == player_name):
+                    logger.warning("跳过注册玩家角色为NPC: %s/%s", npc_id, npc_name)
+                    continue
+                # 跳过已存在的 NPC
+                if npc_id and npc_id in self.current_state.get("npcs", {}):
+                    logger.info("NPC %s 已存在，跳过重复注册", npc_id)
+                    continue
+                if npc_id:
                     self.current_state.setdefault("npcs", {})[npc_id] = {
                         "name": npc.get("name", npc_id),
                         "bio": npc.get("bio", ""),

@@ -385,6 +385,11 @@ class ToolsMixin:
             _SCORE_THRESHOLD = 0.3
             _SUMMARY_LIMIT = 200
             _TOTAL_CHAR_LIMIT = 800
+            logger.info("recall_history: query=%r, vector_memory=%s, world_tree=%s, _narrative_buffer=%d",
+                        query[:50],
+                        'yes' if self.vector_memory is not None else 'no',
+                        'yes' if self.world_tree is not None else 'no',
+                        len(getattr(self, '_narrative_buffer', [])))
             # 优先使用向量记忆检索
             if self.vector_memory is not None:
                 try:
@@ -400,6 +405,8 @@ class ToolsMixin:
                         })
                 except Exception:
                     pass
+            if results:
+                logger.info("recall_history: vector_memory 返回 %d 条", len(results))
             # 回退到 world_tree 节点文本搜索
             if not results and self.world_tree is not None:
                 query_lower = query.lower()
@@ -418,6 +425,8 @@ class ToolsMixin:
                         })
                     if len(results) >= max_results:
                         break
+            if results:
+                logger.info("recall_history: world_tree 返回 %d 条", len(results))
             # Bug 5 fix: 最终 fallback — 搜索 adventure_log
             if not results:
                 adventure_log = self.current_state.get("adventure_log", [])
@@ -450,6 +459,12 @@ class ToolsMixin:
                         })
                     if len(results) >= max_results:
                         break
+            logger.info("recall_history: 最终结果 %d 条 (fallback路径: vm=%s wt=%s al=%s nb=%s)",
+                        len(results),
+                        'yes' if self.vector_memory is not None else 'no',
+                        'yes' if self.world_tree is not None else 'no',
+                        'yes' if self.current_state.get("adventure_log") else 'no',
+                        'yes' if getattr(self, '_narrative_buffer', []) else 'no')
             # 总字符数截断
             truncated = []
             total_chars = 0
