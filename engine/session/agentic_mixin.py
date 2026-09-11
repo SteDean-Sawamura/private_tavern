@@ -612,8 +612,8 @@ class AgenticMixin:
         if route:
             if route.get("skip_npc_reaction"):
                 tools = [t for t in tools if t["function"]["name"] != "update_npc_attitude"]
-            if route.get("skip_choices"):
-                tools = [t for t in tools if t["function"]["name"] != "add_choice"]
+            # add_choice 永远保留——route 的 skip_choices 判断常不准确
+            # skip_choices 只作为 hint 传给 Agent，不移除工具
 
         holder = _AgentResult()
         async for event in self._agent_loop(
