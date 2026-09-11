@@ -1790,6 +1790,9 @@ class GameSession(
 
         self.current_state = copy.deepcopy(snapshot)
         self.turn_number = node.get("turn_number", 0)
+        # 清理 agentic 特有缓存
+        self._stable_prefix = None
+        self._narrative_buffer = []
         return {
             "node_id": node_id,
             "narrative": node.get("ai_response", ""),
@@ -1858,6 +1861,9 @@ class GameSession(
 
         self.current_state = copy.deepcopy(snapshot)
         self.turn_number = parent.get("turn_number", 0)
+        # 清理 agentic 特有缓存
+        self._stable_prefix = None
+        self._narrative_buffer = []
         return {
             "node_id": parent_id,
             "removed_node_id": removed_id,

@@ -11,7 +11,6 @@ Background agent : narrative -> state settlement tool calls -> parsed dict
 from __future__ import annotations
 
 import asyncio
-import copy
 import json
 import logging
 from dataclasses import dataclass, field
@@ -261,9 +260,16 @@ class AgenticMixin:
         return self._run_tool_native(name, args)
 
     async def _review_narrative_tool(self, narrative: str, ctx: dict) -> str:
-        """LLM-based narrative review. Calls the same review prompt as Stage 3.5."""
+        """规则优先 + LLM 按需的叙事审查。"""
         if not narrative.strip():
             return "错误：叙事为空"
+
+        # 阶段1：快速规则检查
+        issues = self._quick_rule_check(narrative, ctx)
+        if not issues:
+            return "审查通过：规则检查未发现问题"
+
+        # 阶段2：有问题时才调 LLM 深度审查
         try:
             state = self.current_state
             pc_name = state.get("player", {}).get("name", "")
@@ -293,7 +299,25 @@ class AgenticMixin:
             return raw.strip() if raw else "审查完成，未返回结果"
         except Exception as e:
             logger.warning("review_narrative_tool 失败: %s", e)
-            return f"审查调用失败: {e}"
+            return "规则检查发现问题：\n" + "\n".join(issues)
+
+    def _quick_rule_check(self, narrative: str, ctx: dict) -> list[str]:
+        """快速规则检查：人称、认知越界关键词、决策越权词。"""
+        issues = []
+        # 人称检查：出现"我"但前200字无"你"可能是人称错误
+        if "我" in narrative and "你" not in narrative[:200]:
+            issues.append("人称可能错误：使用了'我'而非'你'")
+        # 全知视角 / 认知越界关键词
+        forbidden = ["殊不知", "却不知", "事实上", "他心想", "他暗自"]
+        for f in forbidden:
+            if f in narrative:
+                issues.append(f"可能的全知视角：'{f}'")
+        # 决策越权：叙事不应替玩家做决定
+        agency_words = ["你决定", "你选择了", "你毫不犹豫", "你立刻决定"]
+        for w in agency_words:
+            if w in narrative:
+                issues.append(f"可能的决策越权：'{w}'")
+        return issues
 
     def _build_foreground_context(self, ctx: dict, player_action: dict) -> str:
         """Minimal per-turn context for the foreground agent."""
@@ -351,6 +375,48 @@ class AgenticMixin:
         if prev_round_text:
             parts.append(f"<previous_round>\n{prev_round_text[-1500:]}\n</previous_round>")
 
+        # 注入 workflow 模式有的关键上下文
+        hint_parts = []
+
+        # 1. Author's note
+        an = getattr(self, 'authors_note', '') or ''
+        if an:
+            hint_parts.append(f"创作指令：{an[:200]}")
+
+        # 2. Negative prompt
+        neg = getattr(self, 'negative_prompt', '') or ''
+        if neg:
+            hint_parts.append(f"禁止事项：{neg[:150]}")
+
+        # 3. Activated lorebook entries (constant + 当前激活的前5条)
+        activated_lore = ctx.get("activated_lore", [])
+        if activated_lore and hasattr(self, 'prompt_builder') and self.prompt_builder.lorebook:
+            lore_texts = []
+            for entry in activated_lore[:5]:
+                title = getattr(entry, 'comment', '') or ', '.join(getattr(entry, 'keys', [])[:2])
+                content = (getattr(entry, 'content', '') or '')[:150]
+                if content:
+                    lore_texts.append(f"- {title}: {content}")
+            if lore_texts:
+                hint_parts.append("相关知识：\n" + "\n".join(lore_texts))
+
+        # 4. Event sections (事件/后果提示)
+        event_sections = ctx.get("event_sections", {})
+        if event_sections:
+            for section_name, section_text in event_sections.items():
+                if section_text:
+                    hint_parts.append(f"{section_name}：{str(section_text)[:100]}")
+
+        # 5. Pacing/tone
+        pacing = state.get("pacing_state", {})
+        if pacing:
+            tension = pacing.get("tension", 50)
+            trend = pacing.get("trend", "stable")
+            hint_parts.append(f"节奏：张力{tension}/100 趋势{trend}")
+
+        if hint_parts:
+            parts.append("<context_hints>\n" + "\n".join(hint_parts) + "\n</context_hints>")
+
         parts.append(f"<player_action>\n{player_action.get('text', '')}\n</player_action>")
         return "\n\n".join(parts)
 
@@ -366,12 +432,25 @@ class AgenticMixin:
         user = self._build_foreground_context(ctx, player_action)
         messages = [{"role": "user", "content": user}]
 
+        # 动态裁剪前台工具集
+        tools = list(FOREGROUND_TOOLS_SCHEMA)
+
+        # 无 NPC 场景去掉 NPC 工具
+        present_npcs = ctx.get("present_npc_ids", [])
+        if not present_npcs:
+            tools = [t for t in tools if t["function"]["name"] not in ("query_npc_history", "get_npc_attitude")]
+
+        # 无骰子设定去掉 roll_dice
+        dice_enabled = self.script.get("settings", {}).get("dice_check", {}).get("default_enabled", True)
+        if not dice_enabled:
+            tools = [t for t in tools if t["function"]["name"] != "roll_dice"]
+
         async def _dispatch(name: str, args: dict) -> str:
             return await self._dispatch_foreground_tool(ctx, name, args)
 
         holder = _AgentResult()
         async for event in self._agent_loop(
-            messages, system, FOREGROUND_TOOLS_SCHEMA, _dispatch,
+            messages, system, tools, _dispatch,
             max_rounds=7, label="前台叙事",
             stage_key="narrative", max_tokens=8192,
             result_holder=holder,
@@ -383,35 +462,42 @@ class AgenticMixin:
         yield {"type": "_fg_result", "holder": holder}
 
     def _build_foreground_system(self) -> str:
-        """Load the foreground agent system prompt from YAML. Frozen after first build."""
-        if self._stable_prefix is not None:
-            return self._stable_prefix
-        from engine.prompt_loader import PromptLoader
-        system = PromptLoader.get().render_system(
-            "agentic_foreground",
-            world_background=(self.script.get("world_background", "") or "")[:500],
-            player_name=self.current_state.get("player", {}).get("name", ""),
-        )
-        ctx_note = self._build_foreground_context_note()
-        if ctx_note:
-            system += "\n\n" + ctx_note
-        self._stable_prefix = system
-        return self._stable_prefix
+        """Stable segment (frozen) + dynamic segment (rebuilt each turn)."""
+        # 稳定段：首轮冻结
+        if self._stable_prefix is None:
+            from engine.prompt_loader import PromptLoader
+            self._stable_prefix = PromptLoader.get().render_system(
+                "agentic_foreground",
+                world_background=(self.script.get("world_background", "") or "")[:500],
+                player_name=self.current_state.get("player", {}).get("name", ""),
+            )
 
-    def _build_foreground_context_note(self) -> str:
-        """Compact world/state briefing appended to the foreground system prompt."""
+        # 动态段：每轮重建
+        dynamic = self._build_foreground_dynamic_section()
+        return self._stable_prefix + "\n\n" + dynamic if dynamic else self._stable_prefix
+
+    def _build_foreground_dynamic_section(self) -> str:
+        """每轮变化的上下文，追加到 system prompt 末尾。"""
+        parts = []
         state = self.current_state
         player = state.get("player", {})
-        parts = []
+
+        # 角色身份
         bio = player.get("bio", "")
-        personality = player.get("personality", "")
         if bio:
             parts.append(f"角色身份：{bio[:120]}")
+        personality = player.get("personality", "")
         if personality:
             parts.append(f"角色性格：{personality[:100]}")
-        goal = state.get("long_term_goal", "")
+        goal = state.get("long_term_goal", "") or player.get("long_term_goal", "")
         if goal:
             parts.append(f"长期目标：{goal[:120]}")
+
+        # 当前 tone
+        an = getattr(self, 'authors_note', '')
+        if an:
+            parts.append(f"[创作指令] {an[:200]}")
+
         return "\n".join(parts)
 
     def _record_narrative_facts(self, narrative: str, ctx: dict):
@@ -481,7 +567,7 @@ class AgenticMixin:
 
     async def _run_background_agent(
         self, ctx: dict, narrative_text: str, plot_decision: str, player_action: dict,
-        *, streaming: bool = False, skip_hints: str = "",
+        *, streaming: bool = False, skip_hints: str = "", route: dict | None = None,
     ):
         """Background agent: autonomously settle all state via tool calls.
 
@@ -521,9 +607,17 @@ class AgenticMixin:
 
         messages = [{"role": "user", "content": "\n\n".join(user_parts)}]
 
+        # 按 route skip 标志裁剪后台工具集
+        tools = list(_settlement_tools())
+        if route:
+            if route.get("skip_npc_reaction"):
+                tools = [t for t in tools if t["function"]["name"] != "update_npc_attitude"]
+            if route.get("skip_choices"):
+                tools = [t for t in tools if t["function"]["name"] != "add_choice"]
+
         holder = _AgentResult()
         async for event in self._agent_loop(
-            messages, system, _settlement_tools(), self._dispatch_settlement_tool,
+            messages, system, tools, self._dispatch_settlement_tool,
             max_rounds=5, label="后台结算",
             stage_key="state", max_tokens=4096,
             result_holder=holder,
@@ -620,12 +714,17 @@ class AgenticMixin:
             if skip_notes:
                 skip_hint_text = "<skip_hints>\n" + "\n".join(skip_notes) + "\n</skip_hints>"
 
-            bg_ctx = copy.deepcopy(ctx)  # Frame 隔离：后台不影响前台上下文
+            # 后台 Agent 只需要少量字段，不做 deepcopy
+            bg_ctx = {
+                "action_text": ctx.get("action_text", ""),
+                "old_time": ctx.get("old_time", ""),
+                "present_npc_ids": ctx.get("present_npc_ids", []),
+            }
             logger.info(">>> 后台结算 Agent 启动")
             bg_holder: _AgentResult | None = None
             async for event in self._run_background_agent(
                 bg_ctx, narrative, "", player_action,
-                streaming=streaming, skip_hints=skip_hint_text,
+                streaming=streaming, skip_hints=skip_hint_text, route=route,
             ):
                 if event.get("type") == "_bg_result":
                     bg_holder = event["holder"]

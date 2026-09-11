@@ -204,6 +204,15 @@ async def set_pipeline_mode(req: dict):
     return {"ok": True, "mode": mode}
 
 
+@router.post("/reload-prompts")
+async def reload_prompts():
+    """Hot-reload prompt templates (clears PromptLoader cache)."""
+    from engine.prompt_loader import PromptLoader
+    PromptLoader.get().reload()
+    logger.info("Prompt 模板缓存已清除")
+    return {"ok": True, "message": "Prompt 模板缓存已清除"}
+
+
 # --- Legacy config endpoints (kept for backward compat) ---
 
 @router.get("")

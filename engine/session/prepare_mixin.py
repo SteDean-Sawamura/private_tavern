@@ -450,26 +450,36 @@ class PrepareMixin:
 
         # 始终构建历史上下文和在场NPC（8阶段 + legacy 都需要）
         history_summary = self.current_state.get("history_summary", "")
-        history_context = self.prompt_builder.build_history_context(recent, history_summary)
-        context_memory = self.prompt_builder.build_context_memory(recent, self.current_state)
+        _is_agentic = getattr(self, '_agentic_enabled', lambda: False)()
+        if _is_agentic:
+            # agentic 模式不使用 compose context，跳过构建
+            history_context = ""
+            context_memory = ""
+        else:
+            history_context = self.prompt_builder.build_history_context(recent, history_summary)
+            context_memory = self.prompt_builder.build_context_memory(recent, self.current_state)
 
-        # 宏展开: 对历史上下文和上下文记忆中的变量引用做替换
-        history_context = self.script_variables.expand_macros(history_context, self.current_state)
-        context_memory = self.script_variables.expand_macros(context_memory, self.current_state)
+            # 宏展开: 对历史上下文和上下文记忆中的变量引用做替换
+            history_context = self.script_variables.expand_macros(history_context, self.current_state)
+            context_memory = self.script_variables.expand_macros(context_memory, self.current_state)
 
         # Reasoning 回注: 收集前几轮的剧情决策思路（可配置 lookback）
-        _reasoning_lookback = self.script.get("settings", {}).get("reasoning_lookback", 2)
-        recent_reasoning = []
-        prev_plot_decision = ""
-        for node in recent[-_reasoning_lookback:]:
-            r = node.get("plot_reasoning", "")
-            if r:
-                recent_reasoning.append({
-                    "turn": node.get("turn_number", 0),
-                    "reasoning": r[:300],
-                })
-        if recent:
-            prev_plot_decision = recent[-1].get("plot_decision", "")
+        if _is_agentic:
+            recent_reasoning = []
+            prev_plot_decision = ""
+        else:
+            _reasoning_lookback = self.script.get("settings", {}).get("reasoning_lookback", 2)
+            recent_reasoning = []
+            prev_plot_decision = ""
+            for node in recent[-_reasoning_lookback:]:
+                r = node.get("plot_reasoning", "")
+                if r:
+                    recent_reasoning.append({
+                        "turn": node.get("turn_number", 0),
+                        "reasoning": r[:300],
+                    })
+            if recent:
+                prev_plot_decision = recent[-1].get("plot_decision", "")
 
         # 确保 NPC 房间信息已初始化
         self._ensure_rooms_initialized()

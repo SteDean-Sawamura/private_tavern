@@ -382,15 +382,21 @@ class ToolsMixin:
             query = args.get("query", "")
             max_results = args.get("max_results", 5)
             results = []
+            _SCORE_THRESHOLD = 0.3
+            _SUMMARY_LIMIT = 200
+            _TOTAL_CHAR_LIMIT = 800
             # 优先使用向量记忆检索
             if self.vector_memory is not None:
                 try:
                     hits = self.vector_memory.search(query, top_k=max_results)
                     for h in hits:
+                        score = h.get("score", 0)
+                        if score < _SCORE_THRESHOLD:
+                            continue
                         results.append({
                             "turn": h.get("turn", "?"),
-                            "summary": h.get("text", "")[:200],
-                            "relevance": round(h.get("score", 0), 2),
+                            "summary": h.get("text", "")[:_SUMMARY_LIMIT],
+                            "relevance": round(score, 2),
                         })
                 except Exception:
                     pass
@@ -407,7 +413,7 @@ class ToolsMixin:
                     if query_lower in node_text.lower():
                         results.append({
                             "turn": node.get("turn_number", "?"),
-                            "summary": node.get("ai_response", "")[:200],
+                            "summary": node.get("ai_response", "")[:_SUMMARY_LIMIT],
                             "relevance": 0.5,
                         })
                     if len(results) >= max_results:
@@ -426,7 +432,7 @@ class ToolsMixin:
                             if query_lower_al in ev_text.lower():
                                 results.append({
                                     "turn": entry.get("turn", "?"),
-                                    "summary": ev_text[:200],
+                                    "summary": ev_text[:_SUMMARY_LIMIT],
                                     "relevance": 0.3,
                                 })
                                 break
@@ -439,12 +445,25 @@ class ToolsMixin:
                     if query_lower_nb in buf.get("text", "").lower():
                         results.append({
                             "turn": buf.get("turn", "?"),
-                            "summary": buf["text"][:200],
+                            "summary": buf["text"][:_SUMMARY_LIMIT],
                             "relevance": 0.4,
                         })
                     if len(results) >= max_results:
                         break
-            return json.dumps({"results": results}, ensure_ascii=False)
+            # 总字符数截断
+            truncated = []
+            total_chars = 0
+            for r in results:
+                s = r["summary"]
+                if total_chars + len(s) > _TOTAL_CHAR_LIMIT:
+                    remaining = _TOTAL_CHAR_LIMIT - total_chars
+                    if remaining > 50:
+                        r["summary"] = s[:remaining]
+                        truncated.append(r)
+                    break
+                total_chars += len(s)
+                truncated.append(r)
+            return json.dumps({"results": truncated}, ensure_ascii=False)
         if name == "query_lorebook":
             keyword = args.get("keyword", "")
             # Split by whitespace so "金载圭 车智澈 矛盾" matches any individual word
@@ -454,6 +473,9 @@ class ToolsMixin:
             entries = []
             lb = getattr(self.prompt_builder, "lorebook", None)
             if lb is not None:
+                _CONTENT_LIMIT = 200
+                _MAX_ENTRIES = 5
+                candidates = []
                 for e in lb.entries:
                     if not e.enabled:
                         continue
@@ -461,15 +483,17 @@ class ToolsMixin:
                         (e.comment or "").lower() + " "
                         + " ".join(k.lower() for k in e.keys) + " "
                         + " ".join(k.lower() for k in getattr(e, "secondary_keys", [])) + " "
-                        + e.content[:500].lower()
+                        + e.content[:_CONTENT_LIMIT].lower()
                     )
                     if any(kw in searchable for kw in keywords):
-                        entries.append({
-                            "title": e.comment or e.id,
-                            "content": e.content[:500],
-                        })
-                    if len(entries) >= 5:
-                        break
+                        candidates.append(e)
+                # 按 priority 降序排列
+                candidates.sort(key=lambda e: getattr(e, 'priority', 0), reverse=True)
+                for e in candidates[:_MAX_ENTRIES]:
+                    entries.append({
+                        "title": e.comment or e.id,
+                        "content": e.content[:_CONTENT_LIMIT],
+                    })
             return json.dumps({"entries": entries}, ensure_ascii=False)
         if name == "query_npc_history":
             npc_name = args.get("npc_name", "")
