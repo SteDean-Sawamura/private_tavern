@@ -130,7 +130,16 @@ class StateApplyMixin:
                         logger.warning("AI end_time=%s 超过48小时，钳位", ai_end_time)
                         new_time = self._advance_game_time(ctx["old_time"], timedelta(hours=48))
                     elif _delta_minutes > _max_reasonable:
-                        _clamped = max(_est * 3, 60)
+                        # Bug 3 fix: sleep/rest/travel 类行动允许更大时间跨度
+                        _action_text = (ctx.get("action_text") or player_action.get("text", "")).lower()
+                        _sleep_keywords = ("睡", "歇", "休息", "过夜", "天亮", "第二天", "次日",
+                                           "早晨", "入睡", "sleep", "rest", "travel", "旅行",
+                                           "赶路", "长途")
+                        if any(kw in _action_text for kw in _sleep_keywords) or _delta_minutes <= 720:
+                            # 允许 sleep/rest 推进到 12 小时，或叙事跨度 <= 12 小时直接放行
+                            _clamped = min(int(_delta_minutes), 720)
+                        else:
+                            _clamped = max(_est * 3, 60)
                         logger.warning(
                             "AI end_time=%s 推进%.0f分钟，远超预估%d分钟，钳位到%d分钟",
                             ai_end_time, _delta_minutes, _est, _clamped,

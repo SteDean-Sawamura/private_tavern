@@ -420,7 +420,27 @@ class AgenticMixin:
         世界树节点由下游 _apply_parsed_response 统一创建，此处仅提前写入
         向量存储，确保后台结算或同轮检索即可命中叙事内容。
         """
-        if not narrative or not self.vector_memory:
+        if not narrative:
+            return
+        # Bug 5 fix: 即使 vector_memory 为 None，也将叙事写入 world_tree
+        # 使 recall_history 的 world_tree fallback 能搜到最近叙事
+        if self.world_tree is not None:
+            try:
+                action_text = ctx.get("action_text", "")
+                # 写一个临时节点，下游 _apply_parsed_response 会创建正式节点
+                # 此处用 add_node 提前让 world_tree 有最新叙事可搜
+                parent_id = self.world_tree.active_node_id or self.world_tree.root_node_id
+                self.world_tree.add_node(
+                    parent_id=parent_id,
+                    game_time=self.current_state.get("game_time", ""),
+                    turn_number=self.turn_number,
+                    player_action={"text": action_text, "type": "narrative_prefetch"},
+                    ai_response=narrative,
+                    state_snapshot=None,
+                )
+            except Exception as e:
+                logger.warning("叙事预写入 world_tree 失败: %s", e)
+        if not self.vector_memory:
             return
         try:
             action_text = ctx.get("action_text", "")
@@ -447,6 +467,18 @@ class AgenticMixin:
             return self._run_npc_reaction_tool(name, args)
         if name == "add_choice":
             return self._run_choices_tool(name, args)
+        # Bug 1 fix: 立即注册新 NPC 到 state，使同轮 update_npc_attitude 能找到
+        if name == "update_extended":
+            new_npcs = args.get("new_npcs", [])
+            for npc in new_npcs:
+                npc_id = npc.get("id", "")
+                if npc_id and npc_id not in self.current_state.get("npcs", {}):
+                    self.current_state.setdefault("npcs", {})[npc_id] = {
+                        "name": npc.get("name", npc_id),
+                        "bio": npc.get("bio", ""),
+                        "attitude_toward_player": npc.get("attitude_toward_player", 50),
+                    }
+                    self._npc_by_id[npc_id] = self.current_state["npcs"][npc_id]
         return self._run_state_tool(name, args)
 
     def _build_settlement_system(self) -> str:
@@ -484,6 +516,15 @@ class AgenticMixin:
                 "- 睡觉/过夜: 若叙事写到入睡那一刻则给入睡时间，若叙事写到醒来才给次日早晨\n"
                 f"格式示例: {old_time[:10] or '1970-01-01'}T10:00:00\n</time_context>"
             )
+        # Bug 2 fix: 注入已知地点 ID 列表，防止 Agent 虚构地点
+        known_locations = list(self._location_by_id.keys()) if hasattr(self, '_location_by_id') else []
+        if known_locations:
+            loc_lines = [f"  {lid}: {self._location_by_id[lid].get('name', lid)}" for lid in known_locations[:20]]
+            user_parts.append(
+                "<known_locations>\n只能使用以下地点ID，不要创造新的：\n"
+                + "\n".join(loc_lines) + "\n</known_locations>"
+            )
+
         messages = [{"role": "user", "content": "\n\n".join(user_parts)}]
 
         holder = _AgentResult()
@@ -610,7 +651,13 @@ class AgenticMixin:
         _narrative_reasoning = "\n".join(reasoning_parts) if reasoning_parts else ""
 
         choices_count = len(parsed.get("choices", []))
-        state_changes = len(parsed.get("state_changes", []))
+        # Bug 4 fix: 计算所有状态变更类型，不仅是 state_changes
+        state_changes = (
+            len(parsed.get("state_changes", []))
+            + len(parsed.get("activate_states", []))
+            + len(parsed.get("deactivate_states", []))
+            + len(parsed.get("inventory_changes", []))
+        )
         npc_att = len(parsed.get("npc_attitude_changes", []))
         logger.info("=" * 50)
         logger.info("AGENTIC 完成 — 叙事%d字 | 选项%d | 状态变更%d | NPC态度%d | 工具调用%d+%d",

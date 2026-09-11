@@ -412,6 +412,26 @@ class ToolsMixin:
                         })
                     if len(results) >= max_results:
                         break
+            # Bug 5 fix: 最终 fallback — 搜索 adventure_log
+            if not results:
+                adventure_log = self.current_state.get("adventure_log", [])
+                if isinstance(adventure_log, list):
+                    query_lower_al = query.lower()
+                    for entry in reversed(adventure_log[-20:]):
+                        if not isinstance(entry, dict):
+                            continue
+                        events = entry.get("events", [])
+                        for ev in events:
+                            ev_text = ev.get("text", "") if isinstance(ev, dict) else str(ev)
+                            if query_lower_al in ev_text.lower():
+                                results.append({
+                                    "turn": entry.get("turn", "?"),
+                                    "summary": ev_text[:200],
+                                    "relevance": 0.3,
+                                })
+                                break
+                        if len(results) >= max_results:
+                            break
             return json.dumps({"results": results}, ensure_ascii=False)
         if name == "query_lorebook":
             keyword = args.get("keyword", "")
