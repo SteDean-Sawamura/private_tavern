@@ -408,6 +408,14 @@ class AgenticMixin:
         ctx.setdefault("plot_decision", "")
         ctx.setdefault("plot_reasoning", "")
 
+        # Build reasoning trace from tool call records
+        reasoning_parts = []
+        for call in fg_calls:
+            reasoning_parts.append(f"[工具] {call['name']}({call['args']}) → {str(call.get('result', ''))[:200]}")
+        for call in bg_calls:
+            reasoning_parts.append(f"[结算] {call['name']}({call['args']})")
+        _narrative_reasoning = "\n".join(reasoning_parts) if reasoning_parts else ""
+
         yield {
             "type": "pipeline_result",
             "narrative": narrative,
@@ -415,7 +423,7 @@ class AgenticMixin:
             "warnings": _warnings,
             "plot_decision": "",
             "plot_reasoning": "",
-            "narrative_reasoning": "",
+            "narrative_reasoning": _narrative_reasoning,
             "compose_msgs": [],
             "compose_sys": "",
         }
