@@ -414,6 +414,29 @@ class AgenticMixin:
             parts.append(f"长期目标：{goal[:120]}")
         return "\n".join(parts)
 
+    def _record_narrative_facts(self, narrative: str, ctx: dict):
+        """将叙事中的新事实写入向量记忆，使未来 recall_history 能检索到。
+
+        世界树节点由下游 _apply_parsed_response 统一创建，此处仅提前写入
+        向量存储，确保后台结算或同轮检索即可命中叙事内容。
+        """
+        if not narrative or not self.vector_memory:
+            return
+        try:
+            action_text = ctx.get("action_text", "")
+            vm_text = f"{action_text} → {narrative}"[:1500]
+            vm_meta = {
+                "turn_number": self.turn_number,
+                "game_time": self.current_state.get("game_time", ""),
+                "location": self.current_state.get("player", {}).get("location", ""),
+                "type": "narrative_prefetch",
+            }
+            self._schedule_background_task(
+                self._async_vector_store(f"ag_{self.turn_number}", vm_text, vm_meta)
+            )
+        except Exception as e:
+            logger.warning("记忆落地失败: %s", e)
+
     # ================================================================
     # Background agent -- state settlement
     # ================================================================
@@ -538,6 +561,9 @@ class AgenticMixin:
             narrative, self.current_state, ctx.get("present_npc_ids"),
         )
 
+        # 将叙事中的新事实记录到向量记忆，使未来 recall_history 能检索到
+        self._record_narrative_facts(narrative, ctx)
+
         # --- Background: state settlement ---
         bg_ctx = copy.deepcopy(ctx)  # Frame 隔离：后台不影响前台上下文
         logger.info(">>> 后台结算 Agent 启动")
@@ -604,3 +630,49 @@ class AgenticMixin:
             "compose_msgs": [],
             "compose_sys": "",
         }
+
+    # ================================================================
+    # Feedback-based regeneration
+    # ================================================================
+
+    async def regenerate_with_feedback(self, feedback: str) -> dict:
+        """基于用户反馈重新生成当前轮叙事，不改变游戏状态。"""
+        last_node = self.world_tree.get_node(self.world_tree.active_node_id) if self.world_tree else None
+        if not last_node:
+            return {"error": "没有可重生成的回合"}
+
+        action_raw = last_node.get("player_action")
+        action_text = action_raw.get("text", "") if isinstance(action_raw, dict) else str(action_raw or "")
+
+        original_narrative = last_node.get("ai_response", "")
+
+        feedback_system = self._build_foreground_system()
+        feedback_system += (
+            f"\n\n## 用户反馈\n上一版叙事的问题：{feedback}\n"
+            "请根据反馈重新写一版叙事。保持同样的事件和剧情走向，但改善用户指出的问题。"
+        )
+
+        user = (
+            f"上一版叙事（需要修改）：\n{original_narrative[:2000]}\n\n"
+            f"玩家行动：{action_text}\n\n"
+            "请根据反馈重写叙事。"
+        )
+        messages = [{"role": "user", "content": user}]
+
+        fg_holder = _AgentResult()
+        async for _event in self._agent_loop(
+            messages, feedback_system, FOREGROUND_TOOLS_SCHEMA,
+            lambda name, args: self._dispatch_foreground_tool({}, name, args),
+            max_rounds=5, label="反馈重写",
+            result_holder=fg_holder,
+        ):
+            pass
+
+        new_narrative = fg_holder.text
+        if not new_narrative:
+            return {"error": "重写失败"}
+
+        # 更新世界树节点的叙事文本
+        last_node["ai_response"] = new_narrative
+
+        return {"ok": True, "narrative": new_narrative}

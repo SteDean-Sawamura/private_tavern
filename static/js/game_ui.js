@@ -606,3 +606,32 @@ async function generateSceneImageForCurrent() {
         if (btn) { btn.disabled = false; btn.textContent = '生成背景图'; }
     }
 }
+
+/* ──── Feedback Regeneration ──── */
+
+async function feedbackRegen() {
+    if (!currentSaveId) return;
+    const feedback = prompt('请描述你对这轮叙事的修改意见：');
+    if (!feedback) return;
+    const btn = document.getElementById('btn-feedback-regen');
+    if (btn) { btn.disabled = true; }
+    try {
+        const data = await API.post(`/api/game/${currentSaveId}/feedback-regen`, { feedback });
+        if (data.ok && data.narrative) {
+            // 替换当前叙事文本
+            const blocks = document.querySelectorAll('.turn-block.latest .narrative-text, .turn-block:last-child .narrative-text');
+            const target = blocks.length ? blocks[blocks.length - 1] : null;
+            if (target) {
+                target.innerHTML = typeof enhanceNarrative === 'function'
+                    ? enhanceNarrative(escapeHtml(data.narrative).replace(/\n/g, '<br>'))
+                    : escapeHtml(data.narrative).replace(/\n/g, '<br>');
+            }
+        } else {
+            alert(data.error || '重写失败');
+        }
+    } catch (e) {
+        alert('反馈重写失败: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; }
+    }
+}

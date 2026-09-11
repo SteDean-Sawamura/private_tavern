@@ -1035,6 +1035,34 @@ async def regenerate(save_id: str, stage: str = "all", hint: str = ""):
             raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{save_id}/feedback-regen")
+async def feedback_regenerate(save_id: str, req: dict):
+    """用户对当前叙事给出反馈，触发重新生成。
+    Body: {"feedback": "让气氛更紧张一些"}
+    """
+    lock = _get_session_lock(save_id)
+    async with lock:
+        session = _sessions.get(save_id)
+        if not session:
+            session = await _restore_session(save_id)
+            if not session:
+                raise HTTPException(status_code=404, detail="Game session not found")
+        feedback = (req.get("feedback") or "").strip()
+        if not feedback:
+            raise HTTPException(status_code=400, detail="请提供反馈内容")
+        result = await session.regenerate_with_feedback(feedback)
+        if result.get("error"):
+            raise HTTPException(status_code=400, detail=result["error"])
+        # 同步更新数据库中的叙事文本
+        await _update_node_in_db(session, {
+            "node_id": session.world_tree.active_node_id,
+            "narrative": result["narrative"],
+            "choices": session.world_tree.get_node(session.world_tree.active_node_id).get("choices_presented", []),
+            "state_changes": [],
+        })
+        return result
+
+
 @router.post("/{save_id}/swipe/{direction}")
 async def swipe_direction(save_id: str, direction: str):
     """Switch to a different swipe (left/right)."""
