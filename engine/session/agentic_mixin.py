@@ -11,6 +11,7 @@ Background agent : narrative -> state settlement tool calls -> parsed dict
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 from dataclasses import dataclass, field
@@ -195,8 +196,11 @@ class AgenticMixin:
                     if asyncio.iscoroutine(result):
                         result = await result
                 except Exception as exc:
-                    logger.warning("[%s] 工具 %s 执行失败: %s", label, name, exc)
-                    result = json.dumps({"error": str(exc)}, ensure_ascii=False)
+                    logger.warning("[%s] 工具 %s 执行失败: %s — 返回错误让模型修正", label, name, exc)
+                    error_ctx = {"error": str(exc)}
+                    if name.startswith("update_"):
+                        error_ctx["hint"] = "请检查参数格式和值范围后重试"
+                    result = json.dumps(error_ctx, ensure_ascii=False)
                 records.append({"name": name, "args": args, "result": result})
                 result_preview = str(result)[:120].replace('\n', ' ')
                 logger.info("[%s:R%d] %s(%s) → %s", label, round_num + 1, name,
@@ -469,6 +473,26 @@ class AgenticMixin:
         logger.info("[%s] 结算工具调用 %d 次", "background", len(holder.records))
 
     # ================================================================
+    # Audit helper
+    # ================================================================
+
+    def _audit_settlement(self, parsed: dict) -> None:
+        """轻量审计：记录结算摘要到日志"""
+        audit = []
+        for sc in parsed.get("state_changes", []):
+            audit.append(f"  {sc.get('target')}: {sc.get('op')} {sc.get('value')} ({sc.get('reason', '')})")
+        for nc in parsed.get("npc_attitude_changes", []):
+            audit.append(f"  NPC {nc.get('npc_id')}: {nc.get('dimension')} {nc.get('change', 0):+d}")
+        for ch in parsed.get("choices", []):
+            audit.append(f"  选项 {ch.get('id')}: {ch.get('text', '')[:30]} [{ch.get('risk', '')}]")
+        if parsed.get("location_change"):
+            audit.append(f"  位置: → {parsed['location_change']}")
+        if parsed.get("end_time"):
+            audit.append(f"  时间: → {parsed['end_time']}")
+        if audit:
+            logger.info("=== 结算审计 ===\n%s", "\n".join(audit))
+
+    # ================================================================
     # Pipeline entry (agentic)
     # ================================================================
 
@@ -512,10 +536,11 @@ class AgenticMixin:
         )
 
         # --- Background: state settlement ---
+        bg_ctx = copy.deepcopy(ctx)  # Frame 隔离：后台不影响前台上下文
         logger.info(">>> 后台结算 Agent 启动")
         bg_holder: _AgentResult | None = None
         async for event in self._run_background_agent(
-            ctx, narrative, "", player_action, streaming=streaming,
+            bg_ctx, narrative, "", player_action, streaming=streaming,
         ):
             if event.get("type") == "_bg_result":
                 bg_holder = event["holder"]
@@ -562,6 +587,8 @@ class AgenticMixin:
         logger.info("AGENTIC 完成 — 叙事%d字 | 选项%d | 状态变更%d | NPC态度%d | 工具调用%d+%d",
                     len(narrative), choices_count, state_changes, npc_att, len(fg_calls), len(bg_calls))
         logger.info("=" * 50)
+
+        self._audit_settlement(parsed)
 
         yield {
             "type": "pipeline_result",
