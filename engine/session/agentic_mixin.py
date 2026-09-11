@@ -372,6 +372,28 @@ class AgenticMixin:
         ]
         if npc_lines:
             parts.append("<npcs_present>\n" + "\n".join(npc_lines) + "\n</npcs_present>")
+
+        # 首轮注入开局文本（预设角色的 opening_text + 开局剧情描述）
+        if self.turn_number <= 1 and not prev_round_text:
+            opening_parts = []
+            # 预设角色开局文本
+            opening_text = state.get("opening_text", "")
+            if opening_text:
+                opening_parts.append(opening_text[:500])
+            # 剧本通用开局
+            script_opening = self.script.get("opening", {}).get("text", "")
+            if script_opening and script_opening != opening_text:
+                opening_parts.append(script_opening[:500])
+            # 角色背景
+            bio = player.get("bio", "")
+            if bio:
+                opening_parts.append(f"角色背景：{bio[:200]}")
+            goal = player.get("long_term_goal", "") or state.get("long_term_goal", "")
+            if goal:
+                opening_parts.append(f"当前目标：{goal[:150]}")
+            if opening_parts:
+                parts.append("<opening_context>\n" + "\n\n".join(opening_parts) + "\n</opening_context>")
+
         if prev_round_text:
             parts.append(f"<previous_round>\n{prev_round_text[-1500:]}\n</previous_round>")
 
