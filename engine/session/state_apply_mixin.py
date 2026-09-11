@@ -281,6 +281,10 @@ class StateApplyMixin:
             if resolved_loc:
                 npc_data["current_location"] = resolved_loc
 
+        # Persist narrative graph & player model into state for snapshot
+        self.current_state["_narrative_graph"] = self.narrative_graph.snapshot()
+        self.current_state["_player_model"] = self.player_model.snapshot()
+
         # World tree node
         node_id = self.world_tree.add_node(
             parent_id=self.world_tree.active_node_id

@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 
 from typing import TYPE_CHECKING
@@ -518,6 +519,11 @@ class AgenticMixin:
         if an:
             parts.append(f"[创作指令] {an[:200]}")
 
+        # #5 玩家建模提示
+        model_hint = self.player_model.hint_for_agent()
+        if model_hint:
+            parts.append(model_hint)
+
         return "\n".join(parts)
 
     def _record_narrative_facts(self, narrative: str, ctx: dict):
@@ -604,12 +610,20 @@ class AgenticMixin:
             elif op_type == "register":
                 results.append(self._dispatch_npc_register(op))
             elif op_type == "attitude":
+                npc_id = op.get("npc_id", "")
                 results.append(self._run_npc_reaction_tool("update_npc_attitude", {
-                    "npc_id": op.get("npc_id", ""),
+                    "npc_id": npc_id,
                     "dimension": op.get("dimension", ""),
                     "change": op.get("change", 0),
                     "reason": op.get("reason", ""),
                 }))
+                # #4 叙事图谱：记录态度变更关系
+                reason = op.get("reason", "")
+                player_id = self.current_state.get("player", {}).get("id", "player")
+                self.narrative_graph.add_relation(
+                    player_id, npc_id, f"attitude_{op.get('dimension', 'overall')}",
+                    turn=self.turn_number, description=reason,
+                )
             elif op_type == "offscreen":
                 results.append(self._run_state_tool("update_extended", {
                     "offscreen_npc_updates": [{
@@ -664,6 +678,8 @@ class AgenticMixin:
                 "attitude_toward_player": op.get("attitude_toward_player", 50),
             }
             self._npc_by_id[npc_id] = self.current_state["npcs"][npc_id]
+            # #4 叙事图谱：自动添加 NPC 实体
+            self.narrative_graph.add_entity(npc_id, "npc", npc_name or npc_id)
         return json.dumps({"registered": True, "id": npc_id}, ensure_ascii=False)
 
     # ── add_choices: 批量 ──
@@ -1046,6 +1062,58 @@ class AgenticMixin:
         }
 
     # ================================================================
+    # Adaptive tools -- dynamic tool set based on game state (#3)
+    # ================================================================
+
+    def _build_adaptive_tools(self, ctx: dict) -> list[dict]:
+        """Build tool list dynamically based on game state."""
+        from engine.game_session import _unified_tools
+        tools = list(_unified_tools())
+
+        state = self.current_state
+        inventory = state.get("inventory", [])
+
+        # Unlock send_message if player has a communication device
+        comm_items = ["电话", "对讲机", "无线电", "传呼机", "手机"]
+        has_comm = any(
+            any(ci in (it.get("item", "") if isinstance(it, dict) else str(it))
+                for ci in comm_items)
+            for it in inventory
+        )
+        if has_comm:
+            tools.append({"type": "function", "function": {
+                "name": "send_message",
+                "description": "通过通讯设备发送消息给NPC",
+                "parameters": {"type": "object", "properties": {
+                    "recipient": {"type": "string", "description": "收件人NPC名"},
+                    "message": {"type": "string", "description": "消息内容"},
+                }, "required": ["recipient", "message"]},
+            }})
+
+        # Remove NPC tools if no NPCs present
+        present = ctx.get("present_npc_ids", [])
+        if not present:
+            tools = [t for t in tools
+                     if t["function"]["name"] not in ("query_npc_history", "get_npc_attitude")]
+
+        return tools
+
+    def _handle_send_message(self, args: dict) -> str:
+        """Handle send_message tool call (adaptive tool)."""
+        recipient = args.get("recipient", "")
+        message = args.get("message", "")
+        npc_id = None
+        for nid, ndata in self.current_state.get("npcs", {}).items():
+            if isinstance(ndata, dict) and recipient in (ndata.get("name", ""), nid):
+                npc_id = nid
+                break
+        if not npc_id:
+            return json.dumps({"error": f"找不到NPC: {recipient}"}, ensure_ascii=False)
+        return json.dumps({"sent": True, "to": recipient,
+                           "note": "消息已发出，对方的反应将在后续叙事中体现"},
+                          ensure_ascii=False)
+
+    # ================================================================
     # Unified Agent mode (single-loop: retrieval + narrative + settlement)
     # ================================================================
 
@@ -1100,8 +1168,7 @@ class AgenticMixin:
         system = self._build_unified_system()
         user = self._build_unified_context(ctx, player_action)
 
-        from engine.game_session import _unified_tools
-        tools = _unified_tools()
+        tools = self._build_adaptive_tools(ctx)
 
         holder = _AgentResult()
         async for event in self._agent_loop(
@@ -1111,12 +1178,25 @@ class AgenticMixin:
             max_rounds=10, label="统一Agent",
             result_holder=holder,
         ):
-            if streaming:
+            # Emit agent_plan SSE event when submit_plan is called
+            if event.get("type") == "tool_call" and event.get("tool_name") == "submit_plan":
+                plan_text = (event.get("tool_args") or {}).get("plan", "")
+                if plan_text and streaming:
+                    yield {"type": "agent_plan", "plan": plan_text}
+            elif streaming:
                 yield event
 
         narrative = (holder.text or "").strip()
         if not narrative:
             raise RuntimeError("统一Agent未输出叙事文本")
+
+        # Strip <reflect> tags: log reflection, remove from player-facing narrative
+        reflect_match = re.search(r'<reflect>(.*?)</reflect>', narrative, re.DOTALL)
+        if reflect_match:
+            reflection = reflect_match.group(1).strip()
+            narrative = re.sub(r'<reflect>.*?</reflect>', '', narrative, flags=re.DOTALL).strip()
+            logger.info("[反思] %s", reflection[:200])
+            ctx["_reflection"] = reflection
 
         ctx["tool_results"].extend(holder.records)
 
@@ -1185,10 +1265,21 @@ class AgenticMixin:
 
     async def _dispatch_unified_tool(self, ctx: dict, name: str, args: dict):
         """Dispatch tool calls for the unified agent."""
+        # Plan tool
+        if name == "submit_plan":
+            plan = args.get("plan", "")
+            ctx["_agent_plan"] = plan
+            logger.info("[统一Agent] 计划: %s", plan[:100])
+            return "计划已记录。请继续执行。"
+
         # Info tools
         if name in ("recall_history", "query_lorebook", "query_npc_history",
                      "check_inventory", "get_npc_attitude"):
             return self._run_tool_native(name, args)
+
+        # Adaptive: send_message
+        if name == "send_message":
+            return self._handle_send_message(args)
 
         # Action tools
         if name == "update_state":
@@ -1201,6 +1292,24 @@ class AgenticMixin:
             return self._handle_finalize_turn(ctx, args)
         if name == "delegate_settlement":
             return await self._handle_delegate_settlement(ctx, args)
+
+        # --- #4 叙事图谱遍历 ---
+        if name == "traverse_graph":
+            entity = args.get("entity", "")
+            depth = args.get("depth", 2)
+            # 先按 ID 查，再按名字查
+            eid = entity
+            if entity not in self.narrative_graph.nodes:
+                for nid, ndata in self.narrative_graph.nodes.items():
+                    if ndata.get("name") == entity:
+                        eid = nid
+                        break
+            result = self.narrative_graph.query(eid, depth)
+            return json.dumps(result, ensure_ascii=False, default=str)
+
+        # --- #6 规则咨询 ---
+        if name == "consult_rules":
+            return self._handle_consult_rules(args)
 
         return json.dumps({"error": f"未知工具: {name}"})
 
@@ -1276,6 +1385,35 @@ class AgenticMixin:
             logger.info("后台异步结算完成: %d 次工具调用", len(bg_calls))
         except Exception as e:
             logger.error("后台异步结算失败: %s", e)
+
+    def _handle_consult_rules(self, args: dict) -> str:
+        """纯规则检查（不调 LLM）：NPC 在场、物品持有等。"""
+        question = args.get("question", "").lower()
+        context_str = args.get("context", "")
+
+        answers = []
+
+        # NPC 在场检查
+        if "在场" in question or "在这" in question:
+            for npc in self.script.get("npcs", []):
+                if npc.get("name", "") in question:
+                    loc = self._get_npc_location(npc["id"])
+                    player_loc = self.current_state.get("player", {}).get("location", "")
+                    is_present = loc == player_loc
+                    answers.append(f"{npc['name']} {'在场' if is_present else '不在场'}（当前位置：{loc}）")
+
+        # 物品检查
+        if "可用" in question or "有没有" in question:
+            inv = self.current_state.get("inventory", [])
+            for item in inv:
+                item_name = item.get("item", "") if isinstance(item, dict) else str(item)
+                if item_name and item_name in question:
+                    answers.append(f"持有 {item_name}")
+
+        if not answers:
+            answers.append("无法确定，请根据叙事自行判断")
+
+        return json.dumps({"answers": answers}, ensure_ascii=False)
 
     # ================================================================
     # Intent shortcuts (rewrite / query) — no turn advancement

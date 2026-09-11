@@ -236,6 +236,9 @@ class PrepareMixin:
                         raise ValueError(f"选项不存在于当前展示列表: {choice_id}")
                     if matched and matched.get("locked"):
                         raise ValueError(f"该选项已锁定: {matched.get('text', choice_id)}（{matched.get('lock_reason', '条件不满足')}）")
+                    # #5 玩家建模：记录选择的风险偏好
+                    if matched:
+                        self.player_model.record_choice(matched)
 
         # B1: turn_number 在校验通过后才推进，校验失败时不消耗回合数
         self.turn_number += 1

@@ -30,6 +30,8 @@ from engine.ledger import Ledger
 from engine.data_bank import DataBank
 from engine.class_system import ClassRegistry
 from engine.story_tree import StoryTreeEngine
+from engine.narrative_graph import NarrativeGraph
+from engine.player_model import PlayerModel
 from engine.session.tools_mixin import ToolsMixin
 from engine.session.prepare_mixin import PrepareMixin
 from engine.session.shop_mixin import ShopMixin
@@ -585,11 +587,20 @@ UNIFIED_TOOLS_SCHEMA = None  # type: list[dict] | None
 
 
 def _unified_tools() -> list[dict]:
-    """Build and cache the unified tools schema (9 tools)."""
+    """Build and cache the unified tools schema (12 tools)."""
     global UNIFIED_TOOLS_SCHEMA
     if UNIFIED_TOOLS_SCHEMA is not None:
         return UNIFIED_TOOLS_SCHEMA
     from engine.session.agentic_mixin import FOREGROUND_TOOLS_SCHEMA
+
+    # submit_plan: must be called first each turn
+    plan_tool = [{"type": "function", "function": {
+        "name": "submit_plan",
+        "description": "提交本轮行动计划（1-2句话）。必须在调用其他工具之前先调用此工具。",
+        "parameters": {"type": "object", "properties": {
+            "plan": {"type": "string", "description": "简短的行动计划"},
+        }, "required": ["plan"]},
+    }}]
 
     # 5 info tools (from foreground, excluding set_atmosphere/set_scene_image/review_narrative/roll_dice/get_time)
     INFO_NAMES = {"recall_history", "query_lorebook", "query_npc_history", "check_inventory", "get_npc_attitude"}
@@ -667,7 +678,27 @@ def _unified_tools() -> list[dict]:
         }},
     ]
 
-    UNIFIED_TOOLS_SCHEMA = info_tools + action_tools + output_tools
+    # --- #4/#6 中期进化：图谱遍历 + 规则咨询 ---
+    graph_tools = [
+        {"type": "function", "function": {
+            "name": "traverse_graph",
+            "description": "从某个角色/地点/事件出发，查询关联网络（2层深度）",
+            "parameters": {"type": "object", "properties": {
+                "entity": {"type": "string", "description": "实体名称或ID"},
+                "depth": {"type": "integer", "description": "遍历深度", "default": 2},
+            }, "required": ["entity"]},
+        }},
+        {"type": "function", "function": {
+            "name": "consult_rules",
+            "description": "咨询规则引擎：检查某个NPC此时是否应在场、某个行动是否可行、某个物品是否可用",
+            "parameters": {"type": "object", "properties": {
+                "question": {"type": "string", "description": "要咨询的问题"},
+                "context": {"type": "string", "description": "相关上下文"},
+            }, "required": ["question"]},
+        }},
+    ]
+
+    UNIFIED_TOOLS_SCHEMA = plan_tool + info_tools + action_tools + output_tools + graph_tools
     return UNIFIED_TOOLS_SCHEMA
 
 
@@ -784,10 +815,21 @@ class GameSession(
         self.meta_event_bus = MetaEventBus()
         self._register_meta_events()
         self._opening_draft = None
+        self.narrative_graph = NarrativeGraph()
+        self.player_model = PlayerModel()
 
     def _stage_kwargs(self, stage: str) -> dict:
         model = self.stage_models.get(stage)
         return {"model": model} if model else {}
+
+    def _restore_session_models_from_state(self):
+        """Restore narrative_graph and player_model from current_state snapshot."""
+        ng_data = self.current_state.pop("_narrative_graph", None)
+        if ng_data:
+            self.narrative_graph = NarrativeGraph.from_snapshot(ng_data)
+        pm_data = self.current_state.pop("_player_model", None)
+        if pm_data:
+            self.player_model = PlayerModel.from_snapshot(pm_data)
 
 
     def _build_logit_bias_hint(self) -> str:
@@ -1321,6 +1363,19 @@ class GameSession(
         self.script_variables.init_state(self.current_state)
         self._init_shop_inventories()
         self.turn_number = 0
+
+        # #4 叙事图谱：种子实体（玩家、脚本NPC、地点）
+        player = self.current_state.get("player", {})
+        player_id = player.get("id", "player")
+        self.narrative_graph.add_entity(player_id, "player", player.get("name", "player"))
+        for npc in self.script.get("npcs", []):
+            npc_id = npc.get("id", "")
+            if npc_id:
+                self.narrative_graph.add_entity(npc_id, "npc", npc.get("name", npc_id))
+        for loc in self.script.get("locations", []):
+            loc_id = loc.get("id", "")
+            if loc_id:
+                self.narrative_graph.add_entity(loc_id, "location", loc.get("name", loc_id))
 
         # 如果剧本有线性剧本块，初始化游标
         story_blocks = self.script.get("story_tree", {}).get("nodes", [])
@@ -2122,6 +2177,7 @@ class GameSession(
             return {"error": "状态快照已丢失且无法从数据库恢复，无法切换分支"}
 
         self.current_state = copy.deepcopy(snapshot)
+        self._restore_session_models_from_state()
         self.turn_number = node.get("turn_number", 0)
         # 清理 agentic 特有缓存
         self._stable_prefix = None
@@ -2193,6 +2249,7 @@ class GameSession(
         self.world_tree.set_active_node(parent_id)
 
         self.current_state = copy.deepcopy(snapshot)
+        self._restore_session_models_from_state()
         self.turn_number = parent.get("turn_number", 0)
         # 清理 agentic 特有缓存
         self._stable_prefix = None
