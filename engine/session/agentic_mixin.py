@@ -1463,13 +1463,8 @@ class AgenticMixin:
         if name == "submit_plan":
             plan = args.get("plan", "")
             ctx["_agent_plan"] = plan
-            ctx["_plan_awaiting_confirmation"] = True
-            logger.info("[统一Agent] 计划待确认: %s", plan[:100])
-            return (
-                f"计划已提交，等待用户确认。用户可能会修改计划。\n\n"
-                f"你的计划：{plan}\n\n"
-                "请等待用户响应后再继续。如果下一条消息是用户的修改意见，按修改后的方向执行。"
-            )
+            logger.info("[统一Agent] 计划: %s", plan[:100])
+            return f"计划已记录：{plan}\n继续执行。如果用户通过 inject 发来修改意见，你会在下一轮收到。"
 
         # Info tools
         if name in ("recall_history", "query_lorebook", "query_npc_history",
