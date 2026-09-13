@@ -967,6 +967,8 @@ function appendNarrative(text, action, isLatest, thinking) {
 }
 
 function formatNarrativeHtml(text) {
+    // Safety: strip <reflect>...</reflect> tags that should have been removed by backend
+    text = text.replace(/<reflect>[\s\S]*?<\/reflect>/gi, '');
     const escaped = escapeHtml(text);
     const paragraphs = escaped.split(/\n\n+/);
     const htmlText = paragraphs.map(p => `<p class="narrative-para">${p.replace(/\n/g, '<br>')}</p>`).join('');

@@ -149,15 +149,21 @@ async function submitActionStream(action) {
                             thinkWrap.style.display = '';
                             thinkWrap.querySelector('.think-body').insertAdjacentHTML('beforeend', escapeHtml(parsed.content).replace(/\n/g, '<br>'));
                         } else if (parsed.type === 'tool_call') {
-                            // Agentic: show tool-call card
+                            // Agentic: show tool-call card with type-specific icon
                             agentToolsWrap.style.display = '';
                             agentControls.style.display = '';
                             const body = agentToolsWrap.querySelector('.agent-tools-body');
                             const card = document.createElement('div');
                             card.className = 'agent-tool-card';
+                            const toolName = parsed.tool_name || '';
+                            const _toolIcon = /search|retriev|query|lookup|find|lorebook|vector/i.test(toolName) ? '\u{1F50D}'
+                                : /state|status|attrib|inventory|check/i.test(toolName) ? '\u{1F4CA}'
+                                : /choice|option|branch|plan|decide/i.test(toolName) ? '\u{1F3AF}'
+                                : '\u{1F527}';
                             card.innerHTML =
+                                '<span class="tool-icon">' + _toolIcon + '</span>' +
                                 '<span class="tool-label">[' + escapeHtml(parsed.label || '') + ' R' + (parsed.round || '') + ']</span> ' +
-                                '<span class="tool-name">' + escapeHtml(parsed.tool_name || '') + '</span>' +
+                                '<span class="tool-name">' + escapeHtml(toolName) + '</span>' +
                                 '(' + escapeHtml(JSON.stringify(parsed.tool_args || {}).slice(0, 120)) + ')' +
                                 '<div class="tool-result">' + escapeHtml((parsed.tool_result || '').slice(0, 300)) + '</div>';
                             body.appendChild(card);
@@ -237,13 +243,15 @@ async function submitActionStream(action) {
                             msg.textContent = (parsed.label || 'Agent') + ' 达到最大轮数 (' + (parsed.max_rounds || '') + ')';
                             body.appendChild(msg);
                         } else if (parsed.type === 'text') {
+                            const _clean = (parsed.content || '').replace(/<reflect>[\s\S]*?<\/reflect>/gi, '');
                             const span = document.createElement('span');
                             span.className = 'stream-fade-in';
-                            span.innerHTML = escapeHtml(parsed.content).replace(/\n/g, '<br>');
+                            span.innerHTML = escapeHtml(_clean).replace(/\n/g, '<br>');
                             textDiv.appendChild(span);
                             _scrollToBottom();
                         } else if (parsed.type === 'narrative_revised') {
-                            textDiv.innerHTML = escapeHtml(parsed.content).replace(/\n/g, '<br>');
+                            const _clean = (parsed.content || '').replace(/<reflect>[\s\S]*?<\/reflect>/gi, '');
+                            textDiv.innerHTML = escapeHtml(_clean).replace(/\n/g, '<br>');
                             _scrollToBottom();
                         } else if (parsed.type === 'final') {
                             agentControls.style.display = 'none';

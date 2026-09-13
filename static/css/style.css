@@ -4139,3 +4139,95 @@ input[type="checkbox"] {
     cursor: default;
     font-variant-numeric: tabular-nums;
 }
+
+/* ================================================
+   Pipeline Mode Toggle — visual distinction per mode
+   ================================================ */
+.btn-mode-toggle.mode-workflow {
+    border-color: var(--border);
+    color: var(--text-2);
+}
+.btn-mode-toggle.mode-agentic {
+    border-color: #9a622f;
+    color: #a66b35;
+}
+.btn-mode-toggle.mode-unified {
+    border-color: #2f6a9a;
+    color: #3578a6;
+}
+
+/* ================================================
+   Agent Tool Card — tool-type icon
+   ================================================ */
+.agent-tool-card .tool-icon {
+    margin-right: 0.3em;
+    font-size: 0.85em;
+}
+
+/* ================================================
+   E1: Agent Trace + E3: Performance Dashboard
+   (Observability tab in status panel)
+   ================================================ */
+.agent-trace-content, .perf-dashboard {
+    padding: 0.25rem 0;
+}
+.trace-header {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.trace-plan {
+    font-size: 0.78rem;
+    color: var(--accent);
+    padding: 0.25rem 0;
+}
+.trace-step {
+    font-size: 0.78rem;
+    padding: 2px 0;
+    display: flex;
+    gap: 0.25rem;
+}
+.trace-tool {
+    color: var(--info, #6a9ab5);
+    font-weight: 600;
+    min-width: 100px;
+    flex-shrink: 0;
+}
+.trace-args {
+    color: var(--text-muted);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.trace-result {
+    color: var(--text-secondary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.trace-reflect {
+    font-size: 0.78rem;
+    color: var(--warning, #e6a817);
+    padding: 0.25rem 0;
+    font-style: italic;
+}
+.perf-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    padding: 2px 0;
+}
+.perf-stat span:last-child {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.perf-section-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--border);
+}

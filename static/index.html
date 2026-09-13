@@ -1110,18 +1110,16 @@
     function updatePipelineModeBtn(mode) {
       const btn = document.getElementById('pipeline-mode-btn');
       if (!btn) return;
+      btn.classList.remove('mode-workflow', 'mode-agentic', 'mode-unified');
       if (mode === 'agentic_unified') {
         btn.textContent = '✨ unified';
-        btn.style.borderColor = '#2f6a9a';
-        btn.style.color = '#3578a6';
+        btn.classList.add('mode-unified');
       } else if (mode === 'agentic') {
-        btn.textContent = '🤖 agentic';
-        btn.style.borderColor = '#9a622f';
-        btn.style.color = '#a66b35';
+        btn.textContent = '\u{1F916} agentic';
+        btn.classList.add('mode-agentic');
       } else {
         btn.textContent = '⚡ workflow';
-        btn.style.borderColor = '';
-        btn.style.color = '';
+        btn.classList.add('mode-workflow');
       }
     }
     fetch('/api/config/pipeline-mode').then(r=>r.json()).then(d=>updatePipelineModeBtn(d.mode)).catch(()=>{});
