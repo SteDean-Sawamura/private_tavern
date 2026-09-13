@@ -1335,7 +1335,13 @@ async function submitAction(action) {
 
 function _showGameOverlay(show) {
     const ov = document.getElementById('game-overlay');
-    if (ov) ov.style.display = show ? 'flex' : 'none';
+    if (!ov) return;
+    // agentic 模式不显示阻塞式加载环（进度通过工具调用卡片实时展示）
+    if (show && _shouldUseStream()) {
+        ov.style.display = 'none';
+        return;
+    }
+    ov.style.display = show ? 'flex' : 'none';
 }
 
 function _renderLocationMap(state, dn, currentLocId) {
