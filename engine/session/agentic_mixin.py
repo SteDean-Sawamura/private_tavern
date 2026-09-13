@@ -298,8 +298,15 @@ class AgenticMixin:
             inject_queue = getattr(self, '_inject_queue', None)
             if inject_queue:
                 injected = inject_queue.pop(0)
-                msgs.append({"role": "user", "content": injected})
-                yield {"type": "user_inject", "label": label, "message": injected}
+                # 纯确认不消耗轮次
+                _CONFIRM_PHRASES = ("确认", "好的", "继续", "ok", "确认执行", "按计划执行", "确认，按计划执行")
+                if injected.strip().lower() in _CONFIRM_PHRASES:
+                    logger.info("[%s] 确认消息（不消耗轮次）: %s", label, injected[:30])
+                    yield {"type": "user_inject", "label": label, "message": injected}
+                    # 不追加到 msgs，Agent 继续当前上下文
+                else:
+                    msgs.append({"role": "user", "content": injected})
+                    yield {"type": "user_inject", "label": label, "message": injected}
 
         else:
             # Exhausted max_rounds without returning
@@ -1365,7 +1372,7 @@ class AgenticMixin:
             [{"role": "user", "content": user}],
             system, tools,
             _dispatch_and_record,
-            max_rounds=10, label="统一Agent",
+            max_rounds=20, label="统一Agent",
             result_holder=holder,
         ):
             # Emit agent_plan SSE event when submit_plan is called

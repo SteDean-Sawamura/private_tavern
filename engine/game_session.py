@@ -1446,7 +1446,7 @@ class GameSession(
         self._opening_draft = None  # 使用后清除
         return selected
 
-    async def initialize(self) -> dict:
+    async def initialize(self, skip_opening: bool = False) -> dict:
         """Initialize a new game, returning the opening data."""
         self.current_state = ScriptLoader.create_initial_state(self.script)
         self.script_variables.init_state(self.current_state)
@@ -1522,7 +1522,7 @@ class GameSession(
 
         # 8 阶段 pipeline 开局，失败时回退到旧 3 阶段轻量润色
         _narrative_reasoning = ""
-        if self.ai_provider:
+        if self.ai_provider and not skip_opening:
             try:
                 present_npc_ids, nearby_npc_ids = self._compute_present_npcs(self.current_state)
 

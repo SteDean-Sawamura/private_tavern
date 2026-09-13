@@ -619,11 +619,17 @@ async function startNewGame() {
             const presetLabel = activeChip ? activeChip.textContent : '';
             try { await API.put('/api/config/image/style', { preset: presetLabel, custom: openingImgStyle }); } catch (_) {}
         }
+        const isAgenticMode = _shouldUseStream();
+        if (isAgenticMode) payload.skip_opening = true;
         const result = await API.post('/api/game/new', payload);
         currentSaveId = result.save_id;
         currentState = result.state;
         _prevState = null;
         showGameScreen(result);
+        // agentic 模式：进入游戏界面后用 SSE 跑开局叙事
+        if (isAgenticMode && typeof submitActionStream === 'function') {
+            await submitActionStream({type: 'system', text: '游戏开始'});
+        }
         // Carry opening authors note into in-game panel and persist
         if (payload.authors_note) {
             const igInput = document.getElementById('authors-note-input');

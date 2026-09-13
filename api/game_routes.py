@@ -89,6 +89,7 @@ class NewGameRequest(BaseModel):
     authors_note_position: Optional[str] = None
     authors_note_depth: Optional[int] = None
     npc_overrides: Optional[list[dict]] = None
+    skip_opening: bool = False  # agentic 模式下跳过开局叙事，由前端 SSE 触发
 
 
 class ActionRequest(BaseModel):
@@ -396,7 +397,7 @@ async def new_game(req: NewGameRequest):
             req.authors_note_depth or script.get("settings", {}).get("authors_note_depth", 4),
         )
 
-    result = await session.initialize()
+    result = await session.initialize(skip_opening=req.skip_opening)
     # G1: 注入 skill_check_map 到初始 state
     skill_map = script.get("settings", {}).get("skill_check_map")
     if skill_map:
