@@ -1062,7 +1062,7 @@ function renderDice(diceRolls) {
 async function submitChoice(choiceId, text) {
     if (isStreaming) return;
     const action = { type: 'choice', choice_id: choiceId, text };
-    if (useStreamMode && typeof submitActionStream === 'function') {
+    if (_shouldUseStream() && typeof submitActionStream === 'function') {
         await submitActionStream(action);
     } else {
         await submitAction(action);
@@ -1077,7 +1077,7 @@ async function submitFreeform() {
     input.value = '';
     _clearSkillCheckHint();
     const action = { type: 'freeform', text };
-    if (useStreamMode && typeof submitActionStream === 'function') {
+    if (_shouldUseStream() && typeof submitActionStream === 'function') {
         await submitActionStream(action);
     } else {
         await submitAction(action);
@@ -1087,7 +1087,7 @@ async function submitFreeform() {
 async function quickAction(text) {
     if (isStreaming) return;
     const action = { type: 'freeform', text };
-    if (useStreamMode && typeof submitActionStream === 'function') {
+    if (_shouldUseStream() && typeof submitActionStream === 'function') {
         await submitActionStream(action);
     } else {
         await submitAction(action);
@@ -1309,6 +1309,20 @@ async function submitAction(action) {
         _s('updateTurnIndicator', () => updateTurnIndicator());
         _s('resetSwipe', () => updateSwipeControls(0, 1));
         if (result.game_over) _s('showGameOver', () => showGameOver(result.game_over, result.game_statistics));
+        // Agentic: agent trace + performance (非流式 fallback)
+        if (result.agent_trace && typeof renderAgentTrace === 'function') _s('renderAgentTrace', () => renderAgentTrace(result.agent_trace));
+        if (typeof updatePerformanceDashboard === 'function') _s('updatePerfDashboard', () => updatePerformanceDashboard());
+        if (result.proactive_hint) {
+            _s('showProactiveHint', () => {
+                const block = document.querySelector('.turn-block.latest');
+                if (block) {
+                    const hint = document.createElement('div');
+                    hint.className = 'proactive-hint';
+                    hint.textContent = '💡 ' + result.proactive_hint;
+                    block.appendChild(hint);
+                }
+            });
+        }
     } catch (e) {
         console.error('[submitAction]', e, e.stack);
         alert('行动失败: ' + e.message + '\n\n' + (e.stack || ''));
@@ -3158,6 +3172,14 @@ function toggleStreamMode() {
     const btn = document.getElementById('stream-toggle');
     btn.classList.toggle('active-toggle', useStreamMode);
     btn.textContent = useStreamMode ? '流式(开)' : '流式';
+}
+
+// agentic 模式自动启用流式（SSE 是 Agent 工具调用实时展示的前提）
+function _shouldUseStream() {
+    if (useStreamMode) return true;
+    const modeBtn = document.getElementById('pipeline-mode-btn');
+    if (modeBtn && (modeBtn.textContent.includes('agentic') || modeBtn.textContent.includes('unified'))) return true;
+    return false;
 }
 
 async function testActiveProfile() {

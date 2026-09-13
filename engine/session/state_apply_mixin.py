@@ -519,9 +519,11 @@ class StateApplyMixin:
             except Exception:
                 pass
 
-        return result
+        # 注入最近的 agent trace（非流式路径需要）
+        if hasattr(self, '_agent_traces') and self._agent_traces:
+            result["agent_trace"] = self._agent_traces[-1]
 
-    async def _classify_emotion(self: GameSession, narrative: str) -> str:
+        return result
         """Classify narrative emotion using a quick AI call."""
         prompt = (
             "从以下标签中选择最匹配的情绪：joy, sadness, anger, fear, surprise, "
