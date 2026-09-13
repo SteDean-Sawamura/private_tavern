@@ -506,7 +506,7 @@ async def game_action_stream(save_id: str, req: ActionRequest):
             if chunk["type"] in ("text", "thinking", "narrative_revised"):
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
             elif chunk["type"] in ("tool_call", "agent_done", "aborted",
-                                   "user_inject", "agent_max_rounds"):
+                                   "user_inject", "agent_max_rounds", "agent_plan"):
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
             elif chunk["type"] == "final":
                 final_result = chunk
