@@ -24,3 +24,13 @@ PIPELINE_MODE = os.getenv("PIPELINE_MODE", "workflow")
 
 # API authentication — set TAVERN_API_TOKEN to enable; leave empty to disable
 API_TOKEN = os.getenv("TAVERN_API_TOKEN", "")
+
+# 任务类型→模型路由（可通过 API 动态配置）
+TASK_MODEL_ROUTES = {
+    "planning": None,      # 使用默认模型（或 flash 快模型）
+    "narrative": None,     # 使用默认模型（或强模型）
+    "settlement": None,    # 使用默认模型（或 flash）
+    "review": None,        # 使用默认模型（或 flash）
+    "memory": None,        # 使用默认模型（或 flash）
+    "image": None,         # 使用图像模型
+}

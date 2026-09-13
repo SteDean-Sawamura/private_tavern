@@ -136,6 +136,12 @@ class BackgroundTasksMixin:
             ),
             priority=85,
         ))
+        bus.register(MetaEvent(
+            id="director_notes",
+            handler="_handle_director_notes",
+            trigger=MetaEventTrigger(turn_interval=1, min_turn=2, requires_ai=True),
+            priority=50,
+        ))
 
     def _dispatch_meta_events(self, ctx: dict, parsed: dict,
                               player_action: dict, raw_response: str = ""):
@@ -1054,6 +1060,52 @@ class BackgroundTasksMixin:
                                 inplace=True,
                             )
                     break
+
+    # ================================================================
+    # Director Notes: 叙事摘要中间层
+    # ================================================================
+
+    async def _handle_director_notes(self, meta_ctx: dict):
+        """后台任务：从最近叙事中提取导演笔记"""
+        if not hasattr(self, 'director_notes'):
+            return
+        if not self.world_tree:
+            return
+        recent = self.world_tree.get_recent_history(3)
+        if not recent:
+            return
+        last = recent[-1]
+        narrative = last.get("ai_response", "")
+        if not narrative or len(narrative) < 100:
+            return
+
+        try:
+            prompt = f"""从以下叙事中提取关键信息，输出JSON数组：
+[{{"category": "character/plot/world/relationship/clue", "content": "一句话描述"}}]
+最多3条，只提取重要信息。
+
+叙事：
+{narrative[:1000]}"""
+            raw = await self.ai_provider.generate(
+                [{"role": "user", "content": prompt}],
+                system="你是叙事分析员。提取关键信息为结构化笔记。只返回JSON。",
+                max_tokens=300,
+                **self._stage_kwargs("knowledge_graph"),
+            )
+            notes = json.loads(raw.strip().strip('```json').strip('```'))
+            if not isinstance(notes, list):
+                return
+            for note in notes[:3]:
+                if not isinstance(note, dict):
+                    continue
+                self.director_notes.add_note(
+                    self.turn_number,
+                    note.get("category", "plot"),
+                    note.get("content", ""),
+                )
+            logger.info("导演笔记：添加 %d 条", min(len(notes), 3))
+        except Exception as e:
+            logger.warning("导演笔记提取失败: %s", e)
 
     # ================================================================
     # Feature #8: NPC Goal Conflict Detection

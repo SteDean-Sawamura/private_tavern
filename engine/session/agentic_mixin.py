@@ -209,6 +209,17 @@ class AgenticMixin:
             holder.prompt_tokens += usage.get("prompt_tokens", 0)
             holder.completion_tokens += usage.get("completion_tokens", 0)
 
+            # #7 精细用量统计
+            if usage and hasattr(self, 'usage_tracker'):
+                _model = resp.get("model", "") or getattr(self.ai_provider, 'model', '')
+                self.usage_tracker.record(
+                    model=_model,
+                    task_type=stage_key,
+                    input_tokens=usage.get("prompt_tokens", 0),
+                    output_tokens=usage.get("completion_tokens", 0),
+                    cache_tokens=usage.get("cached_tokens", usage.get("prompt_cache_hit_tokens", 0)),
+                )
+
             if not tc_list:
                 # 叙事 = 所有轮次中最长的实质性文本（>100字的才算叙事，短的是工具应答）
                 _all_round_content.append(content)
@@ -1279,6 +1290,12 @@ class AgenticMixin:
                 parts.append("<world_events>\n在你行动期间发生的事：\n" + "\n".join(event_lines[:5]) + "\n</world_events>")
             self._pending_world_events = []
 
+        # 导演笔记（自动 Push 最近 3 条）
+        if hasattr(self, 'director_notes'):
+            dn_summary = self.director_notes.get_summary(limit=3)
+            if dn_summary:
+                parts.append("<director_notes>\n" + dn_summary + "\n</director_notes>")
+
         return "\n\n".join(parts)
 
     def _build_unified_parsed(self, records: list[dict], ctx: dict) -> dict:
@@ -1324,7 +1341,7 @@ class AgenticMixin:
         _CACHEABLE_TOOLS = frozenset({
             "recall_history", "query_lorebook", "query_npc_history",
             "check_inventory", "get_npc_attitude", "peek_upcoming_events",
-            "traverse_graph",
+            "traverse_graph", "read_director_notes",
         })
 
         async def _dispatch_and_record(name, args):
@@ -1615,6 +1632,17 @@ class AgenticMixin:
                 "note": "规则预测，仅供参考"
             }, ensure_ascii=False)
 
+        # --- 导演笔记 ---
+        if name == "read_director_notes":
+            cats = None if args.get("category", "all") == "all" else [args["category"]]
+            limit = args.get("limit", 5)
+            notes = self.director_notes.get_notes(categories=cats, limit=limit)
+            return json.dumps({"notes": notes}, ensure_ascii=False, default=str)
+
+        # --- 角色独立推演 ---
+        if name == "invoke_character":
+            return await self._handle_invoke_character(args)
+
         return json.dumps({"error": f"未知工具: {name}"})
 
     def _handle_finalize_turn(self, ctx: dict, args: dict) -> str:
@@ -1796,6 +1824,48 @@ class AgenticMixin:
         if not events:
             return json.dumps({"events": [], "note": "未来几小时无重大事件"}, ensure_ascii=False)
         return json.dumps({"events": events[:5]}, ensure_ascii=False)
+
+    # ================================================================
+    # Character Cast: 角色独立推演
+    # ================================================================
+
+    async def _handle_invoke_character(self, args: dict) -> str:
+        """启动一个NPC的独立思考，返回行为/对话建议。"""
+        npc_id = args.get("npc_id", "")
+        situation = args.get("situation", "")
+
+        # 找 NPC 信息：先查脚本定义，再查运行时状态
+        npc_script = None
+        for npc in self.script.get("npcs", []):
+            if npc.get("id") == npc_id:
+                npc_script = npc
+                break
+        if not npc_script:
+            npc_state = self.current_state.get("npcs", {}).get(npc_id, {})
+            if not isinstance(npc_state, dict):
+                return json.dumps({"error": f"NPC {npc_id} 不存在"}, ensure_ascii=False)
+            npc_script = {"id": npc_id, **npc_state}
+
+        npc_name = npc_script.get("name", npc_id)
+        personality = npc_script.get("personality", "")
+        bio = npc_script.get("bio", "")
+
+        system = (
+            f"你是{npc_name}。{bio[:200]}\n"
+            f"性格：{personality[:100]}\n"
+            "根据当前情境，给出你的反应（对话+行为意图）。\n"
+            "用第一人称简短回答（3-5句话）。"
+        )
+
+        try:
+            raw = await self.ai_provider.generate(
+                [{"role": "user", "content": f"情境：{situation[:500]}"}],
+                system=system, max_tokens=300,
+                **self._stage_kwargs("knowledge_graph"),
+            )
+            return json.dumps({"npc": npc_name, "response": raw.strip()}, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
 
     # ================================================================
     # Intent shortcuts (rewrite / query) — no turn advancement

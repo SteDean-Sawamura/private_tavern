@@ -295,6 +295,8 @@ class StateApplyMixin:
         self.current_state["_player_model"] = self.player_model.snapshot()
         if hasattr(self, 'npc_autonomy'):
             self.current_state["_npc_autonomy"] = self.npc_autonomy.snapshot()
+        if hasattr(self, 'director_notes'):
+            self.current_state["_director_notes"] = self.director_notes.snapshot()
 
         # World tree node
         node_id = self.world_tree.add_node(
@@ -311,6 +313,11 @@ class StateApplyMixin:
             triggered_events=[e["event_id"] for e in triggered_events],
             state_snapshot=self.current_state,
         )
+        # 写入状态哈希，供分支校验使用
+        _new_node = self.world_tree.get_node(node_id)
+        if _new_node:
+            from engine.world_tree import WorldTree as _WT
+            _new_node["_state_hash"] = _WT.state_hash(self.current_state)
         # Bug-1: 将 regenerate 需要的上下文写入节点，避免重新生成时丢失
         node = self.world_tree.get_node(node_id)
         if node:

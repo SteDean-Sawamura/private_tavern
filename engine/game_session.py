@@ -34,6 +34,7 @@ from engine.narrative_graph import NarrativeGraph
 from engine.npc_autonomy import NPCAutonomy
 from engine.player_model import PlayerModel
 from engine.world_clock import WorldClock
+from engine.director_notes import DirectorNotes
 from engine.session.tools_mixin import ToolsMixin
 from engine.session.prepare_mixin import PrepareMixin
 from engine.session.shop_mixin import ShopMixin
@@ -734,6 +735,22 @@ def _unified_tools() -> list[dict]:
                 "context": {"type": "string", "description": "当前场景摘要"},
             }, "required": ["choice_text"]},
         }},
+        {"type": "function", "function": {
+            "name": "read_director_notes",
+            "description": "阅读导演笔记（后台整理的叙事摘要），了解之前的关键剧情、人物关系和线索",
+            "parameters": {"type": "object", "properties": {
+                "category": {"type": "string", "enum": ["character", "plot", "world", "relationship", "clue", "all"], "description": "笔记类别", "default": "all"},
+                "limit": {"type": "integer", "description": "返回条数", "default": 5},
+            }},
+        }},
+        {"type": "function", "function": {
+            "name": "invoke_character",
+            "description": "启动一个NPC的独立思考。NPC会根据自己的性格、目标和当前情境给出行为/对话建议。适合多人场景。",
+            "parameters": {"type": "object", "properties": {
+                "npc_id": {"type": "string", "description": "NPC的ID"},
+                "situation": {"type": "string", "description": "当前情境描述（给NPC看的）"},
+            }, "required": ["npc_id", "situation"]},
+        }},
     ]
     return UNIFIED_TOOLS_SCHEMA
 
@@ -854,10 +871,17 @@ class GameSession(
         self.narrative_graph = NarrativeGraph()
         self.npc_autonomy = NPCAutonomy(self.script.get("npcs", []), self.script.get("locations", []))
         self.player_model = PlayerModel()
+        self.director_notes = DirectorNotes()
         self.world_clock = WorldClock()
         self._agent_experience: list[dict] = []  # 最近 5 轮的 Agent 工具调用摘要
         self._last_tool_result: dict | None = None  # D1: 上一次工具调用记录（供 undo 回退）
         self._settlement_messages: list[dict] = []  # D3: 后台→前台消息队列
+        # #5: 任务合批 + 模型路由
+        from engine.task_batcher import TaskBatcher
+        self.task_batcher = TaskBatcher()
+        # #7: 精细用量统计
+        from engine.usage_tracker import UsageTracker
+        self.usage_tracker = UsageTracker()
         # E1/E2/E3: 可观测性
         from engine.ab_testing import ABTestRunner
         self.ab_tester = ABTestRunner()
@@ -869,7 +893,14 @@ class GameSession(
         }
 
     def _stage_kwargs(self, stage: str) -> dict:
+        """根据任务类型返回 AI 调用参数，支持模型路由"""
+        # 优先使用 profile 级 stage_models（数据库配置）
         model = self.stage_models.get(stage)
+        if not model:
+            # 其次检查全局任务级模型路由（config.py / API 动态配置）
+            import config
+            routes = getattr(config, 'TASK_MODEL_ROUTES', {})
+            model = routes.get(stage)
         return {"model": model} if model else {}
 
     def _restore_session_models_from_state(self):
@@ -885,6 +916,9 @@ class GameSession(
             self.npc_autonomy = NPCAutonomy.from_snapshot(
                 self.script.get("npcs", []), self.script.get("locations", []), na_data
             )
+        dn_data = self.current_state.pop("_director_notes", None)
+        if dn_data:
+            self.director_notes = DirectorNotes.from_snapshot(dn_data)
 
 
     def _build_logit_bias_hint(self) -> str:
@@ -2250,6 +2284,13 @@ class GameSession(
         # B2: 如果快照为 None 且 DB 也加载不到，返回错误而非使用空 dict
         if not snapshot:
             return {"error": "状态快照已丢失且无法从数据库恢复，无法切换分支"}
+
+        # 来源哈希校验：记录并校验分支来源状态
+        expected_hash = node.get("_state_hash", "")
+        actual_hash = WorldTree.state_hash(snapshot)
+        if expected_hash and expected_hash != actual_hash:
+            logger.warning("分支来源校验不匹配: node=%s expected=%s actual=%s",
+                           node_id, expected_hash, actual_hash)
 
         self.current_state = copy.deepcopy(snapshot)
         self._restore_session_models_from_state()

@@ -738,8 +738,12 @@ function renderAgentTrace(trace) {
 async function updatePerformanceDashboard() {
     if (!currentSaveId) return;
     try {
-        const res = await fetch(`/api/game/${currentSaveId}/performance`);
-        const stats = await res.json();
+        const [perfRes, usageRes] = await Promise.all([
+            fetch(`/api/game/${currentSaveId}/performance`),
+            fetch(`/api/game/${currentSaveId}/usage-stats`),
+        ]);
+        const stats = await perfRes.json();
+        const usage = await usageRes.json();
         const el = document.getElementById('perf-dashboard');
         if (!el) return;
         // Tool usage breakdown
@@ -750,12 +754,39 @@ async function updatePerformanceDashboard() {
                 `<div class="perf-stat"><span>${name}</span><span>${count}</span></div>`
             ).join('');
         }
+        // Usage stats (by model & by task)
+        let usageHtml = '';
+        if (usage && usage.total && usage.total.requests > 0) {
+            const t = usage.total;
+            usageHtml += `<div class="perf-section-label">Usage</div>`;
+            usageHtml += `<div class="perf-stat"><span>LLM calls</span><span>${t.requests}</span></div>`;
+            usageHtml += `<div class="perf-stat"><span>Input tokens</span><span>${t.input_tokens.toLocaleString()}</span></div>`;
+            usageHtml += `<div class="perf-stat"><span>Output tokens</span><span>${t.output_tokens.toLocaleString()}</span></div>`;
+            if (t.cache_tokens > 0) {
+                usageHtml += `<div class="perf-stat"><span>Cache tokens</span><span>${t.cache_tokens.toLocaleString()}</span></div>`;
+                usageHtml += `<div class="perf-stat"><span>Cache hit</span><span>${usage.cache_hit_rate}%</span></div>`;
+            }
+            usageHtml += `<div class="perf-stat"><span>Cost (${usage.currency || 'USD'})</span><span>$${t.cost.toFixed(4)}</span></div>`;
+            if (usage.by_model && Object.keys(usage.by_model).length > 0) {
+                usageHtml += `<div class="perf-section-label">By model</div>`;
+                for (const [model, m] of Object.entries(usage.by_model)) {
+                    usageHtml += `<div class="perf-stat"><span>${model}</span><span>${m.requests}x / $${m.cost.toFixed(4)}</span></div>`;
+                }
+            }
+            if (usage.by_task && Object.keys(usage.by_task).length > 0) {
+                usageHtml += `<div class="perf-section-label">By task</div>`;
+                for (const [task, tk] of Object.entries(usage.by_task)) {
+                    usageHtml += `<div class="perf-stat"><span>${task}</span><span>${tk.requests}x / ${(tk.input_tokens + tk.output_tokens).toLocaleString()} tok</span></div>`;
+                }
+            }
+        }
         el.innerHTML = `
             <div class="perf-stat"><span>Turns</span><span>${stats.total_turns || 0}</span></div>
             <div class="perf-stat"><span>Tokens</span><span>${stats.total_tokens || 0}</span></div>
             <div class="perf-stat"><span>Avg latency</span><span>${stats.avg_latency_ms || 0}ms</span></div>
             <div class="perf-stat"><span>Avg narrative</span><span>${stats.avg_narrative_length || 0}</span></div>
             ${toolHtml ? '<div class="perf-section-label">Tool usage</div>' + toolHtml : ''}
+            ${usageHtml}
         `;
     } catch (_) { /* silent */ }
 }

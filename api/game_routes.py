@@ -1658,6 +1658,15 @@ async def get_performance(save_id: str):
     return getattr(session, '_performance_stats', {})
 
 
+@router.get("/{save_id}/usage-stats")
+async def get_usage_stats(save_id: str):
+    """#7: Return fine-grained token/cost usage statistics."""
+    session = _sessions.get(save_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    return session.usage_tracker.get_stats() if hasattr(session, 'usage_tracker') else {}
+
+
 @router.post("/{save_id}/ab-test")
 async def run_ab_test(save_id: str, req: dict):
     """E2: Run A/B test comparing two prompt variants."""

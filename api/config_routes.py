@@ -213,6 +213,26 @@ async def reload_prompts():
     return {"ok": True, "message": "Prompt 模板缓存已清除"}
 
 
+# --- Model routing (task→model) ---
+
+@router.post("/model-routes")
+async def set_model_routes(req: dict):
+    """Set task→model routing overrides at runtime."""
+    import config
+    routes = req.get("routes", {})
+    for key in ("planning", "narrative", "settlement", "review", "memory", "image"):
+        if key in routes:
+            config.TASK_MODEL_ROUTES[key] = routes[key] or None
+    return {"ok": True, "routes": config.TASK_MODEL_ROUTES}
+
+
+@router.get("/model-routes")
+async def get_model_routes():
+    """Get current task→model routing configuration."""
+    import config
+    return {"routes": getattr(config, "TASK_MODEL_ROUTES", {})}
+
+
 # --- Legacy config endpoints (kept for backward compat) ---
 
 @router.get("")

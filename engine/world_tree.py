@@ -1,8 +1,12 @@
 """World Tree: branching history data structure."""
 
+import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 
 class WorldTree:
@@ -15,6 +19,7 @@ class WorldTree:
         self.nodes: dict[str, dict] = {}
         self._branch_cache: list[dict] | None = None
         self._branch_dirty: bool = True
+        self._branch_ops: dict[str, str] = {}  # operation_id -> node_id (幂等防重复)
 
     def add_node(
         self,
@@ -115,6 +120,37 @@ class WorldTree:
         if node_id in self.nodes:
             self.active_node_id = node_id
             self._branch_dirty = True
+
+    # ── 分支加固 ──
+
+    @staticmethod
+    def state_hash(state: dict) -> str:
+        """计算状态快照的短哈希，用于分支来源校验。"""
+        try:
+            key = json.dumps(state, sort_keys=True, ensure_ascii=False)[:2000]
+        except (TypeError, ValueError):
+            key = str(state)[:2000]
+        return hashlib.md5(key.encode()).hexdigest()[:8]
+
+    def create_branch(self, parent_node_id: str, operation_id: str | None = None) -> str | None:
+        """基于父节点创建分支点。operation_id 用于幂等防重复。
+
+        返回父节点 ID（确认分支激活）。若 operation_id 已存在，幂等返回之前的结果。
+        """
+        if operation_id is None:
+            operation_id = uuid.uuid4().hex[:8]
+        if operation_id in self._branch_ops:
+            return self._branch_ops[operation_id]
+        if parent_node_id not in self.nodes:
+            return None
+        self.set_active_node(parent_node_id)
+        self._branch_ops[operation_id] = parent_node_id
+        # 限制缓存大小
+        if len(self._branch_ops) > 200:
+            keys = list(self._branch_ops.keys())
+            for k in keys[:100]:
+                del self._branch_ops[k]
+        return parent_node_id
 
     def remove_node(self, node_id: str) -> bool:
         """Remove a leaf node from the tree. Returns True if removed."""
